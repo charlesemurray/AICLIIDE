@@ -3,6 +3,7 @@ use crate::os::Os;
 use clap::{Args, Subcommand};
 use eyre::Result;
 use serde_json::json;
+use std::fs;
 use std::process::ExitCode;
 
 #[derive(Debug, Args, PartialEq)]
@@ -14,11 +15,7 @@ pub struct SkillsArgs {
 #[derive(Debug, Subcommand, PartialEq)]
 pub enum SkillsCommand {
     /// List available skills
-    List {
-        /// Show detailed information
-        #[arg(long)]
-        detailed: bool,
-    },
+    List,
     /// Run a skill with parameters
     Run {
         /// Name of the skill to run
@@ -37,17 +34,18 @@ pub enum SkillsCommand {
         /// Path or URL to skill definition
         source: String,
     },
+    /// Create a new skill
+    Create {
+        /// Name of the skill to create
+        name: String,
+    },
 }
 
 // Separate enum for slash commands
 #[derive(Debug, Subcommand, PartialEq)]
 pub enum SkillsSlashCommand {
     /// List available skills
-    List {
-        /// Show detailed information
-        #[arg(long)]
-        detailed: bool,
-    },
+    List,
     /// Run a skill with parameters
     Run {
         /// Name of the skill to run
@@ -68,17 +66,15 @@ impl SkillsArgs {
         let registry = SkillRegistry::with_builtins();
         
         match self.command {
-            SkillsCommand::List { detailed } => {
+            SkillsCommand::List => {
                 let skills = registry.list();
                 
-                if detailed {
-                    for skill in skills {
+                for skill in skills {
+                    let aliases = skill.aliases();
+                    if aliases.is_empty() {
                         println!("{}: {}", skill.name(), skill.description());
-                        println!("  Interactive: {}", skill.supports_interactive());
-                    }
-                } else {
-                    for skill in skills {
-                        println!("{}", skill.name());
+                    } else {
+                        println!("{} ({}): {}", skill.name(), aliases.join(", "), skill.description());
                     }
                 }
                 
@@ -122,6 +118,11 @@ impl SkillsArgs {
                 println!("Skill installation not yet implemented");
                 Ok(ExitCode::SUCCESS)
             },
+            SkillsCommand::Create { name } => {
+                create_skill_template(&name)?;
+                println!("Created skill template: {}.rs", name);
+                Ok(ExitCode::SUCCESS)
+            },
         }
     }
 }
@@ -131,22 +132,15 @@ impl SkillsSlashCommand {
         let registry = SkillRegistry::with_builtins();
         
         match self {
-            Self::List { detailed } => {
+            Self::List => {
                 let skills = registry.list();
                 
-                if detailed {
-                    for skill in skills {
+                for skill in skills {
+                    let aliases = skill.aliases();
+                    if aliases.is_empty() {
                         println!("{}: {}", skill.name(), skill.description());
-                        println!("  Interactive: {}", skill.supports_interactive());
-                        
-                        let aliases = skill.aliases();
-                        if !aliases.is_empty() {
-                            println!("  Aliases: {}", aliases.join(", "));
-                        }
-                    }
-                } else {
-                    for skill in skills {
-                        println!("{}", skill.name());
+                    } else {
+                        println!("{} ({}): {}", skill.name(), aliases.join(", "), skill.description());
                     }
                 }
                 
@@ -192,4 +186,46 @@ impl SkillsSlashCommand {
             },
         }
     }
+}
+fn create_skill_template(name: &str) -> Result<()> {
+    let template = format!(r#"use async_trait::async_trait;
+use serde_json::{{json, Value}};
+use crate::cli::skills::{{Skill, SkillResult, SkillUI, UIElement, Result}};
+
+pub struct {}Skill;
+
+#[async_trait]
+impl Skill for {}Skill {{
+    fn name(&self) -> &str {{
+        "{}"
+    }}
+
+    fn description(&self) -> &str {{
+        "A custom skill"
+    }}
+
+    async fn execute(&self, params: Value) -> Result<SkillResult> {{
+        Ok(SkillResult {{
+            output: "Hello from {}!".to_string(),
+            ui_updates: None,
+            state_changes: None,
+        }})
+    }}
+
+    async fn render_ui(&self) -> Result<SkillUI> {{
+        Ok(SkillUI {{
+            elements: vec![UIElement::Text("Custom skill UI".to_string())],
+            interactive: false,
+        }})
+    }}
+}}
+"#, 
+        name.chars().next().unwrap().to_uppercase().collect::<String>() + &name[1..],
+        name.chars().next().unwrap().to_uppercase().collect::<String>() + &name[1..],
+        name,
+        name
+    );
+
+    fs::write(format!("{}.rs", name), template)?;
+    Ok(())
 }
