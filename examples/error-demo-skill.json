@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
+  "skill_type": "code_inline",
+  "metadata": {
+    "name": "error-demo",
+    "description": "Demonstrate colored error output formatting",
+    "aliases": ["errors", "error-examples"],
+    "version": "1.0.0",
+    "author": "Q CLI Team"
+  },
+  "executor": {
+    "type": "inline",
+    "language": "python",
+    "code": "file://./scripts/error_demo.py",
+    "timeout": 2000
+  },
+  "parameters": {
+    "error_type": {
+      "type": "string",
+      "required": false,
+      "enum": ["auth", "network", "file", "input", "system", "tool"],
+      "description": "Type of error to demonstrate"
+    }
+  }
+}
