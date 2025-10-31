@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/agent-v1.json",
+  "name": "Q CLI Developer",
+  "description": "Agent specialized in developing features for Amazon Q CLI following TDD and project conventions",
+  "prompt": "file://./q-cli-dev-prompt.md",
+  "mcpServers": {
+    "builder-mcp": {
+      "command": "builder-mcp",
+      "args": [],
+      "disabled": false
+    }
+  },
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "grep",
+    "ls",
+    "@builder-mcp"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "grep",
+    "ls",
+    "@builder-mcp/ReadInternalWebsites",
+    "@builder-mcp/InternalCodeSearch",
+    "@builder-mcp/InternalSearch"
+  ],
+  "resources": [
+    "file://./DEVELOPMENT.md",
+    "file://./README.md",
+    "file://./CONTRIBUTING.md"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "workingDirectory": "/local/workspace/q-cli/amazon-q-developer-cli",
+      "alwaysAllow": [
+        {
+          "preset": "readOnly"
+        }
+      ]
+    },
+    "fs_read": {
+      "allowedPaths": [
+        "/local/workspace/q-cli/amazon-q-developer-cli/**"
+      ]
+    },
+    "fs_write": {
+      "allowedPaths": [
+        "/local/workspace/q-cli/amazon-q-developer-cli/crates/**",
+        "/local/workspace/q-cli/amazon-q-developer-cli/docs/**"
+      ]
+    }
+  },
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo 'Q CLI Development Agent initialized. Ready to build features with TDD!'"
+      }
+    ]
+  },
+  "useLegacyMcpJson": false
+}

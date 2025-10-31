@@ -12,6 +12,7 @@ pub mod feed;
 mod issue;
 mod mcp;
 mod settings;
+pub mod skills;
 mod user;
 
 use std::fmt::Display;
