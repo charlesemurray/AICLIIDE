@@ -282,6 +282,78 @@ skills/
     └── conversation_flow.json
 ```
 
+## Development Workflow
+
+### Hot Reloading System
+
+Skills support hot reloading for rapid development iteration without restarting Q CLI.
+
+**File Watching:**
+- Monitors skill directories for changes to `.json`, `.py`, `.js`, `.md` files
+- Automatically reloads skill definitions, scripts, and prompts
+- Preserves active sessions during reloads
+- Validates new configurations before replacing existing skills
+
+**Development Cycle:**
+```bash
+# Create new skill template
+q skills create weather
+# Creates: weather.json, scripts/weather.py, prompts/
+
+# Edit skill files in your preferred editor
+vim weather.json          # Update configuration
+vim scripts/weather.py    # Modify execution logic
+vim prompts/input.md      # Refine prompts
+
+# Q CLI automatically detects and reloads changes
+✓ Reloaded skill: weather (config updated)
+✓ Reloaded skill: weather (script updated)
+
+# Test immediately without restart
+> @weather Seattle
+Current weather: 52°F, Cloudy
+```
+
+**Reload Behavior:**
+- **Configuration changes**: Update skill metadata, parameters, aliases
+- **Script changes**: Reload executor code and dependencies
+- **Prompt changes**: Refresh input validation and output formatting templates
+- **Error handling**: Display reload errors, maintain previous working version on failure
+- **Session preservation**: Active skill sessions continue uninterrupted during reloads
+
+**Developer Feedback:**
+```bash
+✓ Reloaded skill: calculator (script updated)
+✓ Reloaded skill: debug_helper (prompts updated)
+❌ Failed to reload weather: syntax error in weather.json line 12
+   → Keeping previous version active
+```
+
+### Skill Testing and Validation
+
+**Local Testing:**
+```bash
+# Test skill without installing
+q skills test ./weather.json
+
+# Validate skill configuration
+q skills validate ./weather.json
+✓ Configuration valid
+✓ All referenced files exist
+✓ Executor dependencies available
+❌ Warning: timeout value seems high (30s)
+
+# Dry run skill execution
+q skills run weather --dry-run --params '{"location": "Seattle"}'
+```
+
+**Basic Error Handling:**
+- **Skill crashes**: Isolate failures, don't crash Q CLI
+- **Missing dependencies**: Clear error messages with installation hints
+- **File not found**: Helpful errors when skill files are missing/moved
+- **Timeout handling**: Graceful termination of stuck skills
+- **Configuration errors**: Syntax validation with line numbers
+
 ## CLI Commands
 
 ### Skills Management
@@ -293,14 +365,17 @@ q skills list
 q skills info calculator
 
 # Run a skill with parameters
-q skills run calculator --params '{"operation": "add", "operand1": 5, "operand2": 3}'
+q skills run calculator add 5 3
 
 # Create new skill template
 q skills create weather
 
-# Install skill from file or URL
-q skills install ./my-skill.json
-q skills install https://github.com/user/skill/skill.json
+# Test and validate skills
+q skills test ./my-skill.json
+q skills validate ./my-skill.json
+
+# Reload specific skill manually
+q skills reload calculator
 ```
 
 ### Chat Integration
@@ -342,39 +417,44 @@ What system are you migrating from?
 Active sessions:
   🔍 debug-1    Database debugging (3 messages)
   📋 plan-1     Migration planning (1 message)
+
+# Session help and autocomplete
+> @debug_helper <TAB>
+  @debug_helper database
+  @debug_helper network  
+  @debug_helper performance
+
+> @calculator <TAB>
+  @calculator add 5 3
+  @calculator multiply 4 7
+  @calculator help
 ```
 
-## Implementation Details
+### Skill Discovery and Help
 
-### Skill Registry
-- Central registry manages all loaded skills
-- Supports skill aliases for user convenience
-- Handles skill discovery and validation
-- Manages skill lifecycle (load, execute, unload)
+**Contextual Recommendations:**
+```bash
+# After discussing math problems
+> I need to calculate compound interest
+💡 Try @calculator for arithmetic operations
+💡 Try @finance for financial calculations
 
-### Prompt Integration
-- Skills use prompts to guide input validation and output formatting
-- Prompts are processed by Q's language model before skill execution
-- Support for both inline prompts and external prompt files
-
-### Context Management
-- Code-centric skills return structured results to main context
-- Conversational skills maintain separate conversation threads
-- Summary mechanism condenses conversation results for main context
-- Context size management prevents conversation bloat
-
-### Security Considerations
-- Skill execution runs in controlled environment
-- File system access restrictions based on skill configuration
-- Network access controls for HTTP executors
-- Docker container isolation for untrusted code
-- User confirmation for potentially dangerous operations
-
-### Error Handling
-- Comprehensive error reporting for skill failures
-- Timeout handling for long-running operations
-- Graceful degradation when skills are unavailable
-- User-friendly error messages with troubleshooting hints
+# Skill help system
+> @calculator help
+Calculator skill - Perform arithmetic operations
+Usage: @calculator <operation> <number1> <number2>
+Operations: add, subtract, multiply, divide
+Examples:
+  @calculator add 5 3
+  @calculator multiply 4.5 2
+  
+# List skills by category
+> /skills list math
+Available math skills:
+  calculator (calc, math)    Arithmetic operations
+  converter (convert)        Unit conversions
+  finance                    Financial calculations
+```
 
 ## Future Enhancements
 
