@@ -2020,13 +2020,29 @@ impl ChatSession {
         let params = match skill_name {
             "calculator" => {
                 if args.len() >= 3 {
+                    // Handle natural syntax: "1 + 2" or "add 1 2"
+                    let (op, a, b) = if args[1] == "+" || args[1] == "-" || args[1] == "*" || args[1] == "/" {
+                        // Natural syntax: "1 + 2"
+                        let op = match args[1] {
+                            "+" => "add",
+                            "-" => "subtract", 
+                            "*" => "multiply",
+                            "/" => "divide",
+                            _ => args[1],
+                        };
+                        (op, args[0], args[2])
+                    } else {
+                        // Command syntax: "add 1 2"
+                        (args[0], args[1], args[2])
+                    };
+                    
                     serde_json::json!({
-                        "op": args[0],
-                        "a": args[1].parse::<f64>().unwrap_or(0.0),
-                        "b": args[2].parse::<f64>().unwrap_or(0.0)
+                        "op": op,
+                        "a": a.parse::<f64>().unwrap_or(0.0),
+                        "b": b.parse::<f64>().unwrap_or(0.0)
                     })
                 } else {
-                    return Some(Err(eyre::eyre!("Calculator requires 3 arguments: operation, number1, number2")));
+                    return Some(Err(eyre::eyre!("Calculator requires 3 arguments. Use: '@calculator 1 + 2' or '@calculator add 1 2'")));
                 }
             },
             _ => serde_json::json!({}),
