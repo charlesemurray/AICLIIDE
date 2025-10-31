@@ -16,6 +16,7 @@ pub mod persist;
 pub mod profile;
 pub mod prompts;
 pub mod reply;
+pub mod status;
 pub mod subscribe;
 pub mod tangent;
 pub mod todos;
@@ -39,6 +40,7 @@ use persist::PersistSubcommand;
 use profile::AgentSubcommand;
 use prompts::PromptsArgs;
 use reply::ReplyArgs;
+use status::StatusArgs;
 use tangent::TangentArgs;
 use todos::TodoSubcommand;
 use tools::ToolsArgs;
@@ -128,6 +130,8 @@ pub enum SlashCommand {
     /// Manage and run skills
     #[command(subcommand)]
     Skills(crate::cli::skills_cli::SkillsSlashCommand),
+    /// Show system status with colored output
+    Status(StatusArgs),
     /// Paste an image from clipboard
     Paste(PasteArgs),
 }
@@ -208,6 +212,7 @@ impl SlashCommand {
                 })
             },
             Self::Paste(args) => args.execute(os, session).await,
+            Self::Status(args) => args.execute(os, session).await,
         }
     }
 
@@ -241,6 +246,7 @@ impl SlashCommand {
             Self::Checkpoint(_) => "checkpoint",
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
+            Self::Status(_) => "status",
             Self::Paste(_) => "paste",
         }
     }

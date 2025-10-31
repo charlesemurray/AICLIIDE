@@ -6,6 +6,7 @@
 //! while providing a consistent API for color usage.
 
 pub mod colors;
+pub mod command_output;
 pub mod crossterm_ext;
 pub mod session;
 pub mod session_manager;
@@ -13,6 +14,7 @@ pub mod session_manager;
 use std::sync::LazyLock;
 
 pub use colors::*;
+pub use command_output::*;
 pub use crossterm_ext::*;
 pub use session::*;
 pub use session_manager::*;
