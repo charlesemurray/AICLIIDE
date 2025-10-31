@@ -250,8 +250,33 @@ Active development sessions:
 ### Session Context Preservation
 - Development sessions maintain full context across switches
 - Test results and iteration history preserved
-- Configuration changes tracked
-- Performance metrics retained
+- Configuration changes tracked with version history
+- Performance metrics retained for optimization
+- Dependency and permission changes logged
+
+### Session State Management
+```bash
+# Session state storage
+~/.aws/amazonq/dev-sessions/
+├── active/
+│   ├── dev-calculator.json
+│   └── dev-weather.json
+├── completed/
+│   ├── dev-database-helper.json
+│   └── dev-git-tools.json
+└── archived/
+    └── old-sessions/
+
+# Session cleanup
+> /cleanup dev-sessions --completed --older-than 7d
+✓ Archived 5 completed development sessions
+✓ Freed 12MB of session data
+
+# Session recovery
+> /recover dev-session dev-calculator
+✓ Recovered development session from backup
+✓ Restored 3 test iterations and configuration history
+```
 
 ## Development Session Features
 
@@ -263,14 +288,18 @@ Active development sessions:
 [dev-project-helper] ✓ Added dependency management
 [dev-project-helper] ✓ Added test runner integration
 [dev-project-helper] 
-[dev-project-helper] This skill is project-specific. Install in workspace?
-
-> Yes
-[dev-project-helper] ✓ Configured for workspace installation
-[dev-project-helper] ✓ Will be available only in Rust projects
+[dev-project-helper] Checking dependencies...
+[dev-project-helper] ✓ Rust 1.70.0 found (compatible)
+[dev-project-helper] ✓ Cargo available
+[dev-project-helper] ⚠️  clippy not installed (recommended for code quality)
+[dev-project-helper] 
+[dev-project-helper] Install clippy? (y/n)
+> y
+[dev-project-helper] ✓ Installing clippy...
+[dev-project-helper] ✓ Project helper configured for Rust development
 ```
 
-### Intelligent Scope Suggestions
+### Intelligent Suggestions and Safety
 ```bash
 [dev-api-skill] I notice you have a .env file with API keys
 [dev-api-skill] Should I configure the skill to use environment variables for authentication?
@@ -279,27 +308,36 @@ Active development sessions:
 [dev-api-skill] ✓ Added environment variable support
 [dev-api-skill] ✓ Configured secure API key handling
 [dev-api-skill] 
-[dev-api-skill] This skill uses project-specific environment variables.
-[dev-api-skill] Recommend workspace installation for security. Agree?
-
+[dev-api-skill] Security check: This skill will access:
+[dev-api-skill] - Environment variable: API_KEY
+[dev-api-skill] - Network access: api.weather.com
+[dev-api-skill] - File read: ./.env (for fallback)
+[dev-api-skill] 
+[dev-api-skill] Permissions look reasonable. Install in workspace for security isolation?
 > Yes
 [dev-api-skill] ✓ Configured for workspace scope
-[dev-api-skill] ✓ Environment variables will be isolated per project
+[dev-api-skill] ✓ API keys will be isolated per project
 ```
 
-### Error-Driven Development
+### Error-Driven Development with Diagnostics
 ```bash
 [dev-database-skill] > test @db_query "SELECT * FROM users"
 [dev-database-skill] Error: Connection refused - database not running
 [dev-database-skill] 
-[dev-database-skill] I can add connection retry logic and better error handling.
+[dev-database-skill] 🔍 Diagnosing database connection...
+[dev-database-skill] ✓ Database configuration found
+[dev-database-skill] ❌ PostgreSQL not running on localhost:5432
+[dev-database-skill] ✓ Database credentials valid
+[dev-database-skill] 
+[dev-database-skill] I can add connection resilience and better error handling.
 [dev-database-skill] Should I implement that?
 
 > Yes
 [dev-database-skill] 🔧 Adding connection resilience...
 [dev-database-skill] ✓ Added retry logic with exponential backoff
-[dev-database-skill] ✓ Enhanced error messages
+[dev-database-skill] ✓ Enhanced error messages with troubleshooting hints
 [dev-database-skill] ✓ Added connection health checks
+[dev-database-skill] ✓ Added fallback to read-only mode when write fails
 ```
 
 ## Development Workflows
@@ -413,22 +451,57 @@ project-root/
 2. Global skills/commands (`~/.aws/amazonq/`)
 3. Built-in skills/commands
 
-## Security and Safety
+## Security and Safety in Development Sessions
 
-### Sandboxed Testing
+### Sandboxed Development Environment
 - Development sessions run in isolated environments
-- Test execution cannot affect main Q CLI functionality
+- Test execution cannot affect main Q CLI functionality or system
 - Resource limits prevent runaway processes during testing
+- Temporary files cleaned up automatically after session completion
 
-### Configuration Validation
-- All configurations validated before activation
-- Dependency checking ensures requirements are met
-- Security scanning for potentially dangerous operations
+### Permission Validation During Development
+```bash
+[dev-file-processor] This skill will need permissions:
+[dev-file-processor] 📁 Read: ./data/, ./config/
+[dev-file-processor] 📁 Write: ./output/, ./logs/
+[dev-file-processor] 🌐 Network: api.example.com
+[dev-file-processor] 
+[dev-file-processor] These permissions will be requested when skill is first used.
+[dev-file-processor] Permissions look reasonable for a file processing skill.
+```
 
-### Safe Defaults
-- Development sessions default to read-only operations
-- Confirmation required for system-modifying actions
-- Automatic rollback on critical failures
+### Configuration Validation and Safety Checks
+```bash
+[dev-deploy-cmd] ⚠️  Security review for deploy command:
+[dev-deploy-cmd] - Executes system commands (docker, kubectl)
+[dev-deploy-cmd] - Network access to production systems
+[dev-deploy-cmd] - Modifies deployment configurations
+[dev-deploy-cmd] 
+[dev-deploy-cmd] This is a high-risk command. Recommendations:
+[dev-deploy-cmd] 1. Add confirmation prompts for production deployments
+[dev-deploy-cmd] 2. Require explicit approval for destructive operations
+[dev-deploy-cmd] 3. Add rollback capabilities
+[dev-deploy-cmd] 
+[dev-deploy-cmd] Implement safety measures? (y/n)
+> y
+[dev-deploy-cmd] ✓ Added confirmation prompts
+[dev-deploy-cmd] ✓ Added rollback support
+[dev-deploy-cmd] ✓ Added deployment validation checks
+```
+
+### Dependency Security Scanning
+```bash
+[dev-api-client] Checking dependencies for security issues...
+[dev-api-client] ✓ requests==2.28.1 (no known vulnerabilities)
+[dev-api-client] ⚠️  urllib3==1.26.5 (1 medium severity vulnerability)
+[dev-api-client] ❌ pyyaml==5.4.1 (1 high severity vulnerability)
+[dev-api-client] 
+[dev-api-client] Update vulnerable dependencies? (y/n)
+> y
+[dev-api-client] ✓ Updated urllib3 to 1.26.18 (vulnerability fixed)
+[dev-api-client] ✓ Updated pyyaml to 6.0.1 (vulnerability fixed)
+[dev-api-client] ✓ All dependencies now secure
+```
 
 ## Future Enhancements
 

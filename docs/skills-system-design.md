@@ -525,6 +525,127 @@ skills/
 }
 ```
 
+## Dependency Management
+
+**Skill Requirements:**
+```json
+{
+  "skill_type": "code_inline",
+  "name": "data_analyzer",
+  "requirements": {
+    "python": ">=3.9",
+    "packages": ["pandas>=1.0", "numpy>=1.20"],
+    "system": ["git", "curl"],
+    "environment": ["DATA_API_KEY"]
+  },
+  "executor": {
+    "type": "inline",
+    "language": "python",
+    "code": "file://./analyzer.py"
+  }
+}
+```
+
+**Dependency Validation:**
+```bash
+# During skill installation
+> q skills install ./data-analyzer.json
+⚠️  Checking dependencies...
+✓ Python 3.9.2 found (requirement: >=3.9)
+❌ pandas not found (requirement: >=1.0)
+✓ git found in PATH
+❌ DATA_API_KEY not set in environment
+
+Install missing dependencies? (y/n)
+> y
+✓ Installing pandas>=1.0...
+⚠️  Please set DATA_API_KEY environment variable
+✓ Skill installed with warnings
+```
+
+## Security and Permissions
+
+**Permission Model:**
+```json
+{
+  "skill_type": "code_inline",
+  "name": "file_processor",
+  "permissions": {
+    "filesystem": {
+      "read": ["./data/", "./config/"],
+      "write": ["./output/", "./logs/"],
+      "execute": []
+    },
+    "network": {
+      "allow": ["api.example.com", "*.github.com"],
+      "deny": ["localhost", "127.0.0.1"]
+    },
+    "environment": ["API_KEY", "USER_TOKEN"],
+    "system": ["git", "curl"]
+  }
+}
+```
+
+**Runtime Permission Checking:**
+```bash
+# First time skill execution
+> @file_processor analyze ./data/sales.csv
+⚠️  file_processor requests permissions:
+   📁 Read files in ./data/, ./config/
+   📁 Write files in ./output/, ./logs/
+   🌐 Network access to api.example.com
+   🔑 Environment variables: API_KEY, USER_TOKEN
+   
+   Allow? (y/n/always/never)
+> always
+✓ Permissions granted and saved
+Processing sales data...
+```
+
+## State Management
+
+**Skill State Storage:**
+```json
+{
+  "state": {
+    "persistence": "file",           // file, memory, none
+    "location": "~/.aws/amazonq/state/skills/",
+    "cleanup_after": "30d",         // Auto-cleanup old state
+    "max_size_mb": 10               // Per-skill state limit
+  }
+}
+```
+
+**State Directory Structure:**
+```
+~/.aws/amazonq/state/
+├── skills/
+│   ├── calculator_state.json
+│   ├── weather_cache.json
+│   └── debug_helper_sessions.json
+├── sessions/
+│   ├── debug-session-1.json
+│   └── planning-session-2.json
+└── cleanup.log
+```
+
+**Automatic State Management:**
+```bash
+# Built-in cleanup commands
+> /cleanup state --older-than 30d
+✓ Cleaned up 15 old state files (2.3MB freed)
+
+> /cleanup sessions --completed
+✓ Cleaned up 8 completed development sessions
+
+# State inspection
+> /state list
+Active skill state files:
+  calculator: 1.2KB (last used: 2 hours ago)
+  weather: 45KB (last used: 1 day ago)
+  debug_helper: 156KB (last used: 5 minutes ago)
+```
+
 ### Skill Testing and Validation
 
 **Local Testing:**
@@ -536,7 +657,8 @@ q skills test ./weather.json
 q skills validate ./weather.json
 ✓ Configuration valid
 ✓ All referenced files exist
-✓ Executor dependencies available
+✓ Dependencies available
+✓ Permissions reasonable
 ❌ Warning: timeout value seems high (30s)
 
 # Test different skill types
@@ -550,9 +672,38 @@ q skills run weather Seattle --dry-run
 q skills run summarize "test content" --dry-run
 ```
 
+**Debugging and Monitoring:**
+```bash
+# Debug skill execution
+> /debug @calculator add 5 3
+🔍 Debug mode enabled for calculator
+Step 1: Parsing input "add 5 3"
+Step 2: Validating parameters: op=add, a=5, b=3  
+Step 3: Executing calculation: 5 + 3
+Step 4: Formatting result: 8
+Result: 8
+✓ Execution completed in 0.02s
+
+# Monitor skill performance
+> /monitor skills
+Skill Performance (last 24h):
+  calculator: 45 calls, avg 0.03s, 0 errors
+  weather: 12 calls, avg 1.2s, 2 timeouts
+  debug_helper: 3 sessions, avg 5.2min, 0 errors
+
+# View skill logs
+> /logs @weather --last 10
+[2024-10-31 22:15:32] API call to weather service
+[2024-10-31 22:15:33] Response received (1.1s)
+[2024-10-31 22:15:33] Formatted weather data
+[2024-10-31 22:16:45] API timeout after 5s
+[2024-10-31 22:16:45] Fallback to cached data
+```
+
 **Basic Error Handling:**
 - **Skill crashes**: Isolate failures, don't crash Q CLI
 - **Missing dependencies**: Clear error messages with installation hints
+- **Permission denied**: Explain required permissions and how to grant them
 - **File not found**: Helpful errors when skill files are missing/moved
 - **Timeout handling**: Graceful termination of stuck skills
 - **Configuration errors**: Syntax validation with line numbers
@@ -584,48 +735,216 @@ q skills validate ./my-skill.json
 # Reload specific skill manually
 q skills reload calculator
 ```
-## Future Enhancements
+## Team Collaboration and Version Control
 
-### Skill Sharing and Distribution
-- Simple export/import for sharing skills with friends
-- Git-based skill repositories for version control
-- Skill templates for common patterns (API wrappers, file processors)
-- Dependency management for Python packages and Node modules
+### Skill Namespacing
+```json
+{
+  "skill_type": "code_inline",
+  "metadata": {
+    "name": "database-helper",
+    "namespace": "backend-team",        // Optional team namespace
+    "author": "john@company.com",
+    "version": "1.2.0",
+    "description": "Database performance analysis tools"
+  }
+}
+```
+
+**Namespace Resolution:**
+```bash
+# Fully qualified skill names
+> @backend-team/database-helper analyze slow-query.sql
+> @frontend-team/component-generator create Button
+
+# Default namespace (current user/team)
+> @database-helper analyze slow-query.sql
+# Resolves to current namespace or global if no conflict
+```
+
+### Git Integration
+```bash
+# Skills stored with project
+.qcli/
+├── skills/
+│   ├── project-helper.json
+│   ├── database-analyzer.json
+│   └── .skill-lock.json           # Dependency lock file
+├── docs/
+│   └── skills/                    # Auto-generated documentation
+│       ├── project-helper.md
+│       └── database-analyzer.md
+└── README.md
+
+# Version control workflow
+> git add .qcli/
+> git commit -m "Add database analysis skill"
+> git push
+
+# Team member pulls changes
+> git pull
+✓ New skill detected: database-analyzer
+✓ Installing dependencies...
+✓ Skill @database-analyzer now available
+```
+
+### Conflict Resolution
+```bash
+# Merge conflicts in skills
+> git pull
+Auto-merging .qcli/skills/project-helper.json
+CONFLICT: Skill configuration conflict
+
+> /skills resolve-conflict project-helper
+Conflict in project-helper skill:
+  Local version: 1.1.0 (your changes)
+  Remote version: 1.2.0 (team changes)
+  
+Choose resolution:
+1. Keep local version
+2. Use remote version  
+3. Merge configurations
+4. Create new skill variant
+
+> 3
+✓ Merged skill configurations
+✓ Created backup of local version
+✓ Skill updated to combined version 1.3.0
+```
+
+### Documentation Generation
+```bash
+# Auto-generate skill documentation
+> /skills document database-helper
+✓ Generated documentation: .qcli/docs/skills/database-helper.md
+✓ Added usage examples
+✓ Documented parameters and return values
+✓ Included performance characteristics
+
+# Generate team skill overview
+> /skills document --all --team
+✓ Generated team skills overview: .qcli/docs/SKILLS.md
+✓ Listed all team skills with descriptions
+✓ Added quick reference guide
+✓ Included troubleshooting section
+```
+
+## Operational Management
+
+### Skill Lifecycle
+```bash
+# Skill versioning
+> /skills version @database-helper
+Current version: 1.2.0
+Available versions: 1.0.0, 1.1.0, 1.2.0
+
+# Rollback to previous version
+> /skills rollback @database-helper 1.1.0
+⚠️  Rolling back database-helper from 1.2.0 to 1.1.0
+✓ Skill rolled back successfully
+✓ Previous state restored
+
+# Update skill to latest
+> /skills update @database-helper
+✓ Updated database-helper from 1.1.0 to 1.2.0
+✓ New features: query optimization suggestions
+```
+
+### Health Monitoring
+```bash
+# Skill health check
+> /health skills
+Skill Health Status:
+  ✓ calculator: Healthy (45 calls, 0 errors)
+  ⚠️  weather: Degraded (2 timeouts in last hour)
+  ❌ database-helper: Unhealthy (dependency missing)
+
+# Automatic health monitoring
+[System] ⚠️  Skill 'weather' has high timeout rate (40%)
+[System] Temporarily disabling skill to prevent performance issues
+[System] Run '/skills diagnose weather' for details
+
+# Diagnose skill issues
+> /skills diagnose weather
+Diagnosing weather skill...
+✓ Configuration valid
+✓ Files accessible
+❌ Network connectivity to api.weather.com failed
+✓ Permissions correct
+⚠️  API key expires in 2 days
+
+Recommendations:
+1. Check internet connection
+2. Verify API service status
+3. Renew API key before expiration
+```
+
+### Cleanup and Maintenance
+```bash
+# Regular maintenance
+> /maintenance skills
+Running skill maintenance...
+✓ Cleaned up temporary files (15MB freed)
+✓ Compressed old logs (5MB freed)  
+✓ Removed unused dependencies
+✓ Updated skill documentation
+✓ Validated all skill configurations
+
+# Storage management
+> /storage skills
+Skill Storage Usage:
+  Skills: 2.3MB (15 skills)
+  State: 45MB (cache and session data)
+  Logs: 12MB (30 days of logs)
+  Total: 59.3MB
+
+Cleanup recommendations:
+- Remove old weather cache (30MB, >7 days old)
+- Archive completed development sessions (8MB)
+```
+
+## Future Enhancements
 
 ### Advanced Features
 - Skill composition and chaining
 - Conditional execution based on context
 - Background processing for long-running tasks
-- Skill performance monitoring and caching
+- Advanced caching and performance optimization
 
-### Workspace Integration
-- Project-specific skill configurations
-- Skills that understand current development environment
-- Integration with existing CLI tools and workflows
-- Custom skill templates for specific project types
+### Enhanced Team Collaboration
+- Skill review workflows before team adoption
+- Shared skill templates and best practices
+- Team skill analytics and usage insights
+- Advanced conflict resolution tools
+
+### Developer Experience Improvements
+- Visual skill builder interface
+- Advanced debugging with breakpoints
+- Performance profiling and optimization suggestions
+- Automated testing framework for skills
 
 ## Migration Path
 
-### Phase 1: Core Implementation
-- Four skill types: code_inline, code_session, conversation, prompt_inline
-- Basic skill registry and execution engine
-- Hot reloading system for development
-- File reference system and resource management
+### Phase 1: Core Implementation with Safety
+- Four skill types with basic execution
+- Permission system and dependency checking
+- File-based state management
+- Basic debugging and monitoring tools
 
-### Phase 2: Chat Integration
-- Natural language skill invocation
-- Session management with named sessions
-- Context access (conversation, workspace, environment)
-- Autocomplete and help system
+### Phase 2: Team Collaboration
+- Skill namespacing and version control
+- Git integration and conflict resolution
+- Auto-documentation generation
+- Health monitoring and diagnostics
 
-### Phase 3: Developer Experience
-- Skill testing and validation framework
-- Template generation for all skill types
-- Error handling and debugging tools
-- Performance optimization and caching
+### Phase 3: Advanced Operations
+- Performance monitoring and optimization
+- Advanced debugging and profiling tools
+- Automated maintenance and cleanup
+- Enhanced security and sandboxing
 
-### Phase 4: Ecosystem
-- Skill sharing mechanisms
-- Advanced context integration
-- Skill composition features
-- Community templates and examples
+### Phase 4: Ecosystem Maturity
+- Advanced team collaboration features
+- Skill composition and workflow automation
+- Community templates and best practices
+- Enterprise-grade operational tools

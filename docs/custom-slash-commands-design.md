@@ -57,6 +57,15 @@ Custom slash commands extend Q CLI with user-defined system utilities that execu
   "aliases": ["dir", "list"],
   "version": "1.0.0",
   "author": "Q CLI Team",
+  "namespace": "filesystem",
+  "requirements": {
+    "system": ["ls"],
+    "permissions": {
+      "filesystem": {
+        "read": ["./*"]
+      }
+    }
+  },
   "handler": {
     "type": "system",
     "action": "list_directory",
@@ -362,17 +371,54 @@ project      Project management utilities
 - **Working directory restrictions**: Commands run in safe directories
 - **Environment isolation**: Limited environment variable access
 
+### Permission System
+```json
+{
+  "command": "deploy",
+  "permissions": {
+    "filesystem": {
+      "read": ["./src/", "./config/"],
+      "write": ["./dist/", "./logs/"],
+      "execute": ["./scripts/deploy.sh"]
+    },
+    "network": {
+      "allow": ["deploy.company.com", "api.company.com"]
+    },
+    "system": ["docker", "kubectl", "git"]
+  }
+}
+```
+
+**Runtime Permission Checking:**
+```bash
+# First time command execution
+> /deploy production
+⚠️  deploy command requests permissions:
+   📁 Read: ./src/, ./config/
+   📁 Write: ./dist/, ./logs/  
+   📁 Execute: ./scripts/deploy.sh
+   🌐 Network: deploy.company.com, api.company.com
+   ⚙️  System: docker, kubectl, git
+   
+   This is a potentially dangerous operation. Allow? (y/n/always)
+> y
+✓ Permissions granted for this session
+Deploying to production...
+```
+
 ### Command Validation
 - **Syntax checking**: JSON schema validation
 - **Conflict detection**: Prevent override of built-in commands
 - **Handler verification**: Ensure handler types are supported
 - **Parameter validation**: Type checking and required field validation
+- **Dependency checking**: Verify required system tools are available
 
 ### Safe Defaults
 - **Read-only operations**: Default to non-destructive commands
 - **Confirmation prompts**: Ask before destructive operations
 - **Sandboxed execution**: Isolate command execution from Q CLI core
 - **Error handling**: Graceful failure without crashing Q CLI
+- **Audit logging**: Track command execution for security review
 
 ## Integration with Skills System
 
@@ -445,7 +491,7 @@ cd       Change directory
 mkdir    Create directory
 ```
 
-## File Structure
+## File Structure and Operational Management
 
 ### Command Organization
 ```
@@ -467,38 +513,227 @@ slash-commands/
     └── project.json
 ```
 
-### Configuration Discovery
-- Scan `~/.aws/amazonq/slash-commands/` directory
-- Load commands from current project directory
-- Support for workspace-specific commands
-- Hierarchical command loading (global → project → local)
+### Workspace vs Global Structure
 
-## Error Handling
-
-### Command Execution Errors
-```bash
-> /git status
-❌ Error: git command failed
-   Repository not found in current directory
-
-> /cd nonexistent
-❌ Error: Directory 'nonexistent' does not exist
-
-> /cargo check
-❌ Error: No Cargo.toml found in current directory
-   Try: /cd to a Rust project directory
+**Workspace Structure:**
+```
+project-root/
+├── .qcli/
+│   ├── commands/
+│   │   ├── build.json
+│   │   ├── deploy.json
+│   │   └── .command-lock.json     # Dependency lock file
+│   ├── state/
+│   │   └── commands/
+│   │       └── deploy_state.json
+│   ├── logs/
+│   │   └── commands/
+│   │       ├── build.log
+│   │       └── deploy.log
+│   └── docs/
+│       └── commands/              # Auto-generated docs
+│           ├── build.md
+│           └── deploy.md
+├── src/
+└── README.md
 ```
 
-### Configuration Errors
-```bash
-> q slash-commands install ./broken.json
-❌ Error: Invalid command configuration
-   Line 5: Missing required field 'handler'
-   Line 12: Unknown handler type 'invalid'
+**Global Structure:**
+```
+~/.aws/amazonq/
+├── commands/
+│   ├── filesystem/
+│   │   ├── ls.json
+│   │   └── find.json
+│   ├── git/
+│   │   └── git-helper.json
+│   └── development/
+│       ├── docker.json
+│       └── npm.json
+├── state/
+│   └── commands/
+│       ├── git-helper_cache.json
+│       └── docker_state.json
+└── logs/
+    └── commands/
+        ├── system.log
+        └── performance.log
+```
 
-> q slash-commands create existing
-❌ Error: Command 'existing' already exists
-   Use --force to override or choose a different name
+### Command Namespacing and Conflict Resolution
+```json
+{
+  "command": "status",
+  "namespace": "git-tools",
+  "version": "1.0.0",
+  "author": "team@company.com",
+  "description": "Enhanced git status with colors and stats"
+}
+```
+
+**Namespace Resolution:**
+```bash
+# Fully qualified command names
+> /git-tools/status
+> /docker-tools/ps
+
+# Automatic resolution (no conflicts)
+> /status
+# Resolves to git-tools/status if no other status commands
+
+# Conflict resolution
+> /status
+⚠️  Multiple commands found:
+   1. git-tools/status - Enhanced git status
+   2. system/status - System status check
+   
+   Which command? (1/2 or specify /namespace/command)
+> 1
+✓ Using git-tools/status (remember with /git-tools/status)
+```
+
+### State Management and Persistence
+```json
+{
+  "command": "deploy",
+  "state": {
+    "persistence": "file",
+    "location": "./.qcli/state/commands/",
+    "cleanup_after": "7d",
+    "max_size_mb": 5
+  }
+}
+```
+
+**State Operations:**
+```bash
+# View command state
+> /state commands
+Command state files:
+  deploy: 2.1MB (last deployment: 2 hours ago)
+  build: 156KB (last build: 30 minutes ago)
+  git-helper: 45KB (cached data)
+
+# Clean up old state
+> /cleanup commands --older-than 7d
+✓ Cleaned up 3 old command state files (1.2MB freed)
+
+# Reset command state
+> /reset deploy state
+⚠️  This will clear deployment history and cached data
+   Continue? (y/n)
+> y
+✓ Reset deploy command state
+```
+
+## Operational Management and Monitoring
+
+### Command Health Monitoring
+```bash
+# Check command health
+> /health commands
+Command Health Status:
+  ✓ git: Healthy (25 calls, 0 errors, avg 0.1s)
+  ⚠️  deploy: Degraded (last deployment failed)
+  ❌ docker: Unhealthy (docker daemon not running)
+
+# Diagnose command issues
+> /diagnose docker
+Diagnosing docker command...
+✓ Configuration valid
+✓ Permissions correct
+❌ Docker daemon not running
+✓ Docker binary found in PATH
+
+Recommendations:
+1. Start Docker daemon: sudo systemctl start docker
+2. Add user to docker group: sudo usermod -aG docker $USER
+3. Verify Docker installation: docker --version
+```
+
+### Performance Monitoring
+```bash
+# Command performance metrics
+> /metrics commands --last 24h
+Command Performance (last 24h):
+  git: 45 calls, avg 0.08s, 0 timeouts
+  ls: 123 calls, avg 0.02s, 0 errors
+  deploy: 3 calls, avg 45s, 1 failure
+  build: 12 calls, avg 15s, 0 errors
+
+# Detailed command analysis
+> /analyze deploy
+Deploy Command Analysis:
+  Success rate: 66% (2/3 deployments)
+  Average duration: 45s
+  Last failure: Connection timeout to deploy.company.com
+  Resource usage: 150MB peak memory
+  
+Optimization suggestions:
+- Increase timeout from 30s to 60s
+- Add retry logic for network failures
+- Cache deployment artifacts to reduce duration
+```
+
+### Logging and Debugging
+```bash
+# View command logs
+> /logs deploy --last 5
+[2024-10-31 22:30:15] Starting deployment to production
+[2024-10-31 22:30:16] Building Docker image...
+[2024-10-31 22:30:45] Image built successfully
+[2024-10-31 22:30:46] Pushing to registry...
+[2024-10-31 22:31:15] ❌ Push failed: connection timeout
+
+# Debug command execution
+> /debug /deploy staging --dry-run
+🔍 Debug mode enabled for deploy command
+Step 1: Validating parameters: environment=staging
+Step 2: Checking permissions: deploy.company.com
+Step 3: Loading configuration: ./.qcli/deploy.config
+Step 4: [DRY RUN] Would execute: docker build -t app:staging .
+Step 5: [DRY RUN] Would push to: registry.company.com/app:staging
+✓ Dry run completed successfully
+```
+
+### Version Control and Team Collaboration
+```bash
+# Command versioning
+> /version deploy
+Current version: 2.1.0
+Available versions: 1.0.0, 1.5.0, 2.0.0, 2.1.0
+Git history: 15 commits, last updated 2 days ago
+
+# Update command
+> /update deploy
+✓ Updated deploy command from 2.1.0 to 2.2.0
+✓ New features: rollback support, health checks
+✓ Breaking changes: none
+
+# Rollback command
+> /rollback deploy 2.0.0
+⚠️  Rolling back deploy command from 2.1.0 to 2.0.0
+⚠️  This will remove features: enhanced logging, retry logic
+   Continue? (y/n)
+> y
+✓ Command rolled back successfully
+```
+
+### Documentation and Help
+```bash
+# Generate command documentation
+> /document deploy
+✓ Generated documentation: .qcli/docs/commands/deploy.md
+✓ Added usage examples and parameter descriptions
+✓ Included troubleshooting section
+✓ Added performance characteristics
+
+# Team command overview
+> /document commands --team
+✓ Generated team commands overview: .qcli/docs/COMMANDS.md
+✓ Listed all team commands with descriptions
+✓ Added quick reference guide
+✓ Included security and permission notes
 ```
 
 ## Performance Considerations
