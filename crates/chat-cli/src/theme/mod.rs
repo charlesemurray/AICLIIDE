@@ -8,6 +8,7 @@
 pub mod colors;
 pub mod command_output;
 pub mod crossterm_ext;
+pub mod error_display;
 pub mod session;
 pub mod session_manager;
 
@@ -16,6 +17,7 @@ use std::sync::LazyLock;
 pub use colors::*;
 pub use command_output::*;
 pub use crossterm_ext::*;
+pub use error_display::*;
 pub use session::*;
 pub use session_manager::*;
 

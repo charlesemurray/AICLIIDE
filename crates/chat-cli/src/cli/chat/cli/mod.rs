@@ -5,6 +5,7 @@ pub mod clear;
 pub mod compact;
 pub mod context;
 pub mod editor;
+pub mod error_demo;
 pub mod experiment;
 pub mod hooks;
 pub mod knowledge;
@@ -29,6 +30,7 @@ use clear::ClearArgs;
 use compact::CompactArgs;
 use context::ContextSubcommand;
 use editor::EditorArgs;
+use error_demo::ErrorDemoArgs;
 use experiment::ExperimentArgs;
 use hooks::HooksArgs;
 use knowledge::KnowledgeSubcommand;
@@ -132,6 +134,9 @@ pub enum SlashCommand {
     Skills(crate::cli::skills_cli::SkillsSlashCommand),
     /// Show system status with colored output
     Status(StatusArgs),
+    /// Demonstrate colored error output formatting
+    #[command(hide = true)]
+    ErrorDemo(ErrorDemoArgs),
     /// Paste an image from clipboard
     Paste(PasteArgs),
 }
@@ -213,6 +218,7 @@ impl SlashCommand {
             },
             Self::Paste(args) => args.execute(os, session).await,
             Self::Status(args) => args.execute(os, session).await,
+            Self::ErrorDemo(args) => args.execute(os, session).await,
         }
     }
 
@@ -247,6 +253,7 @@ impl SlashCommand {
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
             Self::Status(_) => "status",
+            Self::ErrorDemo(_) => "error-demo",
             Self::Paste(_) => "paste",
         }
     }
