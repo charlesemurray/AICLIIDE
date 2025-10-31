@@ -7,11 +7,15 @@
 
 pub mod colors;
 pub mod crossterm_ext;
+pub mod session;
+pub mod session_manager;
 
 use std::sync::LazyLock;
 
 pub use colors::*;
 pub use crossterm_ext::*;
+pub use session::*;
+pub use session_manager::*;
 
 /// Main theme configuration containing all color categories
 #[derive(Debug, Clone)]
@@ -22,6 +26,8 @@ pub struct Theme {
     pub ui: UiColors,
     /// Colors for interactive elements (prompts, indicators, etc.)
     pub interactive: InteractiveColors,
+    /// Colors for session types (debug, planning, development, etc.)
+    pub session: SessionColors,
 }
 
 /// Global theme instance available throughout the application
@@ -39,6 +45,7 @@ impl Default for Theme {
             status: StatusColors::default(),
             ui: UiColors::default(),
             interactive: InteractiveColors::default(),
+            session: SessionColors::default(),
         }
     }
 }

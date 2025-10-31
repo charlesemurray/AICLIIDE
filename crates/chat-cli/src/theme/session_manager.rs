@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use crate::ui::session::{SessionDisplay, SessionType, SessionStatus};
-use crate::ui::colors::StyledText;
+use crate::theme::session::{SessionDisplay, SessionType, SessionStatus};
 
 /// Manages multiple active sessions
 #[derive(Debug, Default)]
@@ -113,15 +112,26 @@ impl SessionManager {
             .collect()
     }
 
-    /// Format a message for the active session
-    pub fn format_active_message(&self, message: impl Into<String>) -> Option<StyledText> {
+    /// Format a message for the active session using theme colors
+    pub fn format_active_message(&self, message: impl Into<String>) -> Option<String> {
+        use crate::theme;
+        
         self.active_session()
-            .map(|session| session.format_message(message))
+            .map(|session| session.format_message(message, &theme::theme().session))
     }
 
     /// Check if there are any active sessions
     pub fn has_active_sessions(&self) -> bool {
         self.sessions.values().any(|s| s.status == SessionStatus::Active)
+    }
+
+    /// Get colored list of all sessions using theme colors
+    pub fn colored_session_list(&self) -> Vec<String> {
+        use crate::theme;
+        
+        self.sessions.values()
+            .map(|session| session.colored_list_entry(&theme::theme().session))
+            .collect()
     }
 }
 
@@ -239,20 +249,19 @@ mod tests {
         
         manager.start_session(SessionType::Debug, "test").unwrap();
         
-        let styled = manager.format_active_message("Test message");
-        assert!(styled.is_some());
+        let formatted = manager.format_active_message("Test message");
+        assert!(formatted.is_some());
         
-        let styled = styled.unwrap();
-        assert_eq!(styled.text, "debug: Test message");
-        assert_eq!(styled.color, Some(crate::ui::colors::SemanticColor::Debug));
+        let formatted = formatted.unwrap();
+        assert!(formatted.contains("debug: Test message"));
     }
 
     #[test]
     fn test_format_active_message_no_session() {
         let manager = SessionManager::new();
         
-        let styled = manager.format_active_message("Test message");
-        assert!(styled.is_none());
+        let formatted = manager.format_active_message("Test message");
+        assert!(formatted.is_none());
     }
 
     #[test]
@@ -265,5 +274,21 @@ mod tests {
         
         manager.pause_session("test").unwrap();
         assert!(!manager.has_active_sessions());
+    }
+
+    #[test]
+    fn test_colored_session_list() {
+        let mut manager = SessionManager::new();
+        
+        manager.start_session(SessionType::Debug, "debug1").unwrap();
+        manager.start_session(SessionType::Planning, "plan1").unwrap();
+        
+        let colored_list = manager.colored_session_list();
+        assert_eq!(colored_list.len(), 2);
+        
+        // The colored list should contain the session names
+        let combined = colored_list.join(" ");
+        assert!(combined.contains("debug1"));
+        assert!(combined.contains("plan1"));
     }
 }

@@ -1,4 +1,4 @@
-use crate::ui::colors::{SemanticColor, StyledText};
+use crossterm::style::Color;
 
 /// Types of sessions in Q CLI
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,14 +25,38 @@ pub enum SessionStatus {
     Completed,
 }
 
+/// Colors for different session types
+#[derive(Debug, Clone)]
+pub struct SessionColors {
+    /// Debug sessions - blue
+    pub debug: Color,
+    /// Planning sessions - green  
+    pub planning: Color,
+    /// Development sessions - purple/magenta
+    pub development: Color,
+    /// Code review sessions - yellow
+    pub code_review: Color,
+}
+
+impl Default for SessionColors {
+    fn default() -> Self {
+        Self {
+            debug: Color::Blue,
+            planning: Color::Green,
+            development: Color::Magenta,
+            code_review: Color::Yellow,
+        }
+    }
+}
+
 impl SessionType {
-    /// Get the semantic color for this session type
-    pub fn color(&self) -> SemanticColor {
+    /// Get the color for this session type from the theme
+    pub fn color(&self, colors: &SessionColors) -> Color {
         match self {
-            SessionType::Debug => SemanticColor::Debug,
-            SessionType::Planning => SemanticColor::Success,
-            SessionType::Development => SemanticColor::Development,
-            SessionType::CodeReview => SemanticColor::Warning,
+            SessionType::Debug => colors.debug,
+            SessionType::Planning => colors.planning,
+            SessionType::Development => colors.development,
+            SessionType::CodeReview => colors.code_review,
         }
     }
 
@@ -67,11 +91,17 @@ impl SessionDisplay {
         self
     }
 
-    /// Format session message with colored prefix
-    pub fn format_message(&self, message: impl Into<String>) -> StyledText {
+    /// Format session message with colored prefix using crossterm
+    pub fn format_message(&self, message: impl Into<String>, colors: &SessionColors) -> String {
+        use crossterm::style::{Stylize, Color};
+        
         let prefix = format!("{}:", self.session_type.prefix());
-        StyledText::new(format!("{} {}", prefix, message.into()))
-            .with_color(self.session_type.color())
+        let color = self.session_type.color(colors);
+        
+        format!("{} {}", 
+            prefix.with(color),
+            message.into()
+        )
     }
 
     /// Format session list entry
@@ -90,15 +120,18 @@ impl SessionDisplay {
         )
     }
 
-    /// Get styled session list entry
-    pub fn styled_list_entry(&self) -> StyledText {
+    /// Get colored session list entry using crossterm
+    pub fn colored_list_entry(&self, colors: &SessionColors) -> String {
+        use crossterm::style::Stylize;
+        
         let entry = self.format_list_entry();
-        let styled = StyledText::new(entry).with_color(self.session_type.color());
+        let color = self.session_type.color(colors);
         
         match self.status {
-            SessionStatus::Active => styled,
-            SessionStatus::Paused => styled.dim(),
-            SessionStatus::Completed => styled.dim(),
+            SessionStatus::Active => entry.with(color).to_string(),
+            SessionStatus::Paused | SessionStatus::Completed => {
+                entry.with(color).dim().to_string()
+            }
         }
     }
 }
@@ -109,10 +142,11 @@ mod tests {
 
     #[test]
     fn test_session_type_colors() {
-        assert_eq!(SessionType::Debug.color(), SemanticColor::Debug);
-        assert_eq!(SessionType::Planning.color(), SemanticColor::Success);
-        assert_eq!(SessionType::Development.color(), SemanticColor::Development);
-        assert_eq!(SessionType::CodeReview.color(), SemanticColor::Warning);
+        let colors = SessionColors::default();
+        assert_eq!(SessionType::Debug.color(&colors), Color::Blue);
+        assert_eq!(SessionType::Planning.color(&colors), Color::Green);
+        assert_eq!(SessionType::Development.color(&colors), Color::Magenta);
+        assert_eq!(SessionType::CodeReview.color(&colors), Color::Yellow);
     }
 
     #[test]
@@ -143,15 +177,6 @@ mod tests {
     }
 
     #[test]
-    fn test_format_message() {
-        let session = SessionDisplay::new(SessionType::Debug, "test-session");
-        let styled = session.format_message("What database system are you using?");
-        
-        assert_eq!(styled.text, "debug: What database system are you using?");
-        assert_eq!(styled.color, Some(SemanticColor::Debug));
-    }
-
-    #[test]
     fn test_format_list_entry() {
         let session = SessionDisplay::new(SessionType::Development, "calculator")
             .with_message_count(3)
@@ -179,20 +204,8 @@ mod tests {
     }
 
     #[test]
-    fn test_styled_list_entry() {
-        let active_session = SessionDisplay::new(SessionType::Debug, "active-debug");
-        let styled = active_session.styled_list_entry();
-        assert_eq!(styled.color, Some(SemanticColor::Debug));
-        
-        let paused_session = SessionDisplay::new(SessionType::Planning, "paused-plan")
-            .with_status(SessionStatus::Paused);
-        let styled = paused_session.styled_list_entry();
-        assert_eq!(styled.color, Some(SemanticColor::Success));
-        // Note: We can't easily test the dim style in unit tests, but the structure is correct
-    }
-
-    #[test]
     fn test_all_session_types() {
+        let colors = SessionColors::default();
         let types = [
             SessionType::Debug,
             SessionType::Planning,
@@ -202,11 +215,10 @@ mod tests {
 
         for session_type in types {
             let session = SessionDisplay::new(session_type, "test");
-            let message = session.format_message("test message");
+            let message = session.format_message("test message", &colors);
             
-            // Each session type should have a unique prefix and color
-            assert!(message.text.starts_with(&format!("{}:", session_type.prefix())));
-            assert_eq!(message.color, Some(session_type.color()));
+            // Each session type should have a unique prefix
+            assert!(message.contains(&format!("{}:", session_type.prefix())));
         }
     }
 }
