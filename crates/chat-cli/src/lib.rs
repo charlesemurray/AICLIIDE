@@ -14,6 +14,7 @@ pub mod os;
 pub mod request;
 pub mod telemetry;
 pub mod theme;
+pub mod ui;
 pub mod util;
 
 pub use mcp_client::*;
