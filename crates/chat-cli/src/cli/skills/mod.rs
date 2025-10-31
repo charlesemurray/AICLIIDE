@@ -5,7 +5,7 @@ pub mod builtin;
 pub mod registry;
 pub mod tests;
 
-pub use registry::{SkillRegistry, SkillInfo};
+pub use registry::SkillRegistry;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {

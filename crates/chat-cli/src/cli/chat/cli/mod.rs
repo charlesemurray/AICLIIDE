@@ -125,6 +125,9 @@ pub enum SlashCommand {
     /// View, manage, and resume to-do lists
     #[command(subcommand)]
     Todos(TodoSubcommand),
+    /// Manage and run skills
+    #[command(subcommand)]
+    Skills(crate::cli::skills_cli::SkillsSlashCommand),
     /// Paste an image from clipboard
     Paste(PasteArgs),
 }
@@ -195,6 +198,15 @@ impl SlashCommand {
             // },
             Self::Checkpoint(subcommand) => subcommand.execute(os, session).await,
             Self::Todos(subcommand) => subcommand.execute(os, session).await,
+            Self::Skills(args) => {
+                if let Err(err) = args.execute(os).await {
+                    return Err(ChatError::Custom(err.to_string().into()));
+                }
+
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             Self::Paste(args) => args.execute(os, session).await,
         }
     }
@@ -228,6 +240,7 @@ impl SlashCommand {
             },
             Self::Checkpoint(_) => "checkpoint",
             Self::Todos(_) => "todos",
+            Self::Skills(_) => "skills",
             Self::Paste(_) => "paste",
         }
     }
