@@ -1999,6 +1999,46 @@ impl ChatSession {
         Ok(ChatState::HandleInput { input: user_input })
     }
 
+    /// Handle skill invocation with @skill_name syntax
+    async fn handle_skill_invocation(&mut self, input: &str) -> Option<Result<String, eyre::Error>> {
+        if !input.starts_with('@') {
+            return None;
+        }
+
+        let parts: Vec<&str> = input[1..].split_whitespace().collect();
+        if parts.is_empty() {
+            return Some(Err(eyre::eyre!("Empty skill name")));
+        }
+
+        let skill_name = parts[0];
+        let args = &parts[1..];
+
+        // Create skill registry
+        let registry = crate::cli::skills::SkillRegistry::with_builtins();
+
+        // Parse skill parameters based on skill type
+        let params = match skill_name {
+            "calculator" => {
+                if args.len() >= 3 {
+                    serde_json::json!({
+                        "op": args[0],
+                        "a": args[1].parse::<f64>().unwrap_or(0.0),
+                        "b": args[2].parse::<f64>().unwrap_or(0.0)
+                    })
+                } else {
+                    return Some(Err(eyre::eyre!("Calculator requires 3 arguments: operation, number1, number2")));
+                }
+            },
+            _ => serde_json::json!({}),
+        };
+
+        // Execute skill
+        Some(match registry.execute_skill(skill_name, params).await {
+            Ok(result) => Ok(result.output),
+            Err(err) => Err(eyre::eyre!("Skill execution failed: {}", err)),
+        })
+    }
+
     async fn handle_input(&mut self, os: &mut Os, mut user_input: String) -> Result<ChatState, ChatError> {
         queue!(self.stderr, style::Print('\n'))?;
         user_input = sanitize_unicode_tags(&user_input);
@@ -2008,6 +2048,42 @@ impl ChatSession {
         if let Some(chat_state) = does_input_reference_file(input) {
             return Ok(chat_state);
         }
+
+        // Handle skill invocation with @skill_name syntax
+        if let Some(skill_result) = self.handle_skill_invocation(input).await {
+            match skill_result {
+                Ok(output) => {
+                    // Display skill output and continue conversation
+                    queue!(
+                        self.stderr,
+                        StyledText::success_fg(),
+                        style::Print("Skill result: "),
+                        StyledText::reset(),
+                        style::Print(&output),
+                        style::Print("\n\n"),
+                    )?;
+                    self.stderr.flush()?;
+                    
+                    // Continue with normal chat flow
+                    return Ok(ChatState::PromptUser { skip_printing_tools: false });
+                },
+                Err(err) => {
+                    // Display error and continue conversation
+                    queue!(
+                        self.stderr,
+                        StyledText::error_fg(),
+                        style::Print("Skill error: "),
+                        StyledText::reset(),
+                        style::Print(&err.to_string()),
+                        style::Print("\n\n"),
+                    )?;
+                    self.stderr.flush()?;
+                    
+                    return Ok(ChatState::PromptUser { skip_printing_tools: false });
+                },
+            }
+        }
+
         if let Some(mut args) = input.strip_prefix("/").and_then(shlex::split) {
             // Required for printing errors correctly.
             let orig_args = args.clone();

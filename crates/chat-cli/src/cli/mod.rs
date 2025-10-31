@@ -12,6 +12,7 @@ pub mod feed;
 mod issue;
 mod mcp;
 mod settings;
+mod skills_cli;
 pub mod skills;
 mod user;
 
@@ -116,6 +117,9 @@ pub enum RootSubcommand {
     Diagnostic(diagnostics::DiagnosticArgs),
     /// Create a new Github issue
     Issue(issue::IssueArgs),
+    /// Manage and run skills
+    #[command(alias("skill"))]
+    Skills(skills_cli::SkillsArgs),
     /// Version
     #[command(hide = true)]
     Version {
@@ -172,6 +176,7 @@ impl RootSubcommand {
             Self::Profile => user::profile(os).await,
             Self::Settings(settings_args) => settings_args.execute(os).await,
             Self::Issue(args) => args.execute(os).await,
+            Self::Skills(args) => args.execute(os).await,
             Self::Version { changelog } => Cli::print_version(changelog),
             Self::Chat(args) => args.execute(os).await,
             Self::Mcp(args) => args.execute(os, &mut std::io::stderr()).await,
@@ -197,6 +202,7 @@ impl Display for RootSubcommand {
             Self::Settings(_) => "settings",
             Self::Diagnostic(_) => "diagnostic",
             Self::Issue(_) => "issue",
+            Self::Skills(_) => "skills",
             Self::Version { .. } => "version",
             Self::Mcp(_) => "mcp",
         };
