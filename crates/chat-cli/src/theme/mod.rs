@@ -5,6 +5,7 @@
 //! maintains backward compatibility with existing color systems (color_print, crossterm)
 //! while providing a consistent API for color usage.
 
+pub mod autocomplete;
 pub mod colors;
 pub mod command_output;
 pub mod crossterm_ext;
@@ -14,6 +15,7 @@ pub mod session_manager;
 
 use std::sync::LazyLock;
 
+pub use autocomplete::*;
 pub use colors::*;
 pub use command_output::*;
 pub use crossterm_ext::*;

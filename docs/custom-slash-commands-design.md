@@ -477,7 +477,7 @@ q slash-commands remove mycommand
 q slash-commands reload
 ```
 
-### Command Categories
+### Command Categories and Autocomplete
 ```bash
 # List commands by category
 q slash-commands list --category filesystem
@@ -490,6 +490,101 @@ ls       List directory contents
 cd       Change directory
 mkdir    Create directory
 ```
+
+### Autocomplete Tree Support
+
+**Hierarchical Command Completion:**
+```bash
+> /<TAB>
+System
+  /ls /cd /pwd /env
+Git
+  /git /status /commit /push
+Build  
+  /build /test /deploy
+
+> /git <TAB>
+  status     Show repository status
+  commit     Commit changes
+  push       Push to remote
+  pull       Pull from remote
+  branch     Manage branches
+  log        Show commit history
+
+> /git commit <TAB>
+  --message  Commit message
+  --all      Stage all changes
+  --amend    Amend last commit
+
+> /git commit --message <TAB>
+  "Initial commit"
+  "Fix bug in parser"
+  "Add new feature"
+  <custom message>
+```
+
+**Configuration Schema for Autocomplete:**
+```json
+{
+  "command": "git",
+  "autocomplete": {
+    "subcommands": {
+      "status": {
+        "description": "Show repository status",
+        "options": ["--short", "--branch", "--porcelain"]
+      },
+      "commit": {
+        "description": "Commit changes", 
+        "options": {
+          "--message": {
+            "type": "string",
+            "suggestions": [
+              "Initial commit",
+              "Fix bug",
+              "Add feature",
+              "Update documentation"
+            ]
+          },
+          "--all": {
+            "type": "flag",
+            "description": "Stage all changes"
+          },
+          "--amend": {
+            "type": "flag", 
+            "description": "Amend last commit"
+          }
+        }
+      },
+      "push": {
+        "description": "Push to remote",
+        "options": {
+          "remote": {
+            "type": "dynamic",
+            "source": "git_remotes",
+            "description": "Remote repository name"
+          },
+          "branch": {
+            "type": "dynamic", 
+            "source": "git_branches",
+            "description": "Branch to push"
+          }
+        }
+      }
+    },
+    "dynamic_sources": {
+      "git_remotes": {
+        "command": "git remote",
+        "cache_duration": 300,
+        "parser": "lines"
+      },
+      "git_branches": {
+        "command": "git branch --list --format='%(refname:short)'",
+        "cache_duration": 60,
+        "parser": "lines"
+      }
+    }
+  }
+}
 
 ## File Structure and Operational Management
 

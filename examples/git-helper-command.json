@@ -1,0 +1,117 @@
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/slash-command-v1.json",
+  "command": "git-helper",
+  "description": "Enhanced git operations with autocomplete",
+  "aliases": ["gh"],
+  "version": "1.0.0",
+  "author": "Q CLI Team",
+  "handler": {
+    "type": "command",
+    "executable": "git",
+    "timeout": 10000
+  },
+  "parameters": {
+    "subcommand": {
+      "type": "string",
+      "required": true,
+      "description": "Git subcommand to execute"
+    },
+    "args": {
+      "type": "array",
+      "required": false,
+      "description": "Additional arguments"
+    }
+  },
+  "autocomplete": {
+    "subcommands": {
+      "status": {
+        "description": "Show repository status",
+        "options": ["--short", "--branch", "--porcelain"]
+      },
+      "commit": {
+        "description": "Commit changes",
+        "options": {
+          "--message": {
+            "type": "string",
+            "suggestions": [
+              "Initial commit",
+              "Fix bug",
+              "Add feature", 
+              "Update documentation",
+              "Refactor code",
+              "Add tests"
+            ]
+          },
+          "--all": {
+            "type": "flag",
+            "description": "Stage all changes"
+          },
+          "--amend": {
+            "type": "flag",
+            "description": "Amend last commit"
+          }
+        }
+      },
+      "push": {
+        "description": "Push to remote",
+        "options": {
+          "remote": {
+            "type": "dynamic",
+            "source": "git_remotes",
+            "description": "Remote repository name"
+          },
+          "branch": {
+            "type": "dynamic",
+            "source": "git_branches", 
+            "description": "Branch to push"
+          }
+        }
+      },
+      "checkout": {
+        "description": "Switch branches or restore files",
+        "options": {
+          "branch": {
+            "type": "dynamic",
+            "source": "git_branches",
+            "description": "Branch to checkout"
+          },
+          "--create": {
+            "type": "flag",
+            "description": "Create new branch"
+          }
+        }
+      },
+      "merge": {
+        "description": "Merge branches",
+        "options": {
+          "branch": {
+            "type": "dynamic",
+            "source": "git_branches",
+            "description": "Branch to merge"
+          },
+          "--no-ff": {
+            "type": "flag",
+            "description": "No fast-forward merge"
+          }
+        }
+      }
+    },
+    "dynamic_sources": {
+      "git_remotes": {
+        "command": "git remote",
+        "cache_duration": 300,
+        "parser": "lines"
+      },
+      "git_branches": {
+        "command": "git branch --list --format='%(refname:short)'",
+        "cache_duration": 60,
+        "parser": "lines"
+      },
+      "git_tags": {
+        "command": "git tag --list",
+        "cache_duration": 300,
+        "parser": "lines"
+      }
+    }
+  }
+}

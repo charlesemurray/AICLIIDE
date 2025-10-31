@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/slash-command-v1.json",
+  "command": "error-demo",
+  "description": "Demonstrate colored error output formatting",
+  "aliases": ["errors"],
+  "version": "1.0.0",
+  "author": "Q CLI Team",
+  "handler": {
+    "type": "script",
+    "language": "python",
+    "script": "file://./scripts/error_demo.py",
+    "timeout": 5000
+  },
+  "parameters": {
+    "type": {
+      "type": "string",
+      "description": "Type of error to demonstrate",
+      "required": false,
+      "enum": ["auth", "network", "file", "input", "system", "tool"]
+    }
+  },
+  "autocomplete": {
+    "subcommands": {
+      "auth": {
+        "description": "Show authentication error examples",
+        "options": []
+      },
+      "network": {
+        "description": "Show network error examples", 
+        "options": []
+      },
+      "file": {
+        "description": "Show file system error examples",
+        "options": []
+      },
+      "input": {
+        "description": "Show input validation error examples",
+        "options": []
+      },
+      "system": {
+        "description": "Show system error examples",
+        "options": []
+      },
+      "tool": {
+        "description": "Show tool execution error examples",
+        "options": []
+      }
+    }
+  }
+}
