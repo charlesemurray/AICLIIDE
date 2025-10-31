@@ -31,12 +31,20 @@ Skills integrate with Q CLI through three access patterns:
 
 ## Configuration Schema
 
+### Skill Types and Interaction Patterns
+
+Skills are categorized by execution model and interaction pattern:
+
+- **`code_inline`**: Fast execution, stateless, returns immediately (< 1s)
+- **`code_session`**: Can maintain state across interactions, session-based
+- **`conversation`**: Always session-based with guided workflow and context summarization
+
 ### Base Schema Structure
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
-  "type": "code|conversation",
+  "skill_type": "code_inline|code_session|conversation",
   "metadata": {
     "name": "string",
     "description": "string",
@@ -47,12 +55,14 @@ Skills integrate with Q CLI through three access patterns:
 }
 ```
 
-### Code-Centric Skills
+### Code Inline Skills (Stateless)
+
+Fast-executing skills that return immediate results without maintaining conversation state.
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
-  "type": "code",
+  "skill_type": "code_inline",
   "metadata": {
     "name": "calculator",
     "description": "Perform arithmetic calculations",
@@ -66,14 +76,10 @@ Skills integrate with Q CLI through three access patterns:
     "output_formatting": "Present calculation results clearly with original expression"
   },
   "executor": {
-    "type": "command",
-    "command": "python3",
-    "args": ["file://./scripts/calculator.py", "{operation}", "{operand1}", "{operand2}"],
-    "timeout": 30,
-    "working_directory": "./skills/calculator",
-    "env": {
-      "PYTHONPATH": "/usr/local/lib/python3.9/site-packages"
-    }
+    "type": "inline",
+    "language": "python",
+    "code": "file://./scripts/calculator.py",
+    "timeout": 1000
   },
   "parameters": {
     "operation": {
@@ -96,12 +102,49 @@ Skills integrate with Q CLI through three access patterns:
 }
 ```
 
-### Conversational Skills
+### Code Session Skills (Stateful)
+
+Code-executing skills that can maintain state across multiple interactions within a session.
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
-  "type": "conversation",
+  "skill_type": "code_session",
+  "metadata": {
+    "name": "data_analyzer",
+    "description": "Interactive data analysis with persistent state",
+    "aliases": ["analyze", "data"],
+    "version": "1.0.0",
+    "author": "Q CLI Team"
+  },
+  "prompt": {
+    "input_validation": "file://./prompts/data_input.md",
+    "argument_mapping": "file://./prompts/data_mapping.md",
+    "output_formatting": "Format analysis results with charts and summaries"
+  },
+  "executor": {
+    "type": "command",
+    "command": "python3",
+    "args": ["file://./scripts/data_analyzer.py", "--session", "{session_id}"],
+    "timeout": 5000,
+    "working_directory": "./skills/data_analyzer"
+  },
+  "session": {
+    "max_duration": 3600000,
+    "cleanup_on_exit": true,
+    "state_persistence": "memory"
+  }
+}
+```
+
+### Conversational Skills (Session-Based)
+
+Guided conversation skills that maintain context and provide structured problem-solving workflows.
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
+  "skill_type": "conversation",
   "metadata": {
     "name": "debug_helper",
     "description": "Help debug code issues through guided conversation",
@@ -121,6 +164,11 @@ Skills integrate with Q CLI through three access patterns:
       "What have you already tried to fix it?"
     ]
   },
+  "session": {
+    "max_duration": 1800000,
+    "cleanup_on_exit": true,
+    "state_persistence": "memory"
+  },
   "completion": {
     "summary_format": "## Debug Session Summary\n**Problem**: {problem}\n**Solution**: {solution}\n**Key Steps**: {steps}",
     "return_to_context": true
@@ -128,56 +176,82 @@ Skills integrate with Q CLI through three access patterns:
 }
 ```
 
+### Configuration Constraints
+
+**Valid Combinations:**
+- `code_inline`: Must have `executor`, cannot have `conversation` or `session`
+- `code_session`: Must have `executor` and `session`, cannot have `conversation`  
+- `conversation`: Must have `conversation` and `session`, cannot have `executor`
+
+**Invalid Configurations:**
+```json
+// ❌ Invalid: inline skills cannot have sessions
+{
+  "skill_type": "code_inline",
+  "executor": { ... },
+  "session": { ... }  // Error: inline skills are stateless
+}
+
+// ❌ Invalid: conversations cannot have executors
+{
+  "skill_type": "conversation", 
+  "executor": { ... },  // Error: conversations don't execute code
+  "conversation": { ... }
+}
+
+// ❌ Invalid: code skills cannot have conversation config
+{
+  "skill_type": "code_session",
+  "executor": { ... },
+  "conversation": { ... }  // Error: code skills don't use conversation flow
+}
+```
+
 ## Executor Types
 
-### Command Executor
+### Inline Executor (Code Inline Skills Only)
+```json
+{
+  "type": "inline",
+  "language": "python|javascript|bash",
+  "code": "file://./scripts/calculator.py",
+  "timeout": 1000
+}
+```
+
+### Command Executor (Code Skills)
 ```json
 {
   "type": "command",
   "command": "python3",
   "args": ["script.py", "{param1}", "{param2}"],
-  "timeout": 30,
+  "timeout": 5000,
   "working_directory": "./skills/myskill",
   "env": {"KEY": "value"}
 }
 ```
 
-### Inline Code Executor
+### MCP Executor (Code Skills)
 ```json
 {
-  "type": "inline",
-  "language": "python",
-  "code": "file://./scripts/inline_calculator.py",
-  "timeout": 10
+  "type": "mcp",
+  "server": "weather-mcp",
+  "tool": "get_current_weather",
+  "timeout": 5000,
+  "mapping": {
+    "location": "{location}",
+    "units": "{units}"
+  }
 }
 ```
 
-### HTTP API Executor
+### Auto-Delegation (Long-Running Tasks)
 ```json
 {
-  "type": "http",
-  "method": "POST",
-  "url": "https://api.example.com/calculate",
-  "headers": {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer {env.API_KEY}"
-  },
-  "body": {
-    "operation": "{operation}",
-    "operands": ["{operand1}", "{operand2}"]
-  },
-  "timeout": 15
-}
-```
-
-### Docker Executor
-```json
-{
-  "type": "docker",
-  "image": "calculator:latest",
-  "command": ["calculate", "{operation}", "{operand1}", "{operand2}"],
-  "timeout": 30,
-  "volumes": ["./data:/app/data"]
+  "type": "delegate",
+  "agent": "data-processor",
+  "timeout": 300000,
+  "delegation_threshold": 2000
 }
 ```
 
@@ -230,16 +304,44 @@ q skills install https://github.com/user/skill/skill.json
 ```
 
 ### Chat Integration
-```bash
-# @-syntax with skill name
-@calculator add 5 3
-@calc 5 + 3
-@debug help me with this error
 
-# Slash commands
-/skills list
-/skills run calculator --params '{"operation": "multiply", "operand1": 4, "operand2": 7}'
-/skills info debug_helper
+**Inline Skills (Immediate Response):**
+```bash
+# Natural language input, immediate response
+> Calculate 15% of 250
+37.5
+
+> What's the weather in Seattle?
+Current weather: 52°F, Cloudy
+
+> Convert 100 fahrenheit to celsius  
+100°F = 37.8°C
+```
+
+**Session Skills (Multi-turn Conversations):**
+```bash
+# Starting a session skill
+> I need help debugging database performance
+🔍 Started debug session (debug-1)
+What database system are you using?
+
+> PostgreSQL
+🔍 [debug-1] What specific queries are slow?
+
+# Multiple concurrent sessions
+> Let me also plan a migration
+📋 Started planning session (plan-1)  
+What system are you migrating from?
+
+# Session switching
+> /switch debug-1
+🔍 [debug-1] You mentioned slow queries...
+
+# Session management
+> /sessions
+Active sessions:
+  🔍 debug-1    Database debugging (3 messages)
+  📋 plan-1     Migration planning (1 message)
 ```
 
 ## Implementation Details
