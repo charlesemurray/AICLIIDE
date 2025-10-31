@@ -138,6 +138,11 @@ impl SkillsSlashCommand {
                     for skill in skills {
                         println!("{}: {}", skill.name(), skill.description());
                         println!("  Interactive: {}", skill.supports_interactive());
+                        
+                        let aliases = skill.aliases();
+                        if !aliases.is_empty() {
+                            println!("  Aliases: {}", aliases.join(", "));
+                        }
                     }
                 } else {
                     for skill in skills {
@@ -166,6 +171,11 @@ impl SkillsSlashCommand {
                         println!("Name: {}", skill.name());
                         println!("Description: {}", skill.description());
                         println!("Interactive: {}", skill.supports_interactive());
+                        
+                        let aliases = skill.aliases();
+                        if !aliases.is_empty() {
+                            println!("Aliases: {}", aliases.join(", "));
+                        }
                         
                         let ui = skill.render_ui().await
                             .map_err(|e| eyre::eyre!("Failed to render UI: {}", e))?;
