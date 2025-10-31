@@ -38,13 +38,14 @@ Skills are categorized by execution model and interaction pattern:
 - **`code_inline`**: Fast execution, stateless, returns immediately (< 1s)
 - **`code_session`**: Can maintain state across interactions, session-based
 - **`conversation`**: Always session-based with guided workflow and context summarization
+- **`prompt_inline`**: LLM-powered transformations with conversation context access
 
 ### Base Schema Structure
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
-  "skill_type": "code_inline|code_session|conversation",
+  "skill_type": "code_inline|code_session|conversation|prompt_inline",
   "metadata": {
     "name": "string",
     "description": "string",
@@ -176,12 +177,62 @@ Guided conversation skills that maintain context and provide structured problem-
 }
 ```
 
+### Prompt Inline Skills (Context-Aware)
+
+LLM-powered skills that transform input using conversation context and return immediate results.
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/aws/amazon-q-developer-cli/main/schemas/skill-v1.json",
+  "skill_type": "prompt_inline",
+  "metadata": {
+    "name": "summarize",
+    "description": "Summarize conversation or provided text",
+    "aliases": ["summary", "tldr"],
+    "version": "1.0.0",
+    "author": "Q CLI Team"
+  },
+  "prompt": {
+    "system_prompt": "file://./prompts/summarize_system.md",
+    "user_template": "Summarize this content: {user_input}\n\nContext from conversation: {conversation_history}",
+    "max_tokens": 500,
+    "temperature": 0.3
+  },
+  "context": {
+    "conversation": true,
+    "max_history_messages": 10,
+    "workspace": false,
+    "environment": false
+  }
+}
+```
+
+**Usage Examples:**
+```bash
+# Summarize recent conversation
+> @summarize
+**Summary:** Discussed database performance issues, identified missing index on users.created_at, provided solution with CREATE INDEX command.
+
+# Summarize provided content
+> @summarize "We discussed three main issues: database performance, API latency, and memory leaks."
+**Summary:** Three technical issues addressed - database performance, API latency, and memory leaks.
+
+# Code explanation with conversation context
+> @explain this function
+def fibonacci(n):
+    if n <= 1: return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+**Explanation:** This is a recursive Fibonacci function. Given our earlier discussion about performance, note that this has O(2^n) time complexity and would benefit from memoization.
+```
+
 ### Configuration Constraints
 
 **Valid Combinations:**
-- `code_inline`: Must have `executor`, cannot have `conversation` or `session`
-- `code_session`: Must have `executor` and `session`, cannot have `conversation`  
-- `conversation`: Must have `conversation` and `session`, cannot have `executor`
+- `code_inline`: Must have `executor`, cannot have `conversation`, `session`, or `prompt`
+- `code_session`: Must have `executor` and `session`, cannot have `conversation` or `prompt`  
+- `conversation`: Must have `conversation` and `session`, cannot have `executor` or `prompt`
+- `prompt_inline`: Must have `prompt`, cannot have `executor`, `conversation`, or `session`
 
 **Invalid Configurations:**
 ```json
@@ -199,11 +250,18 @@ Guided conversation skills that maintain context and provide structured problem-
   "conversation": { ... }
 }
 
-// ❌ Invalid: code skills cannot have conversation config
+// ❌ Invalid: prompt skills cannot have executors
 {
-  "skill_type": "code_session",
-  "executor": { ... },
-  "conversation": { ... }  // Error: code skills don't use conversation flow
+  "skill_type": "prompt_inline",
+  "executor": { ... },  // Error: prompt skills use LLM, not code execution
+  "prompt": { ... }
+}
+
+// ❌ Invalid: prompt skills cannot have sessions
+{
+  "skill_type": "prompt_inline",
+  "prompt": { ... },
+  "session": { ... }  // Error: prompt skills return immediate results
 }
 ```
 
@@ -255,6 +313,156 @@ Guided conversation skills that maintain context and provide structured problem-
 }
 ```
 
+## Context Access Configuration
+
+Skills can optionally access various types of context:
+
+```json
+{
+  "context": {
+    "conversation": true,           // Access recent conversation history
+    "max_history_messages": 10,    // Limit conversation context size
+    "workspace": true,              // Access current directory, git status
+    "environment": true,            // Access environment variables, PATH
+    "files": ["*.py", "*.js"]       // Access specific file patterns
+  }
+}
+```
+
+**Context Injection Methods:**
+- **Environment variables**: `SKILL_WORKSPACE_DIR`, `SKILL_GIT_BRANCH`
+- **Template variables**: `{conversation_history}`, `{current_directory}`
+- **Parameter injection**: Context passed as structured parameters to executors
+
+### Chat Integration
+
+**Inline Skills (Immediate Response):**
+```bash
+# Code inline skills
+> Calculate 15% of 250
+37.5
+
+> What's the weather in Seattle?
+Current weather: 52°F, Cloudy
+
+# Prompt inline skills  
+> @summarize the last few messages
+**Summary:** Discussed database performance optimization, identified indexing solution, and provided CREATE INDEX command.
+
+> @explain this code: def fib(n): return n if n <= 1 else fib(n-1) + fib(n-2)
+**Explanation:** Recursive Fibonacci function with O(2^n) complexity. Consider memoization for better performance.
+```
+
+**Session Skills (Multi-turn Conversations):**
+```bash
+# Starting a named session skill
+> @debug_helper database_performance
+🔍 Started debug session (database_performance)
+What database system are you using?
+
+> PostgreSQL
+🔍 [database_performance] What specific queries are slow?
+
+# Multiple concurrent sessions
+> @planning_helper feature_roadmap
+📋 Started planning session (feature_roadmap)  
+What's the main goal of this feature?
+
+# Session switching
+> /switch database_performance
+🔍 [database_performance] You mentioned slow queries...
+
+# Session management
+> /sessions
+Active sessions:
+  🔍 database_performance    Database debugging (3 messages)
+  📋 feature_roadmap         Feature planning (1 message)
+
+# Named session continuation
+> /switch feature_roadmap
+📋 [feature_roadmap] What's the main goal of this feature?
+```
+
+### Skill Discovery and Help
+
+**Contextual Recommendations:**
+```bash
+# After discussing math problems
+> I need to calculate compound interest
+💡 Try @calculator for arithmetic operations
+💡 Try @summarize to recap our discussion
+
+# Skill help system
+> @calculator help
+Calculator skill - Perform arithmetic operations
+Usage: @calculator <operation> <number1> <number2>
+Operations: add, subtract, multiply, divide
+Examples:
+  @calculator add 5 3
+  @calculator multiply 4.5 2
+  
+# List skills by type
+> /skills list
+Available skills:
+  calculator (calc, math)     Arithmetic operations [code_inline]
+  weather                     Weather information [code_inline]
+  summarize (summary, tldr)   Summarize content [prompt_inline]
+  debug_helper (debug)        Debug code issues [conversation]
+```
+
+## Development Workflow
+
+### Hot Reloading System
+
+Skills support hot reloading for rapid development iteration without restarting Q CLI.
+
+**File Watching:**
+- Monitors skill directories for changes to `.json`, `.py`, `.js`, `.md` files
+- Automatically reloads skill definitions, scripts, and prompts
+- Preserves active sessions during reloads
+- Validates new configurations before replacing existing skills
+
+**Development Cycle:**
+```bash
+# Create new skill template
+q skills create weather --type code_inline
+# Creates: weather.json, scripts/weather.py, prompts/
+
+q skills create summarize --type prompt_inline  
+# Creates: summarize.json, prompts/system.md, prompts/user_template.md
+
+# Edit skill files in your preferred editor
+vim weather.json          # Update configuration
+vim scripts/weather.py    # Modify execution logic
+vim prompts/system.md     # Refine prompts
+
+# Q CLI automatically detects and reloads changes
+✓ Reloaded skill: weather (config updated)
+✓ Reloaded skill: summarize (prompt updated)
+
+# Test immediately without restart
+> @weather Seattle
+Current weather: 52°F, Cloudy
+
+> @summarize our conversation
+**Summary:** Created weather and summarize skills, tested hot reloading functionality.
+```
+
+**Reload Behavior:**
+- **Configuration changes**: Update skill metadata, parameters, aliases
+- **Script changes**: Reload executor code and dependencies
+- **Prompt changes**: Refresh system prompts and user templates
+- **Error handling**: Display reload errors, maintain previous working version on failure
+- **Session preservation**: Active skill sessions continue uninterrupted during reloads
+
+**Developer Feedback:**
+```bash
+✓ Reloaded skill: calculator (script updated)
+✓ Reloaded skill: summarize (prompt template updated)
+❌ Failed to reload weather: syntax error in weather.json line 12
+   → Keeping previous version active
+```
+
 ## File Reference System
 
 Skills support external file references using the `file://` URI scheme:
@@ -274,6 +482,11 @@ skills/
 │   │   └── output.md
 │   └── scripts/
 │       └── calculator.py
+├── summarize/
+│   ├── summarize.json           # Prompt skill definition
+│   └── prompts/
+│       ├── system.md
+│       └── user_template.md
 └── debug_helper/
     ├── debug_helper.json
     ├── prompts/
@@ -282,51 +495,34 @@ skills/
     └── conversation_flow.json
 ```
 
-## Development Workflow
+## Resource Management
 
-### Hot Reloading System
-
-Skills support hot reloading for rapid development iteration without restarting Q CLI.
-
-**File Watching:**
-- Monitors skill directories for changes to `.json`, `.py`, `.js`, `.md` files
-- Automatically reloads skill definitions, scripts, and prompts
-- Preserves active sessions during reloads
-- Validates new configurations before replacing existing skills
-
-**Development Cycle:**
-```bash
-# Create new skill template
-q skills create weather
-# Creates: weather.json, scripts/weather.py, prompts/
-
-# Edit skill files in your preferred editor
-vim weather.json          # Update configuration
-vim scripts/weather.py    # Modify execution logic
-vim prompts/input.md      # Refine prompts
-
-# Q CLI automatically detects and reloads changes
-✓ Reloaded skill: weather (config updated)
-✓ Reloaded skill: weather (script updated)
-
-# Test immediately without restart
-> @weather Seattle
-Current weather: 52°F, Cloudy
+**Per-Skill Resource Limits:**
+```json
+{
+  "executor": {
+    "type": "inline",
+    "code": "file://./heavy_task.py",
+    "resources": {
+      "memory_mb": 100,        // Max 100MB RAM
+      "cpu_seconds": 2,        // Max 2 CPU seconds  
+      "timeout_ms": 5000,      // Kill after 5s wall time
+      "temp_files_mb": 50      // Max temp file usage
+    }
+  }
+}
 ```
 
-**Reload Behavior:**
-- **Configuration changes**: Update skill metadata, parameters, aliases
-- **Script changes**: Reload executor code and dependencies
-- **Prompt changes**: Refresh input validation and output formatting templates
-- **Error handling**: Display reload errors, maintain previous working version on failure
-- **Session preservation**: Active skill sessions continue uninterrupted during reloads
-
-**Developer Feedback:**
-```bash
-✓ Reloaded skill: calculator (script updated)
-✓ Reloaded skill: debug_helper (prompts updated)
-❌ Failed to reload weather: syntax error in weather.json line 12
-   → Keeping previous version active
+**Prompt Skill Limits:**
+```json
+{
+  "prompt": {
+    "system_prompt": "file://./system.md",
+    "user_template": "Analyze: {user_input}",
+    "max_tokens": 1000,       // Limit response length
+    "timeout_ms": 10000       // LLM request timeout
+  }
+}
 ```
 
 ### Skill Testing and Validation
@@ -343,8 +539,15 @@ q skills validate ./weather.json
 ✓ Executor dependencies available
 ❌ Warning: timeout value seems high (30s)
 
+# Test different skill types
+q skills test ./summarize.json
+✓ Prompt skill valid
+✓ System prompt file exists
+✓ Template variables properly defined
+
 # Dry run skill execution
-q skills run weather --dry-run --params '{"location": "Seattle"}'
+q skills run weather Seattle --dry-run
+q skills run summarize "test content" --dry-run
 ```
 
 **Basic Error Handling:**
@@ -353,12 +556,13 @@ q skills run weather --dry-run --params '{"location": "Seattle"}'
 - **File not found**: Helpful errors when skill files are missing/moved
 - **Timeout handling**: Graceful termination of stuck skills
 - **Configuration errors**: Syntax validation with line numbers
+- **LLM failures**: Fallback behavior for prompt skills when LLM is unavailable
 
 ## CLI Commands
 
 ### Skills Management
 ```bash
-# List all skills (shows aliases by default)
+# List all skills (shows aliases and types by default)
 q skills list
 
 # Show detailed skill information
@@ -366,9 +570,12 @@ q skills info calculator
 
 # Run a skill with parameters
 q skills run calculator add 5 3
+q skills run summarize "long text to summarize"
 
-# Create new skill template
-q skills create weather
+# Create new skill templates
+q skills create weather --type code_inline
+q skills create explain --type prompt_inline
+q skills create debug --type conversation
 
 # Test and validate skills
 q skills test ./my-skill.json
@@ -377,128 +584,48 @@ q skills validate ./my-skill.json
 # Reload specific skill manually
 q skills reload calculator
 ```
-
-### Chat Integration
-
-**Inline Skills (Immediate Response):**
-```bash
-# Natural language input, immediate response
-> Calculate 15% of 250
-37.5
-
-> What's the weather in Seattle?
-Current weather: 52°F, Cloudy
-
-> Convert 100 fahrenheit to celsius  
-100°F = 37.8°C
-```
-
-**Session Skills (Multi-turn Conversations):**
-```bash
-# Starting a session skill
-> I need help debugging database performance
-🔍 Started debug session (debug-1)
-What database system are you using?
-
-> PostgreSQL
-🔍 [debug-1] What specific queries are slow?
-
-# Multiple concurrent sessions
-> Let me also plan a migration
-📋 Started planning session (plan-1)  
-What system are you migrating from?
-
-# Session switching
-> /switch debug-1
-🔍 [debug-1] You mentioned slow queries...
-
-# Session management
-> /sessions
-Active sessions:
-  🔍 debug-1    Database debugging (3 messages)
-  📋 plan-1     Migration planning (1 message)
-
-# Session help and autocomplete
-> @debug_helper <TAB>
-  @debug_helper database
-  @debug_helper network  
-  @debug_helper performance
-
-> @calculator <TAB>
-  @calculator add 5 3
-  @calculator multiply 4 7
-  @calculator help
-```
-
-### Skill Discovery and Help
-
-**Contextual Recommendations:**
-```bash
-# After discussing math problems
-> I need to calculate compound interest
-💡 Try @calculator for arithmetic operations
-💡 Try @finance for financial calculations
-
-# Skill help system
-> @calculator help
-Calculator skill - Perform arithmetic operations
-Usage: @calculator <operation> <number1> <number2>
-Operations: add, subtract, multiply, divide
-Examples:
-  @calculator add 5 3
-  @calculator multiply 4.5 2
-  
-# List skills by category
-> /skills list math
-Available math skills:
-  calculator (calc, math)    Arithmetic operations
-  converter (convert)        Unit conversions
-  finance                    Financial calculations
-```
-
 ## Future Enhancements
 
-### Skill Marketplace
-- Central repository for community-contributed skills
-- Skill rating and review system
-- Automatic updates and dependency management
-- Skill publishing and distribution tools
+### Skill Sharing and Distribution
+- Simple export/import for sharing skills with friends
+- Git-based skill repositories for version control
+- Skill templates for common patterns (API wrappers, file processors)
+- Dependency management for Python packages and Node modules
 
 ### Advanced Features
 - Skill composition and chaining
 - Conditional execution based on context
-- Integration with external tool ecosystems
-- Visual skill builder interface
-- Skill performance monitoring and analytics
+- Background processing for long-running tasks
+- Skill performance monitoring and caching
 
 ### Workspace Integration
 - Project-specific skill configurations
-- Team skill sharing and synchronization
-- Integration with development workflows
-- Custom skill templates for organizations
+- Skills that understand current development environment
+- Integration with existing CLI tools and workflows
+- Custom skill templates for specific project types
 
 ## Migration Path
 
 ### Phase 1: Core Implementation
+- Four skill types: code_inline, code_session, conversation, prompt_inline
 - Basic skill registry and execution engine
-- Support for command and inline executors
-- CLI commands for skill management
-- File reference system
+- Hot reloading system for development
+- File reference system and resource management
 
 ### Phase 2: Chat Integration
-- @-syntax parsing and execution
-- Slash command integration
-- Conversational skill support
-- Context management improvements
+- Natural language skill invocation
+- Session management with named sessions
+- Context access (conversation, workspace, environment)
+- Autocomplete and help system
 
-### Phase 3: Advanced Features
-- HTTP and Docker executors
-- Skill marketplace foundation
-- Enhanced security controls
-- Performance optimizations
+### Phase 3: Developer Experience
+- Skill testing and validation framework
+- Template generation for all skill types
+- Error handling and debugging tools
+- Performance optimization and caching
 
 ### Phase 4: Ecosystem
-- Community skill repository
-- Advanced composition features
-- Visual tools and interfaces
-- Enterprise features and controls
+- Skill sharing mechanisms
+- Advanced context integration
+- Skill composition features
+- Community templates and examples
