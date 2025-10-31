@@ -79,14 +79,89 @@ Specialized sessions for creating and configuring agent definitions with proper 
 [dev-temperature] Skill looks good! Should I finalize it?
 
 > Yes, make it available
+[dev-temperature] Where should I install this skill?
+[dev-temperature] 1. Workspace only (current project)
+[dev-temperature] 2. Global (available everywhere)
+
+> Workspace only
 [dev-temperature] ✓ Skill development complete
-[dev-temperature] ✓ @temperature skill is now available in main chat
+[dev-temperature] ✓ @temperature skill installed in workspace
+[dev-temperature] ✓ Available in this project only
 ✓ Closed development session (dev-temperature)
 
-# Back in main conversation
-> Great! Now I can convert temperatures easily.
-> @temperature 72f to c
-72°F = 22.2°C
+# Alternative global installation
+> Global
+[dev-temperature] ✓ Skill development complete  
+[dev-temperature] ✓ @temperature skill installed globally
+[dev-temperature] ✓ Available in all Q CLI sessions
+✓ Closed development session (dev-temperature)
+```
+
+## Scope Management
+
+### Workspace vs Global Installation
+
+**Workspace Scope:**
+- Skills/commands available only in current project directory
+- Stored in `./.qcli/skills/` or `./.qcli/commands/`
+- Project-specific configurations and dependencies
+- Team sharing through version control
+- Automatic activation when in project directory
+
+**Global Scope:**
+- Skills/commands available in all Q CLI sessions
+- Stored in `~/.aws/amazonq/skills/` or `~/.aws/amazonq/commands/`
+- Personal productivity tools and utilities
+- Available across all projects and directories
+
+### Installation Options
+```bash
+[dev-git-helper] Ready to install the git helper command. Choose scope:
+
+# Quick selection
+> workspace
+[dev-git-helper] ✓ Installing /git-helper in current workspace
+
+> global  
+[dev-git-helper] ✓ Installing /git-helper globally
+
+# Explicit specification during development
+[dev-database-skill] This skill uses project-specific database configs.
+[dev-database-skill] Recommending workspace installation.
+[dev-database-skill] Install in workspace? (y/n)
+
+> y
+[dev-database-skill] ✓ @database skill installed in workspace
+```
+
+### Scope-Aware Development
+```bash
+[dev-project-manager] I see this skill accesses Cargo.toml and package.json
+[dev-project-manager] This appears to be project-specific functionality.
+[dev-project-manager] Should I configure it for workspace installation?
+
+> Yes, and make it work with different project types
+[dev-project-manager] ✓ Added multi-project-type support
+[dev-project-manager] ✓ Configured for workspace scope
+[dev-project-manager] This skill will adapt to each project's structure
+```
+
+### Scope Migration
+```bash
+# Promote workspace skill to global
+> /skills promote @database global
+✓ Moved @database skill from workspace to global scope
+✓ Now available in all Q CLI sessions
+
+# Demote global skill to workspace
+> /skills demote @project-helper workspace  
+✓ Moved @project-helper skill from global to workspace scope
+✓ Now available only in current project
+
+# Copy skill between scopes
+> /skills copy @calculator workspace
+✓ Copied @calculator skill to workspace
+✓ Available in both global and workspace scope
 ```
 
 ## Testing Framework
@@ -187,9 +262,15 @@ Active development sessions:
 [dev-project-helper] ✓ Added cargo build integration
 [dev-project-helper] ✓ Added dependency management
 [dev-project-helper] ✓ Added test runner integration
+[dev-project-helper] 
+[dev-project-helper] This skill is project-specific. Install in workspace?
+
+> Yes
+[dev-project-helper] ✓ Configured for workspace installation
+[dev-project-helper] ✓ Will be available only in Rust projects
 ```
 
-### Intelligent Suggestions
+### Intelligent Scope Suggestions
 ```bash
 [dev-api-skill] I notice you have a .env file with API keys
 [dev-api-skill] Should I configure the skill to use environment variables for authentication?
@@ -197,6 +278,13 @@ Active development sessions:
 > Yes
 [dev-api-skill] ✓ Added environment variable support
 [dev-api-skill] ✓ Configured secure API key handling
+[dev-api-skill] 
+[dev-api-skill] This skill uses project-specific environment variables.
+[dev-api-skill] Recommend workspace installation for security. Agree?
+
+> Yes
+[dev-api-skill] ✓ Configured for workspace scope
+[dev-api-skill] ✓ Environment variables will be isolated per project
 ```
 
 ### Error-Driven Development
@@ -272,16 +360,58 @@ Active development sessions:
 - Development sessions create skills that integrate seamlessly with existing skills registry
 - Hot reloading ensures immediate availability in main chat
 - Configuration validation prevents conflicts with existing skills
+- Scope-aware installation (workspace vs global)
+- Automatic skill discovery based on current directory
 
 ### Slash Commands Integration  
 - Custom commands developed in sessions integrate with existing command system
 - Namespace validation prevents conflicts with built-in commands
 - Immediate availability after session completion
+- Workspace-specific commands override global ones when available
+- Scope migration tools for promoting/demoting command availability
 
 ### Agent System Integration
 - Agent configurations created in development sessions integrate with existing agent management
 - Validation ensures compatibility with Q CLI agent system
 - Seamless switching between developed agents and existing ones
+- Project-specific agent configurations for workspace scope
+- Global agent availability for cross-project use cases
+
+### File Structure and Discovery
+
+**Workspace Structure:**
+```
+project-root/
+├── .qcli/
+│   ├── skills/
+│   │   ├── project-helper.json
+│   │   └── database-analyzer.json
+│   ├── commands/
+│   │   ├── build.json
+│   │   └── deploy.json
+│   └── agents/
+│       └── code-reviewer.json
+├── src/
+└── README.md
+```
+
+**Global Structure:**
+```
+~/.aws/amazonq/
+├── skills/
+│   ├── calculator.json
+│   └── weather.json
+├── commands/
+│   ├── git-helper.json
+│   └── system-info.json
+└── agents/
+    └── general-assistant.json
+```
+
+**Discovery Priority:**
+1. Workspace-specific skills/commands (`./.qcli/`)
+2. Global skills/commands (`~/.aws/amazonq/`)
+3. Built-in skills/commands
 
 ## Security and Safety
 
