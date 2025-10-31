@@ -2018,7 +2018,7 @@ impl ChatSession {
 
         // Parse skill parameters based on skill type
         let params = match skill_name {
-            "calculator" => {
+            "calculator" | "calc" | "math" => {
                 if args.len() >= 3 {
                     // Handle natural syntax: "1 + 2" or "add 1 2"
                     let (op, a, b) = if args[1] == "+" || args[1] == "-" || args[1] == "*" || args[1] == "/" {

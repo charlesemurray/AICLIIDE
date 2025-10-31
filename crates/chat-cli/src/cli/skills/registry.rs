@@ -12,12 +12,14 @@ pub struct SkillInfo {
 
 pub struct SkillRegistry {
     skills: HashMap<String, Box<dyn Skill>>,
+    aliases: HashMap<String, String>, // alias -> skill_name mapping
 }
 
 impl SkillRegistry {
     pub fn new() -> Self {
         Self {
             skills: HashMap::new(),
+            aliases: HashMap::new(),
         }
     }
 
@@ -25,6 +27,12 @@ impl SkillRegistry {
         let mut registry = Self::new();
         registry.register_builtins();
         registry
+    }
+
+    pub async fn with_workspace_skills(workspace_path: &Path) -> Result<Self, SkillError> {
+        let mut registry = Self::with_builtins();
+        registry.load_workspace_skills(workspace_path).await?;
+        Ok(registry)
     }
 
     pub async fn from_directory(path: &Path) -> Result<Self, SkillError> {
@@ -46,12 +54,75 @@ impl SkillRegistry {
         Ok(())
     }
 
+    pub fn register_with_aliases(&mut self, skill: Box<dyn Skill>) -> Result<(), SkillError> {
+        let name = skill.name().to_string();
+        let aliases = skill.aliases();
+        
+        // Check for conflicts
+        if self.skills.contains_key(&name) {
+            return Err(SkillError::InvalidInput(format!(
+                "Skill '{}' is already registered", name
+            )));
+        }
+        
+        for alias in &aliases {
+            if self.skills.contains_key(alias) || self.aliases.contains_key(alias) {
+                return Err(SkillError::InvalidInput(format!(
+                    "Alias '{}' conflicts with existing skill or alias", alias
+                )));
+            }
+        }
+        
+        // Register skill
+        self.skills.insert(name.clone(), skill);
+        
+        // Register aliases
+        for alias in aliases {
+            self.aliases.insert(alias, name.clone());
+        }
+        
+        Ok(())
+    }
+
     pub fn unregister(&mut self, name: &str) -> Option<Box<dyn Skill>> {
-        self.skills.remove(name)
+        if let Some(skill) = self.skills.remove(name) {
+            // Remove associated aliases
+            let aliases_to_remove: Vec<String> = self.aliases
+                .iter()
+                .filter(|(_, skill_name)| *skill_name == name)
+                .map(|(alias, _)| alias.clone())
+                .collect();
+            
+            for alias in aliases_to_remove {
+                self.aliases.remove(&alias);
+            }
+            
+            Some(skill)
+        } else {
+            None
+        }
     }
 
     pub fn get(&self, name: &str) -> Option<&dyn Skill> {
-        self.skills.get(name).map(|s| s.as_ref())
+        // Try direct skill lookup first
+        if let Some(skill) = self.skills.get(name) {
+            return Some(skill.as_ref());
+        }
+        
+        // Try alias lookup
+        if let Some(skill_name) = self.aliases.get(name) {
+            return self.skills.get(skill_name).map(|s| s.as_ref());
+        }
+        
+        None
+    }
+
+    pub fn get_aliases(&self, skill_name: &str) -> Vec<String> {
+        self.aliases
+            .iter()
+            .filter(|(_, name)| *name == skill_name)
+            .map(|(alias, _)| alias.clone())
+            .collect()
     }
 
     pub fn list(&self) -> Vec<&dyn Skill> {
@@ -83,23 +154,66 @@ impl SkillRegistry {
         Ok(discovered)
     }
 
+    pub fn discover_skills_in_locations(locations: &[&Path]) -> Vec<SkillInfo> {
+        let mut discovered = Vec::new();
+        
+        for location in locations {
+            if let Ok(entries) = std::fs::read_dir(location) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.ends_with(".json") {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                if let Ok(info) = serde_json::from_str::<SkillInfo>(&content) {
+                                    discovered.push(info);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        discovered
+    }
+
+    pub async fn reload_workspace_skills(&mut self, workspace_path: &Path) -> Result<(), SkillError> {
+        // Remove existing workspace skills (keep builtins)
+        let builtin_names = vec!["calculator"]; // Add more as needed
+        let skills_to_remove: Vec<String> = self.skills
+            .keys()
+            .filter(|name| !builtin_names.contains(&name.as_str()))
+            .cloned()
+            .collect();
+        
+        for skill_name in skills_to_remove {
+            self.unregister(&skill_name);
+        }
+        
+        // Reload workspace skills
+        self.load_workspace_skills(workspace_path).await
+    }
+
+    async fn load_workspace_skills(&mut self, workspace_path: &Path) -> Result<(), SkillError> {
+        let skills_dir = workspace_path.join(".q-skills");
+        if skills_dir.exists() {
+            self.load_from_directory(&skills_dir).await?;
+        }
+        Ok(())
+    }
+
     async fn load_from_directory(&mut self, _path: &Path) -> Result<(), SkillError> {
         // TODO: Implement directory-based skill loading
-        // For now, just register builtins
-        self.register_builtins();
+        // For now, just register builtins if not already done
+        if self.skills.is_empty() {
+            self.register_builtins();
+        }
         Ok(())
     }
 
     fn register_builtins(&mut self) {
-        // Register builtin calculator skill
+        // Register builtin calculator skill with aliases
         if let Ok(calculator) = crate::cli::skills::builtin::calculator::Calculator::new() {
-            let _ = self.register(Box::new(calculator));
+            let _ = self.register_with_aliases(Box::new(calculator));
         }
-    }
-}
-
-impl Default for SkillRegistry {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -20,6 +20,10 @@ impl Skill for Calculator {
         "Basic calculator operations (add, subtract, multiply, divide)"
     }
 
+    fn aliases(&self) -> Vec<String> {
+        vec!["calc".to_string(), "math".to_string()]
+    }
+
     async fn execute(&self, params: Value) -> Result<SkillResult> {
         let a = params["a"].as_f64().ok_or_else(|| {
             SkillError::InvalidInput("Missing or invalid parameter 'a'".to_string())

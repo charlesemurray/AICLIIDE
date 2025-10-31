@@ -53,6 +53,9 @@ pub enum SkillError {
 pub trait Skill: Send + Sync {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
+    fn aliases(&self) -> Vec<String> {
+        vec![]
+    }
     async fn execute(&self, params: serde_json::Value) -> Result<SkillResult>;
     async fn render_ui(&self) -> Result<SkillUI>;
     fn supports_interactive(&self) -> bool {
