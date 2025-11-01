@@ -178,7 +178,7 @@ impl CreationContext {
             Some(ProjectType::Go) => Some(SkillType::CodeInline),
             _ => {
                 // Look at existing skills for patterns
-                if self.existing_skills.len() > 0 {
+                if !self.existing_skills.is_empty() {
                     Some(SkillType::CodeInline) // Most common
                 } else {
                     None
@@ -211,7 +211,7 @@ impl CreationContext {
 
     fn suggest_command_type(&self) -> Option<CommandType> {
         // Analyze existing commands for patterns
-        if self.existing_commands.len() > 0 {
+        if !self.existing_commands.is_empty() {
             Some(CommandType::Script) // Most common
         } else {
             None
@@ -223,8 +223,7 @@ impl CreationContext {
 
         // Suggest based on project type
         match self.project_type {
-            Some(ProjectType::Python) | Some(ProjectType::JavaScript) | 
-            Some(ProjectType::Rust) | Some(ProjectType::Go) => {
+            Some(ProjectType::Python | ProjectType::JavaScript | ProjectType::Rust | ProjectType::Go) => {
                 servers.push("filesystem".to_string());
             }
             _ => {}

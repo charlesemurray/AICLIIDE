@@ -57,7 +57,6 @@ impl<F: CreationFlow> CreationAssistant<F> {
                     }
                     PhaseResult::Retry(error_msg) => {
                         self.ui.show_message(&error_msg, SemanticColor::Error);
-                        continue;
                     }
                 }
             }
