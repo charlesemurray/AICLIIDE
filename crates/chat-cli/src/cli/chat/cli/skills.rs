@@ -191,13 +191,19 @@ impl SkillsSubcommand {
                     }
                 };
                 
-                let mut os = Os::new().await.unwrap();
-                match create_args.execute(&mut os).await {
-                    Ok(_) => {
-                        println!("✓ Skill '{}' created successfully", name);
+                match Os::new().await {
+                    Ok(mut os) => {
+                        match create_args.execute(&mut os).await {
+                            Ok(_) => {
+                                println!("✓ Skill '{}' created successfully", name);
+                            }
+                            Err(e) => {
+                                println!("❌ Failed to create skill: {}", e);
+                            }
+                        }
                     }
                     Err(e) => {
-                        println!("❌ Failed to create skill: {}", e);
+                        println!("❌ Failed to initialize system: {}", e);
                     }
                 }
                 
