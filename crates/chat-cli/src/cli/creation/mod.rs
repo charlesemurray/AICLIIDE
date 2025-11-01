@@ -9,6 +9,7 @@ mod ui;
 mod assistant;
 mod flows;
 mod context;
+mod templates;
 
 #[cfg(test)]
 mod tests;
@@ -21,6 +22,7 @@ pub use ui::MockTerminalUI;
 pub use assistant::CreationAssistant;
 pub use flows::*;
 pub use context::CreationContext;
+pub use templates::TemplateManager;
 
 use clap::{Args, Subcommand};
 use eyre::Result;

@@ -95,11 +95,22 @@ impl CreationArtifact for AgentArtifact {
 pub struct AgentCreationFlow {
     config: AgentConfig,
     mode: CreationMode,
+    context: CreationContext,
+    ui: Option<Box<dyn TerminalUI>>,
 }
 
 impl AgentCreationFlow {
     pub fn new(name: String, mode: CreationMode) -> Result<Self> {
-        let config = AgentConfig {
+        let current_dir = std::env::current_dir()?;
+        let context = CreationContext::new(&current_dir)?;
+        
+        // Validate name upfront
+        let validation = context.validate_name(&name, &CreationType::Agent);
+        if !validation.is_valid {
+            return Err(crate::cli::creation::CreationError::invalid_name("agent", &name).into());
+        }
+
+        let mut config = AgentConfig {
             basic: BasicAgentConfig {
                 name,
                 description: String::new(),
@@ -111,7 +122,103 @@ impl AgentCreationFlow {
             hooks: HooksConfig::default(),
         };
 
-        Ok(Self { config, mode })
+        // Apply smart defaults
+        let defaults = context.suggest_defaults(&CreationType::Agent);
+        if !defaults.description.is_empty() {
+            config.basic.description = defaults.description;
+        }
+        config.mcp.servers = defaults.mcp_servers;
+
+        Ok(Self { config, mode, context, ui: None })
+    }
+
+    pub fn with_ui(mut self, ui: Box<dyn TerminalUI>) -> Self {
+        self.ui = Some(ui);
+        self
+    }
+
+    fn execute_discovery(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
+        ui.show_message(
+            &format!("Creating agent '{}'", self.config.basic.name),
+            crate::cli::creation::SemanticColor::Info
+        );
+
+        match self.mode {
+            CreationMode::Quick => {
+                self.config.basic.prompt = ui.prompt_required("Agent prompt")?;
+            }
+            CreationMode::Guided => {
+                self.config.basic.prompt = ui.prompt_required("Agent prompt (e.g., 'You are a helpful coding assistant')")?;
+                
+                if let Some(desc) = ui.prompt_optional("Description", Some(&self.config.basic.description))? {
+                    self.config.basic.description = desc;
+                }
+            }
+            CreationMode::Expert => {
+                self.config.basic.prompt = ui.prompt_required("Agent prompt")?;
+                self.config.basic.description = ui.prompt_required("Description")?;
+            }
+            _ => {}
+        }
+        Ok(PhaseResult::Continue)
+    }
+
+    fn execute_advanced_config(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
+        match self.mode {
+            CreationMode::Expert => {
+                // MCP servers configuration
+                let enable_mcp = ui.confirm("Enable MCP servers")?;
+                if enable_mcp {
+                    ui.show_message("Available MCP servers:", crate::cli::creation::SemanticColor::Info);
+                    ui.show_message("  filesystem: File system operations", crate::cli::creation::SemanticColor::Debug);
+                    ui.show_message("  git: Git repository operations", crate::cli::creation::SemanticColor::Debug);
+                    
+                    let servers_input = ui.prompt_optional("MCP servers (comma-separated)", Some("filesystem"))?;
+                    if let Some(servers) = servers_input {
+                        self.config.mcp.servers = servers.split(',').map(|s| s.trim().to_string()).collect();
+                    }
+                }
+
+                // Tools configuration
+                let enable_tools = ui.confirm("Enable custom tools")?;
+                if enable_tools {
+                    let tools_input = ui.prompt_optional("Allowed tools (comma-separated)", None)?;
+                    if let Some(tools) = tools_input {
+                        self.config.tools.enabled_tools = tools.split(',').map(|s| s.trim().to_string()).collect();
+                    }
+                }
+
+                // Hooks configuration
+                let enable_hooks = ui.confirm("Enable lifecycle hooks")?;
+                if enable_hooks {
+                    ui.show_message("Available hooks:", crate::cli::creation::SemanticColor::Info);
+                    ui.show_message("  agentSpawn: Called when agent starts", crate::cli::creation::SemanticColor::Debug);
+                    ui.show_message("  userPromptSubmit: Called on user input", crate::cli::creation::SemanticColor::Debug);
+                    
+                    let hooks_input = ui.prompt_optional("Hooks (comma-separated)", None)?;
+                    if let Some(hooks) = hooks_input {
+                        self.config.hooks.enabled_hooks = hooks.split(',').map(|s| s.trim().to_string()).collect();
+                    }
+                }
+            }
+            CreationMode::Guided => {
+                // Simplified MCP setup
+                let enable_mcp = ui.confirm("Enable file system access")?;
+                if enable_mcp {
+                    self.config.mcp.servers.push("filesystem".to_string());
+                }
+            }
+            _ => {
+                // Quick mode uses smart defaults
+                if !self.config.mcp.servers.is_empty() {
+                    ui.show_message(
+                        &format!("Using MCP servers: {}", self.config.mcp.servers.join(", ")),
+                        crate::cli::creation::SemanticColor::Info
+                    );
+                }
+            }
+        }
+        Ok(PhaseResult::Continue)
     }
 }
 
@@ -124,53 +231,32 @@ impl CreationFlow for AgentCreationFlow {
     }
 
     fn execute_phase(&mut self, phase: CreationPhase) -> Result<PhaseResult> {
+        // Use injected UI or create default
+        let mut default_ui;
+        let ui: &mut dyn TerminalUI = if let Some(ref mut ui) = self.ui {
+            ui.as_mut()
+        } else {
+            default_ui = crate::cli::creation::TerminalUIImpl::new();
+            &mut default_ui
+        };
+
         match phase {
-            CreationPhase::Discovery => {
-                match self.mode {
-                    CreationMode::Quick => {
-                        self.config.basic.prompt = "You are a helpful assistant".to_string();
-                    }
-                    CreationMode::Guided => {
-                        self.config.basic.prompt = "You are a coding assistant".to_string();
-                        self.config.basic.description = "Coding helper".to_string();
-                    }
-                    CreationMode::Expert => {
-                        self.config.basic.prompt = "You are an expert assistant".to_string();
-                        self.config.basic.description = "Expert assistant".to_string();
-                    }
-                    _ => {}
-                }
-                Ok(PhaseResult::Continue)
-            }
+            CreationPhase::Discovery => self.execute_discovery(ui),
             CreationPhase::BasicConfig => {
                 if self.config.basic.description.is_empty() {
                     self.config.basic.description = format!("Agent: {}", self.config.basic.name);
                 }
                 Ok(PhaseResult::Continue)
             }
-            CreationPhase::AdvancedConfig => {
-                match self.mode {
-                    CreationMode::Expert => {
-                        // Configure MCP servers for expert mode
-                        self.config.mcp.servers.push("filesystem".to_string());
-                        self.config.tools.enabled_tools.push("fs_read".to_string());
-                        self.config.tools.enabled_tools.push("fs_write".to_string());
-                    }
-                    CreationMode::Guided => {
-                        // Basic MCP setup for guided mode
-                        self.config.mcp.servers.push("filesystem".to_string());
-                    }
-                    _ => {}
-                }
-                Ok(PhaseResult::Continue)
-            }
+            CreationPhase::AdvancedConfig => self.execute_advanced_config(ui),
             CreationPhase::Security => {
-                // Agent security is handled by MCP server permissions
+                ui.show_message("Agent security managed by MCP server permissions", crate::cli::creation::SemanticColor::Info);
                 Ok(PhaseResult::Continue)
             }
             CreationPhase::Testing => {
                 // Validate agent configuration
                 self.config.validate()?;
+                ui.show_message("Agent configuration validated", crate::cli::creation::SemanticColor::Success);
                 Ok(PhaseResult::Continue)
             }
             CreationPhase::Completion => {
