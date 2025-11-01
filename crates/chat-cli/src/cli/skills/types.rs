@@ -85,6 +85,7 @@ pub struct JsonSkill {
     pub timeout: Option<u32>,
     pub security: Option<SecurityConfig>,
     pub session_config: Option<SessionConfig>,
+    #[serde(alias = "prompt")]
     pub prompt_template: Option<String>,
     pub context_files: Option<ContextFiles>,
     pub parameters: Option<Vec<Parameter>>,
