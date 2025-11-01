@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::future::Future;
@@ -6,7 +5,7 @@ use async_trait::async_trait;
 use crate::cli::skills::{SkillResult, SkillUI};
 
 // Re-export sysinfo for cross-platform monitoring
-pub use sysinfo::{System, SystemExt, ProcessExt, Pid};
+pub use sysinfo::{System, Pid};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {
@@ -224,11 +223,7 @@ pub trait SecureSkill: Send + Sync {
 // Cross-platform sandbox abstraction
 #[async_trait]
 pub trait PlatformSandbox: Send + Sync {
-    async fn execute_sandboxed<F, T>(&self, future: F, config: &SandboxConfig) -> SecurityResult<T>
-    where
-        F: Future<Output = SecurityResult<T>> + Send,
-        T: Send;
-        
+    async fn execute_with_timeout(&self, timeout_secs: u64) -> SecurityResult<()>;
     fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage>;
     fn terminate_process(&self, pid: u32) -> SecurityResult<()>;
 }

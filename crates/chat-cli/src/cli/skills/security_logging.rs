@@ -173,7 +173,7 @@ impl SecurityLogger {
         }
     }
     
-    fn assess_risk_level(&self, event_type: &SecurityEventType, details: &serde_json::Value) -> RiskLevel {
+    fn assess_risk_level(&self, event_type: &SecurityEventType, _details: &serde_json::Value) -> RiskLevel {
         match event_type {
             SecurityEventType::PrivilegeEscalationAttempt => RiskLevel::Critical,
             SecurityEventType::UnauthorizedFileAccess => RiskLevel::High,

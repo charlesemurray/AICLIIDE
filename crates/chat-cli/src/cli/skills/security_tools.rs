@@ -1,7 +1,7 @@
 use crate::cli::skills::security::*;
 use crate::cli::skills::security_logging::*;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::path::PathBuf;
+use std::time::Instant;
 use tokio::fs;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 
@@ -243,7 +243,7 @@ impl SkillSecurityTools {
         let start_event = self.logger.create_security_event(
             SecurityEventType::SkillExecutionStarted,
             skill_name.to_string(),
-            serde_json::json!({"start_time": start_time}),
+            serde_json::json!({"start_time": chrono::Utc::now().to_rfc3339()}),
         );
         self.logger.log_security_event(start_event).await.ok();
         

@@ -1,7 +1,6 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SecurityError, SandboxConfig, ResourceUsage};
+use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SandboxConfig, ResourceUsage};
 use crate::cli::skills::platform::generic::GenericSandbox;
 use async_trait::async_trait;
-use std::future::Future;
 
 pub struct MacOSSandbox {
     generic: GenericSandbox,
@@ -17,11 +16,7 @@ impl MacOSSandbox {
 
 #[async_trait]
 impl PlatformSandbox for MacOSSandbox {
-    async fn execute_sandboxed<F, T>(&self, future: F, config: &SandboxConfig) -> SecurityResult<T>
-    where
-        F: Future<Output = SecurityResult<T>> + Send,
-        T: Send,
-    {
+    async fn execute_with_timeout(&self, timeout_secs: u64) -> SecurityResult<()> {
         // TODO: Implement macOS-specific sandboxing using:
         // - sandbox-exec command wrapper
         // - macOS sandbox profiles
@@ -29,7 +24,7 @@ impl PlatformSandbox for MacOSSandbox {
         // - BSD jail-like restrictions
         
         // For now, fall back to generic implementation
-        self.generic.execute_sandboxed(future, config).await
+        self.generic.execute_with_timeout(timeout_secs).await
     }
     
     fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage> {
