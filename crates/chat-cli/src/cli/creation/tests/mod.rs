@@ -13,6 +13,9 @@ pub use unit::*;
 pub use integration::*;
 pub use cli::*;
 pub use ux::*;
+
+use crate::cli::creation::types::{TerminalUI, SemanticColor};
+use eyre::Result;
 pub use compatibility::*;
 
 use crate::cli::creation::*;
@@ -30,13 +33,13 @@ pub struct TestFixtures {
 impl TestFixtures {
     pub fn new() -> Self {
         let temp_dir = TempDir::new().unwrap();
-        let base = temp_dir.path();
+        let base = temp_dir.path().to_path_buf();
         
         Self {
-            temp_dir,
             commands_dir: base.join(".q-commands"),
             skills_dir: base.join(".q-skills"),
             agents_dir: base.join(".amazonq/cli-agents"),
+            temp_dir,
         }
     }
     
@@ -72,7 +75,92 @@ impl MockTerminalUI {
             String::new()
         }
     }
-    
+
+    pub fn show_success(&mut self, message: &str) {
+        self.outputs.push(format!("SUCCESS: {}", message));
+    }
+
+    pub fn show_error(&mut self, message: &str) {
+        self.outputs.push(format!("ERROR: {}", message));
+    }
+
+    pub fn show_info(&mut self, message: &str) {
+        self.outputs.push(format!("INFO: {}", message));
+    }
+
+    pub fn show_warning(&mut self, message: &str) {
+        self.outputs.push(format!("WARNING: {}", message));
+    }
+
+    pub fn show_contextual_help(&mut self, context: &str) -> String {
+        let help = format!("Help for {}", context);
+        self.outputs.push(help.clone());
+        help
+    }
+
+    pub fn prompt_with_validation<F>(&mut self, prompt: &str, _validator: F) -> Result<String>
+    where
+        F: Fn(&str) -> Result<(), String>,
+    {
+        let input = self.next_input();
+        self.outputs.push(format!("PROMPT: {} -> {}", prompt, input));
+        Ok(input)
+    }
+}
+
+impl TerminalUI for MockTerminalUI {
+    fn prompt_required(&mut self, field: &str) -> Result<String> {
+        let input = self.next_input();
+        self.outputs.push(format!("REQUIRED: {} -> {}", field, input));
+        Ok(input)
+    }
+
+    fn prompt_optional(&mut self, field: &str, default: Option<&str>) -> Result<Option<String>> {
+        let input = self.next_input();
+        if input.is_empty() {
+            Ok(default.map(|s| s.to_string()))
+        } else {
+            self.outputs.push(format!("OPTIONAL: {} -> {}", field, input));
+            Ok(Some(input))
+        }
+    }
+
+    fn confirm(&mut self, message: &str) -> Result<bool> {
+        let input = self.next_input();
+        let result = input.to_lowercase().starts_with('y');
+        self.outputs.push(format!("CONFIRM: {} -> {}", message, result));
+        Ok(result)
+    }
+
+    fn show_preview(&mut self, content: &str) {
+        self.outputs.push(format!("PREVIEW: {}", content));
+    }
+
+    fn show_progress(&mut self, current: usize, total: usize, message: &str) {
+        self.outputs.push(format!("PROGRESS: {}/{} - {}", current, total, message));
+    }
+
+    fn show_message(&mut self, message: &str, _color: SemanticColor) {
+        self.outputs.push(format!("MESSAGE: {}", message));
+    }
+
+    fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String> {
+        let input = self.next_input();
+        self.outputs.push(format!("SELECT: {} -> {}", prompt, input));
+        // Return first option if input is invalid
+        Ok(options.get(0).map(|(key, _)| key.to_string()).unwrap_or(input))
+    }
+
+    fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], _allow_other: bool) -> Result<Vec<String>> {
+        let input = self.next_input();
+        self.outputs.push(format!("SELECT_MULTIPLE: {} -> {}", prompt, input));
+        // Return first option as a vec if input is invalid
+        Ok(vec![options.get(0).map(|(key, _)| key.to_string()).unwrap_or(input)])
+    }
+}
+
+impl MockTerminalUI {
+    // Helper method for tests (not part of trait)
     pub fn record_output(&mut self, output: String) {
         self.outputs.push(output);
     }

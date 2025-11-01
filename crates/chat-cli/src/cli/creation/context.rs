@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 
 /// Context analyzer that provides smart defaults and suggestions
+#[derive(Debug)]
 pub struct CreationContext {
     current_dir: PathBuf,
     project_type: Option<ProjectType>,

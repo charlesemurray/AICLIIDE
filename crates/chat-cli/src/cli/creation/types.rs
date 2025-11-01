@@ -16,6 +16,7 @@ pub enum ComplexityLevel {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CreationPhase {
     Discovery,      // Understand what user wants to create
+    Planning,       // Plan the creation process
     BasicConfig,    // Essential configuration
     AdvancedConfig, // Complex configuration (agents only)
     Security,       // Security settings (skills/agents)
@@ -167,6 +168,14 @@ impl ValidationResult {
             error_message: error.to_string(),
             suggestion: suggestion.to_string(),
         }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.is_valid
+    }
+
+    pub fn error_message(&self) -> &str {
+        &self.error_message
     }
 }
 

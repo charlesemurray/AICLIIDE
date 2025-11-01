@@ -117,6 +117,7 @@ impl<F: CreationFlow> CreationAssistant<F> {
     fn format_phase(&self, phase: &CreationPhase) -> String {
         match phase {
             CreationPhase::Discovery => "Discovering requirements".to_string(),
+            CreationPhase::Planning => "Planning creation process".to_string(),
             CreationPhase::BasicConfig => "Basic configuration".to_string(),
             CreationPhase::AdvancedConfig => "Advanced configuration".to_string(),
             CreationPhase::Security => "Security settings".to_string(),

@@ -16,7 +16,7 @@ impl EnhancedTerminalUI {
 }
 
 impl TerminalUI for EnhancedTerminalUI {
-    fn show_message(&mut self, message: &str, color: SemanticColor) -> Result<()> {
+    fn show_message(&mut self, message: &str, color: SemanticColor) {
         let crossterm_color = match color {
             SemanticColor::Info => Color::Cyan,
             SemanticColor::Success => Color::Green,
@@ -24,7 +24,15 @@ impl TerminalUI for EnhancedTerminalUI {
             SemanticColor::Error => Color::Red,
             SemanticColor::Debug => Color::DarkGrey,
         };
-        input::show_message(message, crossterm_color)
+        let _ = input::show_message(message, crossterm_color);
+    }
+    
+    fn show_preview(&mut self, content: &str) {
+        println!("Preview:\n{}", content);
+    }
+    
+    fn show_progress(&mut self, current: usize, total: usize, message: &str) {
+        println!("Progress: {}/{} - {}", current, total, message);
     }
 
     fn prompt_required(&mut self, field: &str) -> Result<String> {
@@ -79,9 +87,16 @@ impl MockUI {
 }
 
 impl TerminalUI for MockUI {
-    fn show_message(&mut self, message: &str, _color: SemanticColor) -> Result<()> {
+    fn show_message(&mut self, message: &str, _color: SemanticColor) {
         self.outputs.push(format!("MSG: {}", message));
-        Ok(())
+    }
+    
+    fn show_preview(&mut self, content: &str) {
+        self.outputs.push(format!("PREVIEW: {}", content));
+    }
+    
+    fn show_progress(&mut self, current: usize, total: usize, message: &str) {
+        self.outputs.push(format!("PROGRESS: {}/{} - {}", current, total, message));
     }
 
     fn prompt_required(&mut self, field: &str) -> Result<String> {

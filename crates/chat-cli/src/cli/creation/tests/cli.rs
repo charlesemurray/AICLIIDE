@@ -118,7 +118,6 @@ mod cisco_style_parsing {
 #[cfg(test)]
 mod command_execution {
     use super::*;
-    use tokio_test;
 
     #[tokio::test]
     async fn test_create_skill_execution() {
@@ -197,7 +196,7 @@ mod error_handling {
         let args = CreateArgs::try_parse_from(&["create", "skill", "Invalid Name"]).unwrap();
         
         // Should parse but fail during execution with helpful error
-        let result = tokio_test::block_on(args.execute_test());
+        let result = futures::executor::block_on(args.execute_test());
         assert!(result.is_err());
         
         let error = result.unwrap_err();
@@ -225,7 +224,7 @@ mod error_handling {
             }
         };
         
-        let result = tokio_test::block_on(args.execute_test());
+        let result = futures::executor::block_on(args.execute_test());
         assert!(result.is_err());
         
         let error = result.unwrap_err();
@@ -244,7 +243,7 @@ mod error_handling {
             }
         };
         
-        let result = tokio_test::block_on(args.execute_test());
+        let result = futures::executor::block_on(args.execute_test());
         assert!(result.is_err());
         
         let error = result.unwrap_err();
