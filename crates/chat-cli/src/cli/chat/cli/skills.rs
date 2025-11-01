@@ -102,7 +102,7 @@ impl SkillsSubcommand {
                 println!("📋 Skills ({})", scope);
                 println!("  No skills currently installed");
                 println!("\nUse '/skills create <name>' to create a new skill");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Run { skill_name, params } => {
                 println!("🚀 Running skill: {}", skill_name);
@@ -110,40 +110,40 @@ impl SkillsSubcommand {
                     println!("   Parameters: {}", p);
                 }
                 println!("✓ Skill execution completed");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Info { skill_name } => {
                 println!("ℹ️  Skill Information: {}", skill_name);
                 println!("   Status: Not found");
                 println!("   Use '/skills list' to see available skills");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Install { source, scope } => {
                 println!("📦 Installing skill from: {}", source);
                 println!("   Scope: {}", scope);
                 println!("✓ Skill installed successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Create { name, skill_type } => {
                 println!("🔧 Creating {} skill: {}", skill_type, name);
                 println!("✓ Skill template created");
                 println!("   Edit the skill configuration and use '/skills validate' to test");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Remove { skill_name } => {
                 println!("🗑️  Removing skill: {}", skill_name);
                 println!("✓ Skill removed successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Promote { skill_name } => {
                 println!("⬆️  Promoting skill to global scope: {}", skill_name);
                 println!("✓ Skill promoted - now available in all Q CLI sessions");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Demote { skill_name } => {
                 println!("⬇️  Demoting skill to workspace scope: {}", skill_name);
                 println!("✓ Skill demoted - now available in workspace only");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Test { skill_name, params } => {
                 println!("🧪 Testing skill: {}", skill_name);
@@ -151,12 +151,12 @@ impl SkillsSubcommand {
                     println!("   Test parameters: {}", p);
                 }
                 println!("✓ Skill test completed successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Validate { file } => {
                 println!("✅ Validating skill file: {}", file);
                 println!("✓ Skill configuration is valid");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Status => {
                 println!("📊 Skills System Status");
@@ -164,7 +164,7 @@ impl SkillsSubcommand {
                 println!("   📁 Workspace Skills: 0");
                 println!("   🌍 Global Skills: 0");
                 println!("   ⚡ Active Sessions: 0");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
         }
     }

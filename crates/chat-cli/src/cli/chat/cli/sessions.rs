@@ -64,24 +64,24 @@ impl SessionsSubcommand {
                 println!("📋 Active Sessions:");
                 println!("  • main (current conversation)");
                 println!("  • No development sessions active");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Create { name, session_type } => {
                 println!("🔧 Creating {} development session: {}", session_type, name);
                 println!("✓ Session created successfully");
                 println!("Use '/switch {}' to enter the session", name);
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Close { name } => {
                 println!("🔒 Closing development session: {}", name);
                 println!("✓ Session closed successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::DevSessions => {
                 println!("🔧 Active Development Sessions:");
                 println!("  No development sessions currently active");
                 println!("\nUse '/sessions create <name>' to start a new development session");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Cleanup { completed, older_than } => {
                 let mut cleaned = 0;
@@ -94,12 +94,12 @@ impl SessionsSubcommand {
                     cleaned += 1;
                 }
                 println!("✓ Cleaned up {} sessions", cleaned);
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Recover { name } => {
                 println!("🔄 Recovering session: {}", name);
                 println!("✓ Session recovered successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
         }
     }

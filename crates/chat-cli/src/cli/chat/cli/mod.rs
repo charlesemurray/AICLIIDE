@@ -142,9 +142,6 @@ pub enum SlashCommand {
     /// View, manage, and resume to-do lists
     #[command(subcommand)]
     Todos(TodoSubcommand),
-    /// Manage and run skills
-    #[command(subcommand)]
-    Skills(SkillsSubcommand),
     // /// Show system status with colored output
     // Status(StatusArgs),
     /// Paste an image from clipboard
@@ -211,7 +208,7 @@ impl SlashCommand {
             Self::Switch { name } => {
                 println!("🔄 Switching to: {}", name);
                 println!("✓ Switched successfully");
-                Ok(ChatState::WaitingForInput)
+                Ok(ChatState::PromptUser { skip_printing_tools: true })
             },
             // Self::Root(subcommand) => {
             //     if let Err(err) = subcommand.execute(os, database, telemetry).await {
@@ -224,7 +221,6 @@ impl SlashCommand {
             // },
             Self::Checkpoint(subcommand) => subcommand.execute(os, session).await,
             Self::Todos(subcommand) => subcommand.execute(os, session).await,
-            Self::Skills(subcommand) => subcommand.execute(session, os).await,
             Self::Paste(args) => args.execute(os, session).await,
             // Self::Status(_args) => {
             //     // Temporarily disabled for testing
