@@ -6,6 +6,7 @@ use crate::util::env_var::{
 mod agent;
 pub mod chat;
 pub mod custom_commands;
+pub mod unified_creation_assistant;
 mod debug;
 mod diagnostics;
 pub mod experiment;
