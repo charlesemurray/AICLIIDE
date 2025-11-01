@@ -9,6 +9,7 @@ pub mod registry;
 pub mod security;
 pub mod security_logging;
 pub mod security_testing;
+pub mod security_tools;
 pub mod tests;
 pub mod types;
 pub mod validation;
