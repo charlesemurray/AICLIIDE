@@ -35,6 +35,11 @@ impl Skill for JsonSkill {
 
     async fn execute(&self, params: serde_json::Value) -> Result<SkillResult> {
         let execution_future = async {
+            // Validate parameters first
+            if let Some(param_defs) = &self.enhanced_skill.parameters {
+                crate::cli::skills::validation::SkillValidator::validate_parameters(&params, param_defs)?;
+            }
+            
             // Convert JSON params to HashMap<String, String>
             let param_map = if let serde_json::Value::Object(obj) = params {
                 obj.into_iter()

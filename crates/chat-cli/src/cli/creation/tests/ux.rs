@@ -178,7 +178,7 @@ mod power_user_efficiency {
         ]);
         
         // Create a simple skill flow for testing
-        let mut flow = SkillCreationFlow::new("test".to_string(), SkillMode::Quick).unwrap();
+        let mut flow = SkillCreationFlow::new("test".to_string(), CreationMode::Quick).unwrap();
         let result = flow.run_single_pass().unwrap();
         
         // Template mode should be very efficient
@@ -287,11 +287,12 @@ mod error_messaging {
         let mut ui = MockTerminalUI::new(vec![]);
         
         let error = CreationError::InvalidName {
+            creation_type: "skill".to_string(),
             name: "bad name".to_string(),
             suggestion: "bad-name".to_string(),
         };
         
-        ui.show_error(&error);
+        ui.show_error(&format!("{}", error));
         
         let error_output = &ui.outputs[0];
         

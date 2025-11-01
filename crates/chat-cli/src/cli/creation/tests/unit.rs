@@ -55,13 +55,14 @@ mod command_creation_flow {
     #[test]
     fn test_command_flow_single_pass_collection() -> Result<()> {
         let fixtures = TestFixtures::new();
-        let mut ui = MockTerminalUI::new(vec![
+        let ui = MockTerminalUI::new(vec![
             "echo hello".to_string(),           // command
             "Test command".to_string(),         // description
             "".to_string(),                     // parameters (none)
         ]);
         
-        let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick)?;
+        let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick)?
+            .with_ui(Box::new(ui));
         let config = flow.collect_input_single_pass().unwrap();
         
         assert_eq!(config.command, "echo hello");
@@ -73,12 +74,13 @@ mod command_creation_flow {
 
     #[test]
     fn test_command_flow_auto_detect_alias() -> Result<()> {
-        let mut ui = MockTerminalUI::new(vec![
+        let ui = MockTerminalUI::new(vec![
             "ls -la".to_string(),               // command (detected as alias)
             "List files".to_string(),           // description
         ]);
         
-        let mut flow = CommandCreationFlow::new("ll".to_string(), CreationMode::Quick)?;
+        let mut flow = CommandCreationFlow::new("ll".to_string(), CreationMode::Quick)?
+            .with_ui(Box::new(ui));
         let config = flow.collect_input_single_pass().unwrap();
         
         assert_eq!(config.command_type, CommandType::Alias);
@@ -87,12 +89,13 @@ mod command_creation_flow {
 
     #[test]
     fn test_command_flow_parameter_detection() -> Result<()> {
-        let mut ui = MockTerminalUI::new(vec![
+        let ui = MockTerminalUI::new(vec![
             "echo {{message}}".to_string(),     // command with parameter
             "Echo message".to_string(),         // description
         ]);
         
-        let mut flow = CommandCreationFlow::new("echo".to_string(), CreationMode::Quick)?;
+        let mut flow = CommandCreationFlow::new("echo".to_string(), CreationMode::Quick)?
+            .with_ui(Box::new(ui));
         let config = flow.collect_input_single_pass().unwrap();
         
         assert_eq!(config.parameters.len(), 1);

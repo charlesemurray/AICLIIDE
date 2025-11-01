@@ -111,12 +111,17 @@ impl SkillValidator {
                     return Err(SkillError::InvalidInput(format!("Parameter '{}' must be a string", param_def.name)));
                 }
                 
-                // Validate pattern if provided
-                if let (Some(pattern), Some(str_val)) = (&param_def.pattern, value.as_str()) {
-                    let regex = regex::Regex::new(pattern)
-                        .map_err(|_| SkillError::InvalidInput(format!("Invalid regex pattern for parameter '{}'", param_def.name)))?;
-                    if !regex.is_match(str_val) {
-                        return Err(SkillError::InvalidInput(format!("Parameter '{}' does not match pattern '{}'", param_def.name, pattern)));
+                if let Some(str_val) = value.as_str() {
+                    // Security: Check for malicious patterns
+                    Self::validate_input_security(str_val, &param_def.name)?;
+                    
+                    // Validate pattern if provided
+                    if let Some(pattern) = &param_def.pattern {
+                        let regex = regex::Regex::new(pattern)
+                            .map_err(|_| SkillError::InvalidInput(format!("Invalid regex pattern for parameter '{}'", param_def.name)))?;
+                        if !regex.is_match(str_val) {
+                            return Err(SkillError::InvalidInput(format!("Parameter '{}' does not match pattern '{}'", param_def.name, pattern)));
+                        }
                     }
                 }
             }
@@ -133,6 +138,27 @@ impl SkillValidator {
             }
             _ => {
                 return Err(SkillError::InvalidInput(format!("Unknown parameter type: {}", param_def.param_type)));
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn validate_input_security(input: &str, param_name: &str) -> Result<(), SkillError> {
+        // Check for command injection patterns
+        let dangerous_patterns = [
+            ";", "|", "&", "$", "`", "$(", "rm -rf", "sudo", "chmod", "chown",
+            "../", "..\\", "/etc/", "C:\\", "powershell", "cmd.exe", "bash -c",
+            "sh -c", "eval", "exec", "system", "popen", "shell_exec"
+        ];
+        
+        let input_lower = input.to_lowercase();
+        for pattern in &dangerous_patterns {
+            if input_lower.contains(pattern) {
+                return Err(SkillError::InvalidInput(format!(
+                    "Parameter '{}' contains potentially dangerous pattern: '{}'", 
+                    param_name, pattern
+                )));
             }
         }
         

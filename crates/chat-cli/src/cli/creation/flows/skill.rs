@@ -166,7 +166,16 @@ impl SkillCreationFlow {
             crate::cli::creation::SemanticColor::Info
         );
 
-        // STEP 1: Always ask for skill type first
+        // For Quick mode, use defaults without prompting
+        if matches!(self.mode, CreationMode::Quick) {
+            // Set default skill type and command for quick creation
+            self.config.skill_type = SkillType::CodeInline;
+            self.config.command = "echo 'Hello from skill'".to_string();
+            self.config.description = format!("Quick skill: {}", self.config.name);
+            return Ok(PhaseResult::Continue);
+        }
+
+        // STEP 1: Always ask for skill type first (for non-Quick modes)
         let skill_type_options = &[
             ("command", "Execute shell commands and scripts"),
             ("assistant", "AI conversational helper"),

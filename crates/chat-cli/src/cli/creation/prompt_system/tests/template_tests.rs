@@ -21,6 +21,18 @@ async fn test_template_loading() -> Result<()> {
         "example_conversation": {
             "input": "Review this function: def process_data(data): return data.upper()",
             "output": "This function works but could be improved..."
+        },
+        "metadata": {
+            "category": "CodeReview",
+            "difficulty": "Beginner",
+            "tags": ["security", "code"],
+            "usage_stats": {
+                "success_rate": 0.85,
+                "avg_satisfaction": 4.2,
+                "usage_count": 150
+            },
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
         }
     });
     

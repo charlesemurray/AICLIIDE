@@ -182,8 +182,8 @@ impl CreateArgs {
                     SkillMode::Force => CreationMode::Guided,
                 }).unwrap_or(CreationMode::Guided);
 
-                let _flow = SkillCreationFlow::new(name, creation_mode)?;
-                Ok(ExitCode::SUCCESS)
+                let flow = SkillCreationFlow::new(name, creation_mode)?;
+                CreationAssistant::new(flow).run().await
             },
             CreateCommand::Command { name, mode } => {
                 let creation_mode = mode.map(|m| match m {
@@ -195,8 +195,8 @@ impl CreateArgs {
                     CommandMode::Force => CreationMode::Guided,
                 }).unwrap_or(CreationMode::Guided);
 
-                let _flow = CommandCreationFlow::new(name, creation_mode)?;
-                Ok(ExitCode::SUCCESS)
+                let flow = CommandCreationFlow::new(name, creation_mode)?;
+                CreationAssistant::new(flow).run().await
             },
             CreateCommand::Agent { name, mode } => {
                 let creation_mode = mode.map(|m| match m {
@@ -209,8 +209,8 @@ impl CreateArgs {
                     AgentMode::Force => CreationMode::Guided,
                 }).unwrap_or(CreationMode::Guided);
 
-                let _flow = AgentCreationFlow::new(name, creation_mode)?;
-                Ok(ExitCode::SUCCESS)
+                let flow = AgentCreationFlow::new(name, creation_mode)?;
+                CreationAssistant::new(flow).run().await
             },
         }
     }

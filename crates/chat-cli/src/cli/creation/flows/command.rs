@@ -6,6 +6,7 @@ use crate::cli::creation::{
 };
 use crate::cli::custom_commands::{CustomCommand, CommandHandler};
 use eyre::Result;
+use regex::Regex;
 use serde::{Serialize, Deserialize};
 use std::path::Path;
 
@@ -169,13 +170,52 @@ impl CommandCreationFlow {
     
     // Stub methods for tests
     pub fn collect_input_single_pass(&mut self) -> Result<CommandConfig> {
-        Ok(CommandConfig {
-            name: self.config.name.clone(),
-            description: "Test command".to_string(),
-            command: "echo test".to_string(),
-            command_type: CommandType::Script,
-            parameters: vec![],
-        })
+        if let Some(ui) = &mut self.ui {
+            let command = ui.prompt_required("Command")?;
+            let description = ui.prompt_required("Description")?;
+            let _parameters = ui.prompt_optional("Parameters", None)?;
+            
+            self.config.command = command.clone();
+            self.config.description = description;
+            self.detect_command_type();
+            
+            // Detect parameters from {{parameter}} patterns
+            let parameters = self.extract_parameters(&command);
+            
+            Ok(CommandConfig {
+                name: self.config.name.clone(),
+                description: self.config.description.clone(),
+                command: self.config.command.clone(),
+                command_type: self.config.command_type.clone(),
+                parameters,
+            })
+        } else {
+            Ok(CommandConfig {
+                name: self.config.name.clone(),
+                description: "Test command".to_string(),
+                command: "echo test".to_string(),
+                command_type: CommandType::Script,
+                parameters: vec![],
+            })
+        }
+    }
+    
+    fn extract_parameters(&self, command: &str) -> Vec<CommandParameter> {
+        let mut parameters = Vec::new();
+        let re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
+        
+        for cap in re.captures_iter(command) {
+            if let Some(param_name) = cap.get(1) {
+                parameters.push(CommandParameter {
+                    name: param_name.as_str().to_string(),
+                    description: format!("Parameter: {}", param_name.as_str()),
+                    required: true,
+                    default_value: None,
+                });
+            }
+        }
+        
+        parameters
     }
     
     pub fn run_single_pass(&mut self) -> Result<CommandConfig> {

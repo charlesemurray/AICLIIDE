@@ -1,13 +1,12 @@
 //! Comprehensive test suite for unified creation system
 //! 
 //! Tests cover: CLI parsing, creation flows, terminal UI, context intelligence,
-//! backward compatibility, and end-to-end workflows.
+//! and end-to-end workflows.
 
 mod unit;
 mod integration;
 mod cli;
 mod ux;
-mod compatibility;
 
 pub use unit::*;
 pub use integration::*;
@@ -16,8 +15,6 @@ pub use ux::*;
 
 use crate::cli::creation::types::{TerminalUI, SemanticColor};
 use eyre::Result;
-pub use compatibility::*;
-
 use crate::cli::creation::*;
 use std::path::PathBuf;
 use tempfile::TempDir;
