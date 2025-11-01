@@ -125,6 +125,11 @@ impl SkillValidator {
                     }
                 }
             }
+            "number" => {
+                if !value.is_number() {
+                    return Err(SkillError::InvalidInput(format!("Parameter '{}' must be a number", param_def.name)));
+                }
+            }
             "enum" => {
                 if let Some(str_val) = value.as_str() {
                     if let Some(allowed_values) = &param_def.values {
