@@ -11,3 +11,4 @@ pub mod manual_verification_test;
 pub mod security_tests;
 pub mod resilience_tests;
 pub mod timeout_test;
+pub mod security_integration_test;
