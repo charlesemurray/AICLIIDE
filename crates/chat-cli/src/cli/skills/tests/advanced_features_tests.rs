@@ -218,7 +218,10 @@ mod advanced_features_tests {
         std::fs::write(&new_skill_file, json!({
             "name": "new_skill",
             "description": "Dynamically added skill",
-            "version": "1.0.0"
+            "version": "1.0.0",
+            "type": "command",
+            "command": "echo",
+            "args": ["Hello from new skill"]
         }).to_string()).unwrap();
         
         // Reload workspace skills

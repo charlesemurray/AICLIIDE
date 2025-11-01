@@ -40,6 +40,13 @@ pub struct SkillTypeConstraints {
 impl SkillTypeConstraints {
     pub fn for_type(skill_type: &SkillType) -> Self {
         match skill_type {
+            SkillType::Command => Self {
+                requires_command: true,
+                supports_prompt_testing: false,
+                supports_parameters: true,
+                supports_context_files: false,
+                supports_session_config: false,
+            },
             SkillType::CodeInline => Self {
                 requires_command: true,
                 supports_prompt_testing: false,
@@ -250,6 +257,7 @@ impl SkillCreationSession {
             "name": self.skill_name,
             "version": "1.0.0",
             "type": match self.skill_type {
+                SkillType::Command => "command",
                 SkillType::CodeInline => "code_inline",
                 SkillType::PromptInline => "prompt_inline", 
                 SkillType::Conversation => "conversation",

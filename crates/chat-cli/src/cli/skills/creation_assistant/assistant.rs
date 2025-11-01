@@ -25,6 +25,7 @@ impl SkillCreationAssistant {
     // Discovery phase - understand what user wants to build
     pub fn start_discovery(&mut self) -> String {
         let skill_type_name = match self.session.skill_type() {
+            SkillType::Command => "command",
             SkillType::CodeInline => "command",
             SkillType::PromptInline => "template", 
             SkillType::Conversation => "assistant",

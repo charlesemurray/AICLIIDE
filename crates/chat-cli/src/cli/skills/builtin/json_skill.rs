@@ -65,6 +65,7 @@ impl Skill for JsonSkill {
 
     async fn render_ui(&self) -> Result<SkillUI> {
         let skill_type_desc = match self.enhanced_skill.skill_type {
+            SkillType::Command => "Command",
             SkillType::CodeInline => "Code Inline",
             SkillType::CodeSession => "Code Session", 
             SkillType::Conversation => "Conversation",

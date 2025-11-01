@@ -4,6 +4,8 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SkillType {
+    #[serde(rename = "command")]
+    Command,
     #[serde(rename = "code_inline")]
     CodeInline,
     #[serde(rename = "code_session")]
@@ -97,10 +99,29 @@ impl JsonSkill {
     
     pub async fn execute(&self, params: HashMap<String, String>) -> Result<String, String> {
         match self.skill_type {
+            SkillType::Command => self.execute_command(params).await,
             SkillType::CodeInline => self.execute_code_inline(params).await,
             SkillType::CodeSession => self.execute_code_session(params).await,
             SkillType::Conversation => self.execute_conversation(params).await,
             SkillType::PromptInline => self.execute_prompt_inline(params).await,
+        }
+    }
+    
+    async fn execute_command(&self, _params: HashMap<String, String>) -> Result<String, String> {
+        let command = self.command.as_ref().ok_or("No command specified")?;
+        let empty_args = vec![];
+        let args = self.args.as_ref().unwrap_or(&empty_args);
+        
+        let output = tokio::process::Command::new(command)
+            .args(args)
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute command: {}", e))?;
+            
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).to_string())
         }
     }
     
