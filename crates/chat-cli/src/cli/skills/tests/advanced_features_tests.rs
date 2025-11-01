@@ -174,15 +174,18 @@ mod advanced_features_tests {
         
         std::fs::write(&workspace_skill, json!({
             "name": "workspace_skill",
-            "description": "Workspace skill"
+            "description": "Workspace skill",
+            "version": "1.0.0"
         }).to_string()).unwrap();
         
         std::fs::write(&global_skill, json!({
             "name": "global_skill", 
-            "description": "Global skill"
+            "description": "Global skill",
+            "version": "1.0.0"
         }).to_string()).unwrap();
         
-        let locations = vec![workspace_dir.as_path(), global_dir.as_path()];
+        let workspace_skills_dir = workspace_dir.join(".q-skills");
+        let locations = vec![workspace_skills_dir.as_path(), global_dir.as_path()];
         let discovered = SkillRegistry::discover_skills_in_locations(&locations);
         
         assert_eq!(discovered.len(), 2);
@@ -215,7 +218,8 @@ mod advanced_features_tests {
         let new_skill_file = skills_dir.join("new_skill.json");
         std::fs::write(&new_skill_file, json!({
             "name": "new_skill",
-            "description": "Dynamically added skill"
+            "description": "Dynamically added skill",
+            "version": "1.0.0"
         }).to_string()).unwrap();
         
         // Reload workspace skills

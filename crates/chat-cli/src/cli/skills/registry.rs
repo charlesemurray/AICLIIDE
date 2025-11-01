@@ -54,6 +54,12 @@ impl SkillRegistry {
         Ok(())
     }
 
+    pub fn register_override(&mut self, skill: Box<dyn Skill>) -> Result<(), SkillError> {
+        let name = skill.name().to_string();
+        self.skills.insert(name, skill);
+        Ok(())
+    }
+
     pub fn register_with_aliases(&mut self, skill: Box<dyn Skill>) -> Result<(), SkillError> {
         let name = skill.name().to_string();
         let aliases = skill.aliases();
@@ -201,12 +207,32 @@ impl SkillRegistry {
         Ok(())
     }
 
-    async fn load_from_directory(&mut self, _path: &Path) -> Result<(), SkillError> {
-        // TODO: Implement directory-based skill loading
-        // For now, just register builtins if not already done
-        if self.skills.is_empty() {
-            self.register_builtins();
+    async fn load_from_directory(&mut self, path: &Path) -> Result<(), SkillError> {
+        if !path.exists() {
+            return Ok(());
         }
+
+        let entries = std::fs::read_dir(path)
+            .map_err(|e| SkillError::Io(e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| SkillError::Io(e))?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| SkillError::Io(e))?;
+                
+                if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {
+                    // Create a JSON-based skill implementation
+                    let json_skill = crate::cli::skills::builtin::JsonSkill::new(skill_info, content)?;
+                    
+                    // Register the skill, potentially overriding builtins
+                    let _ = self.register_override(Box::new(json_skill));
+                }
+            }
+        }
+        
         Ok(())
     }
 
