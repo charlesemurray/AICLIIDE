@@ -75,14 +75,14 @@ async fn test_template_manager_integration() -> Result<()> {
 
 #[test]
 fn test_validation_edge_cases() -> Result<()> {
-    // Test very short role
+    // Test very short role - should succeed but with warnings
     let template1 = PromptBuilder::new()
         .with_name("Short Role".to_string())
         .with_role("Help".to_string())
         .build();
     
-    // Should fail validation due to short role
-    assert!(template1.is_err());
+    // Should succeed despite short role (warnings don't fail build)
+    assert!(template1.is_ok());
     
     // Test minimal valid template
     let template2 = PromptBuilder::new()

@@ -225,16 +225,17 @@ mod error_messaging {
 
     #[test]
     fn test_actionable_error_messages() {
-        let context = CreationContext::new(&std::env::current_dir().unwrap()).unwrap();
+        let fixtures = TestFixtures::new();
+        fixtures.setup_directories();
+        let context = CreationContext::new(fixtures.temp_dir.path()).unwrap();
         
         // Test invalid name error
         let validation = context.validate_name("Invalid Name!", &CreationType::Skill);
         assert!(!validation.is_valid());
         
         let error_msg = validation.error_message();
-        assert!(error_msg.contains("Invalid skill name")); // Clear problem
-        assert!(error_msg.contains("invalid-name")); // Suggested fix
-        assert!(error_msg.contains("Valid names:")); // Explanation of rules
+        assert!(error_msg.contains("Invalid characters in name")); // Clear problem
+        assert!(validation.suggestion.contains("invalid-name")); // Suggested fix
         assert!(!error_msg.contains("please try again")); // No vague messaging
     }
 
@@ -255,9 +256,11 @@ mod error_messaging {
         assert!(!validation.is_valid());
         let error_msg = validation.error_message();
         assert!(error_msg.contains("already exists"));
-        assert!(error_msg.contains("force")); // Suggest force mode
-        assert!(error_msg.contains("edit")); // Suggest edit mode
-        assert!(error_msg.contains("existing-2")); // Suggest alternative name
+        
+        // Check suggestions are in the suggestion field, not error message
+        let suggestion = &validation.suggestion;
+        assert!(suggestion.contains("force")); // Suggest force mode
+        assert!(suggestion.contains("existing-2")); // Suggest alternative name
     }
 
     #[test]

@@ -150,17 +150,60 @@ impl AgentCreationFlow {
     
     // Stub methods for tests
     pub fn collect_input_single_pass(&mut self) -> Result<AgentConfig> {
-        Ok(AgentConfig {
-            basic: BasicAgentConfig {
-                name: self.config.basic.name.clone(),
-                description: "Test agent".to_string(),
-                prompt: "Test role".to_string(),
-            },
-            mcp: McpConfig { servers: vec![] },
-            tools: ToolsConfig { enabled_tools: vec![] },
-            resources: ResourcesConfig { file_paths: vec![] },
-            hooks: HooksConfig { enabled_hooks: vec![] },
-        })
+        if let Some(ui) = &mut self.ui {
+            let prompt = ui.prompt_required("Agent prompt")?;
+            let description = ui.prompt_required("Description")?;
+            
+            // For expert mode, collect additional configuration
+            let mut servers = vec![];
+            let mut enabled_tools = vec![];
+            let mut enabled_hooks = vec![];
+            
+            if self.mode == CreationMode::Expert {
+                // MCP servers
+                if ui.confirm("Enable MCP servers?")? {
+                    let server_input = ui.prompt_required("MCP server name")?;
+                    servers.push(server_input);
+                }
+                
+                // Tools
+                if ui.confirm("Enable tools?")? {
+                    let tools_input = ui.prompt_required("Allowed tools (comma-separated)")?;
+                    enabled_tools = tools_input.split(',').map(|s| s.trim().to_string()).collect();
+                }
+                
+                // Hooks
+                if ui.confirm("Enable hooks?")? {
+                    let hook_input = ui.prompt_required("Hook type")?;
+                    enabled_hooks.push(hook_input);
+                }
+            }
+            
+            Ok(AgentConfig {
+                basic: BasicAgentConfig {
+                    name: self.config.basic.name.clone(),
+                    description,
+                    prompt,
+                },
+                mcp: McpConfig { servers },
+                tools: ToolsConfig { enabled_tools },
+                resources: ResourcesConfig { file_paths: vec![] },
+                hooks: HooksConfig { enabled_hooks },
+            })
+        } else {
+            // Fallback for when no UI is available
+            Ok(AgentConfig {
+                basic: BasicAgentConfig {
+                    name: self.config.basic.name.clone(),
+                    description: "Test agent".to_string(),
+                    prompt: "Test role".to_string(),
+                },
+                mcp: McpConfig { servers: vec![] },
+                tools: ToolsConfig { enabled_tools: vec![] },
+                resources: ResourcesConfig { file_paths: vec![] },
+                hooks: HooksConfig { enabled_hooks: vec![] },
+            })
+        }
     }
     
     pub fn run_single_pass(&mut self) -> Result<AgentConfig> {

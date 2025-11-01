@@ -223,7 +223,18 @@ impl CommandCreationFlow {
     }
     
     pub fn run_preview_only(&mut self) -> Result<String> {
-        Ok("Preview: echo test".to_string())
+        // Collect input if command is not set
+        if self.config.command.is_empty() {
+            self.collect_input_single_pass()?;
+        }
+        
+        let preview = format!(
+            "Preview: Command '{}' would be created with:\n  Command: {}\n  Type: {:?}",
+            self.config.name,
+            self.config.command,
+            self.config.command_type
+        );
+        Ok(preview)
     }
 
     fn execute_discovery(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
@@ -334,13 +345,13 @@ impl CommandCreationFlow {
         
         // Consider it an alias if:
         // 1. It's a short command (2-3 words)
-        // 2. The name is shorter than the first word of the command (typical alias pattern)
+        // 2. The name is very short (1-2 chars) and shorter than first word (typical alias pattern)
         // 3. Or it's a known alias pattern like "ll" -> "ls -la"
         if words.len() >= 2 && words.len() <= 3 {
             let first_word = words[0];
-            // Classic alias patterns
+            // Classic alias patterns - only very short names
             if (name == "ll" && first_word == "ls") ||
-               (name.len() < first_word.len()) {
+               (name.len() <= 2 && name.len() < first_word.len()) {
                 return true;
             }
         }
@@ -445,23 +456,17 @@ mod tests {
 
     #[test]
     fn test_detect_command_type() {
-        let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick).unwrap();
-        
         // Test script detection (default behavior)
+        let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick).unwrap();
         flow.config.command = "python script.py".to_string();
         flow.detect_command_type();
         assert_eq!(flow.config.command_type, CommandType::Script);
         
-        // Test that simple commands also default to script
-        flow.config.command = "ls -la".to_string();
-        flow.detect_command_type();
-        assert_eq!(flow.config.command_type, CommandType::Script);
-        
-        // Test that even short names default to script
+        // Test alias detection - short name triggers alias detection
         let mut short_flow = CommandCreationFlow::new("l".to_string(), CreationMode::Quick).unwrap();
         short_flow.config.command = "ls -la".to_string();
         short_flow.detect_command_type();
-        assert_eq!(short_flow.config.command_type, CommandType::Script);
+        assert_eq!(short_flow.config.command_type, CommandType::Alias);
     }
 
     #[test]

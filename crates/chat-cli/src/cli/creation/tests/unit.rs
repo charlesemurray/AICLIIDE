@@ -200,7 +200,8 @@ mod agent_creation_flow {
             "agentSpawn".to_string(),               // hook type
         ]);
         
-        let mut flow = AgentCreationFlow::new("test".to_string(), CreationMode::Expert)?;
+        let mut flow = AgentCreationFlow::new("test".to_string(), CreationMode::Expert)?
+            .with_ui(Box::new(ui));
         let config = flow.collect_input_single_pass().unwrap();
         
         assert_eq!(config.basic.description, "Coding helper");

@@ -90,7 +90,10 @@ impl MockTerminalUI {
     }
 
     pub fn show_contextual_help(&mut self, context: &str) -> String {
-        let help = format!("Help for {}", context);
+        let help = match context {
+            "skill_type" => "code_inline: Run shell commands\nconversation: Chat assistant".to_string(),
+            _ => format!("Help for {}", context),
+        };
         self.outputs.push(help.clone());
         help
     }
@@ -108,7 +111,7 @@ impl MockTerminalUI {
 impl TerminalUI for MockTerminalUI {
     fn prompt_required(&mut self, field: &str) -> Result<String> {
         let input = self.next_input();
-        self.outputs.push(format!("REQUIRED: {} -> {}", field, input));
+        self.outputs.push(format!("{}: ", field));
         Ok(input)
     }
 
@@ -117,7 +120,7 @@ impl TerminalUI for MockTerminalUI {
         if input.is_empty() {
             Ok(default.map(|s| s.to_string()))
         } else {
-            self.outputs.push(format!("OPTIONAL: {} -> {}", field, input));
+            self.outputs.push(format!("{}: ", field));
             Ok(Some(input))
         }
     }
@@ -125,7 +128,7 @@ impl TerminalUI for MockTerminalUI {
     fn confirm(&mut self, message: &str) -> Result<bool> {
         let input = self.next_input();
         let result = input.to_lowercase().starts_with('y');
-        self.outputs.push(format!("CONFIRM: {} -> {}", message, result));
+        self.outputs.push(format!("{}? ", message));
         Ok(result)
     }
 
