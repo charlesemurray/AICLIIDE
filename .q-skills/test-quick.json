@@ -1,0 +1,8 @@
+{
+  "name": "test-quick",
+  "description": "Quick test-quick skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "date",
+  "args": []
+}

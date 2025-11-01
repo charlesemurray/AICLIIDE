@@ -1,0 +1,15 @@
+{
+  "name": "test-interactive",
+  "description": "A test-interactive conversation skill",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "ls -la",
+  "context_files": {
+    "patterns": [
+      "*.rs",
+      "*.py",
+      "*.js"
+    ],
+    "max_files": 10
+  }
+}

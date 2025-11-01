@@ -46,6 +46,18 @@ pub enum SkillsCommand {
         /// Interactive mode for guided creation
         #[arg(long, short)]
         interactive: bool,
+        /// Wizard mode for step-by-step creation
+        #[arg(long, short)]
+        wizard: bool,
+        /// Quick creation with minimal prompts
+        #[arg(long, short)]
+        quick: bool,
+        /// Command to execute (for quick code_inline creation)
+        #[arg(long)]
+        command: Option<String>,
+        /// Template text (for quick prompt_inline creation)
+        #[arg(long)]
+        template: Option<String>,
     },
 }
 
@@ -132,12 +144,15 @@ impl SkillsArgs {
                 println!("Skill installation not yet implemented");
                 Ok(ExitCode::SUCCESS)
             },
-            SkillsCommand::Create { name, skill_type, interactive } => {
-                if interactive || skill_type.is_none() {
+            SkillsCommand::Create { name, skill_type, interactive, wizard, quick, command, template } => {
+                if wizard {
+                    create_skill_wizard(&name).await?;
+                } else if interactive || skill_type.is_none() {
                     create_skill_interactive(&name).await?;
+                } else if quick {
+                    create_skill_quick(&name, skill_type.as_ref().unwrap(), command.as_deref(), template.as_deref())?;
                 } else {
-                    let skill_type = skill_type.as_ref().unwrap();
-                    create_skill_template(&name, skill_type)?;
+                    create_skill_template(&name, skill_type.as_ref().unwrap())?;
                 }
                 Ok(ExitCode::SUCCESS)
             },
@@ -351,42 +366,299 @@ fn create_json_skill_template(name: &str, skill_type: &str) -> Result<()> {
     Ok(())
 }
 
-async fn create_skill_interactive(name: &str) -> Result<()> {
-    println!("Creating skill: {}", name);
-    println!("Select skill type:");
-    println!("1. code_inline - Execute commands and return output");
-    println!("2. code_session - Maintain persistent command sessions");
-    println!("3. conversation - AI conversation prompts with context");
-    println!("4. prompt_inline - Parameterized prompt templates");
-    println!("5. rust - Rust skill (advanced)");
+// QUICK MODE: For experts who know exactly what they want
+fn create_skill_quick(name: &str, skill_type: &str, command: Option<&str>, template: Option<&str>) -> Result<()> {
+    match skill_type {
+        "code_inline" => {
+            let cmd = command.ok_or_else(|| eyre::eyre!("--command required for quick code_inline creation"))?;
+            let skill = json!({
+                "name": name,
+                "description": format!("Quick {} skill", name),
+                "version": "1.0.0",
+                "type": "code_inline",
+                "command": cmd,
+                "args": []
+            });
+            save_and_validate_json_skill(name, &skill)?;
+        },
+        "prompt_inline" => {
+            let tmpl = template.ok_or_else(|| eyre::eyre!("--template required for quick prompt_inline creation"))?;
+            let skill = json!({
+                "name": name,
+                "description": format!("Quick {} skill", name),
+                "version": "1.0.0",
+                "type": "prompt_inline",
+                "prompt": tmpl,
+                "parameters": []
+            });
+            save_and_validate_json_skill(name, &skill)?;
+        },
+        _ => return Err(eyre::eyre!("Quick mode only supports code_inline and prompt_inline. Use --wizard for other types.")),
+    }
+    Ok(())
+}
+
+// WIZARD MODE: Step-by-step guided creation with explanations
+async fn create_skill_wizard(name: &str) -> Result<()> {
+    println!("🧙 Skills Creation Wizard");
+    println!("Let's create a skill called '{}'", name);
+    println!();
     
-    print!("Enter choice (1-5): ");
+    // Step 1: Understand user intent
+    println!("What do you want this skill to do?");
+    println!("1. 🔧 Run a command or script");
+    println!("2. 💬 Have a conversation with AI");
+    println!("3. 📝 Generate text from a template");
+    println!("4. 🔄 Start an interactive session");
+    println!("5. ⚡ Write custom Rust code");
+    println!();
+    
+    print!("Choose (1-5): ");
     io::stdout().flush()?;
-    
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
     
-    let skill_type = match input.trim() {
-        "1" => "code_inline",
-        "2" => "code_session", 
-        "3" => "conversation",
-        "4" => "prompt_inline",
-        "5" => "rust",
-        _ => return Err(eyre::eyre!("Invalid choice")),
+    match input.trim() {
+        "1" => create_command_skill_wizard(name).await,
+        "2" => create_conversation_skill_wizard(name).await,
+        "3" => create_template_skill_wizard(name).await,
+        "4" => create_session_skill_wizard(name).await,
+        "5" => create_rust_skill_wizard(name).await,
+        _ => Err(eyre::eyre!("Invalid choice")),
+    }
+}
+
+async fn create_command_skill_wizard(name: &str) -> Result<()> {
+    println!();
+    println!("🔧 Creating a Command Skill");
+    println!("This skill will run a command and return the output.");
+    println!();
+    
+    print!("What command should it run? (e.g., 'ls', 'echo hello', 'python script.py'): ");
+    io::stdout().flush()?;
+    let mut command_input = String::new();
+    io::stdin().read_line(&mut command_input)?;
+    let command_parts: Vec<&str> = command_input.trim().split_whitespace().collect();
+    
+    if command_parts.is_empty() {
+        return Err(eyre::eyre!("Command cannot be empty"));
+    }
+    
+    let command = command_parts[0];
+    let args: Vec<String> = command_parts[1..].iter().map(|s| s.to_string()).collect();
+    
+    print!("Brief description of what this does: ");
+    io::stdout().flush()?;
+    let mut desc = String::new();
+    io::stdin().read_line(&mut desc)?;
+    let description = if desc.trim().is_empty() {
+        format!("Runs {}", command)
+    } else {
+        desc.trim().to_string()
     };
     
-    if skill_type == "rust" {
-        create_rust_skill_template(name)?;
+    let skill = json!({
+        "name": name,
+        "description": description,
+        "version": "1.0.0",
+        "type": "code_inline",
+        "command": command,
+        "args": args,
+        "timeout": 30,
+        "security": {
+            "resource_limits": {
+                "max_memory_mb": 100,
+                "max_execution_time": 30
+            }
+        }
+    });
+    
+    println!();
+    println!("📋 Preview:");
+    println!("   Name: {}", name);
+    println!("   Command: {} {}", command, args.join(" "));
+    println!("   Description: {}", description);
+    println!();
+    
+    print!("Create this skill? (Y/n): ");
+    io::stdout().flush()?;
+    let mut confirm = String::new();
+    io::stdin().read_line(&mut confirm)?;
+    
+    if confirm.trim().to_lowercase() == "n" {
+        println!("❌ Cancelled");
         return Ok(());
     }
     
-    // For JSON skills, create with customization
-    match skill_type {
-        "code_inline" => create_code_inline_interactive(name).await,
-        "code_session" => create_code_session_interactive(name).await,
-        "conversation" => create_conversation_interactive(name).await,
-        "prompt_inline" => create_prompt_inline_interactive(name).await,
-        _ => unreachable!(),
+    save_and_validate_json_skill(name, &skill)?;
+    println!("🎉 Skill created! Try: skills run {}", name);
+    Ok(())
+}
+
+async fn create_template_skill_wizard(name: &str) -> Result<()> {
+    println!();
+    println!("📝 Creating a Text Generator Skill");
+    println!("This skill generates text by filling in a template with your input.");
+    println!();
+    
+    print!("Enter your template (use {{variable}} for things that change): ");
+    io::stdout().flush()?;
+    let mut template = String::new();
+    io::stdin().read_line(&mut template)?;
+    let template = template.trim();
+    
+    if template.is_empty() {
+        return Err(eyre::eyre!("Template cannot be empty"));
+    }
+    
+    // Extract variables from template
+    let variables: Vec<String> = template
+        .split('{')
+        .filter_map(|part| part.split('}').next())
+        .filter(|var| !var.is_empty())
+        .map(|var| var.to_string())
+        .collect();
+    
+    let mut parameters = Vec::new();
+    for var in &variables {
+        parameters.push(json!({
+            "name": var,
+            "type": "string",
+            "required": true
+        }));
+    }
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("Generates text using template: {}", template),
+        "version": "1.0.0",
+        "type": "prompt_inline",
+        "prompt": template,
+        "parameters": parameters
+    });
+    
+    println!();
+    println!("📋 Preview:");
+    println!("   Template: {}", template);
+    if !variables.is_empty() {
+        println!("   Variables: {}", variables.join(", "));
+        println!("   Usage: skills run {} --params '{{\"{}\":\"value\"}}'", name, variables[0]);
+    }
+    println!();
+    
+    print!("Create this skill? (Y/n): ");
+    io::stdout().flush()?;
+    let mut confirm = String::new();
+    io::stdin().read_line(&mut confirm)?;
+    
+    if confirm.trim().to_lowercase() != "n" {
+        save_and_validate_json_skill(name, &skill)?;
+        println!("🎉 Skill created! Try: skills run {}", name);
+    } else {
+        println!("❌ Cancelled");
+    }
+    
+    Ok(())
+}
+
+async fn create_conversation_skill_wizard(name: &str) -> Result<()> {
+    println!();
+    println!("💬 Creating an AI Conversation Skill");
+    println!("This skill will have a conversation with AI about your input.");
+    println!();
+    
+    print!("What should the AI help with? (e.g., 'Review this code', 'Explain this concept'): ");
+    io::stdout().flush()?;
+    let mut prompt = String::new();
+    io::stdin().read_line(&mut prompt)?;
+    let prompt = prompt.trim();
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("AI conversation: {}", prompt),
+        "version": "1.0.0",
+        "type": "conversation",
+        "prompt_template": format!("{}: {{input}}", prompt),
+        "context_files": {
+            "patterns": ["*.rs", "*.py", "*.js", "*.md"],
+            "max_files": 10
+        }
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("🎉 AI conversation skill created!");
+    Ok(())
+}
+
+async fn create_session_skill_wizard(name: &str) -> Result<()> {
+    println!();
+    println!("🔄 Creating an Interactive Session Skill");
+    println!("This skill starts a persistent session (like Python REPL, Node.js, etc.)");
+    println!();
+    
+    print!("What program should it run? (e.g., 'python3', 'node', 'bash'): ");
+    io::stdout().flush()?;
+    let mut command = String::new();
+    io::stdin().read_line(&mut command)?;
+    let command = command.trim();
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("Interactive {} session", command),
+        "version": "1.0.0",
+        "type": "code_session",
+        "command": command,
+        "session_config": {
+            "session_timeout": 3600,
+            "max_sessions": 5,
+            "cleanup_on_exit": true
+        }
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("🎉 Session skill created!");
+    Ok(())
+}
+
+async fn create_rust_skill_wizard(name: &str) -> Result<()> {
+    println!();
+    println!("⚡ Creating a Custom Rust Skill");
+    println!("This creates a Rust template for advanced customization.");
+    println!();
+    
+    create_rust_skill_template(name)?;
+    println!("🎉 Rust skill template created!");
+    println!("💡 Edit {}.rs to customize the behavior", name);
+    Ok(())
+}
+
+// INTERACTIVE MODE: Simple prompts for skill type selection
+async fn create_skill_interactive(name: &str) -> Result<()> {
+    println!("Creating skill: {}", name);
+    println!();
+    println!("What type of skill do you want to create?");
+    println!("1. Command (run a shell command)");
+    println!("2. AI Chat (conversation with AI)");
+    println!("3. Template (generate text from template)");
+    println!("4. Session (interactive shell session)");
+    println!("5. Custom (Rust code)");
+    println!();
+    
+    print!("Choose (1-5): ");
+    io::stdout().flush()?;
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    
+    match input.trim() {
+        "1" => create_code_inline_interactive(name).await,
+        "2" => create_conversation_interactive(name).await,
+        "3" => create_prompt_inline_interactive(name).await,
+        "4" => create_code_session_interactive(name).await,
+        "5" => {
+            create_rust_skill_template(name)?;
+            Ok(())
+        },
+        _ => Err(eyre::eyre!("Invalid choice")),
     }
 }
 
