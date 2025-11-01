@@ -234,7 +234,7 @@ mod error_handling {
         use crate::cli::creation::CreationMode;
         
         // Test existing name validation directly
-        let result = SkillCreationFlow::new("existing".to_string(), CreationMode::Guided);
+        let result = SkillCreationFlow::new_with_dir("existing".to_string(), CreationMode::Guided, fixtures.temp_dir.path());
         
         // The test should pass if it detects an error (any error is fine for this test)
         assert!(result.is_err(), "Expected error when creating skill with existing name");

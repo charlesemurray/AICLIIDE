@@ -105,7 +105,11 @@ impl std::fmt::Debug for SkillCreationFlow {
 impl SkillCreationFlow {
     pub fn new(name: String, mode: CreationMode) -> Result<Self> {
         let current_dir = std::env::current_dir()?;
-        let context = CreationContext::new(&current_dir)?;
+        Self::new_with_dir(name, mode, &current_dir)
+    }
+
+    pub fn new_with_dir(name: String, mode: CreationMode, dir: &Path) -> Result<Self> {
+        let context = CreationContext::new(dir)?;
         
         // Validate name upfront
         let validation = context.validate_name(&name, &CreationType::Skill);
