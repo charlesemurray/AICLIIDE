@@ -5,11 +5,13 @@ use tokio::time::timeout;
 
 pub mod builtin;
 pub mod registry;
+pub mod security;
 pub mod tests;
 pub mod types;
 pub mod validation;
 
 pub use registry::SkillRegistry;
+pub use security::*;
 pub use types::*;
 pub use validation::SkillValidator;
 
