@@ -1,20 +1,54 @@
 use crate::cli::skills::security::*;
 use crate::cli::skills::security_logging::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio::fs;
+use tokio::io::{self, AsyncBufReadExt, BufReader};
+
+#[derive(Debug, Clone)]
+pub struct SignoffRequest {
+    pub operation_description: String,
+    pub risk_level: RiskLevel,
+    pub details: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserSignoffDecision {
+    pub approved: bool,
+    pub conditions: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SignoffDecision {
+    pub required: bool,
+    pub approved: bool,
+    pub conditions: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum SignoffTrigger {
+    TrustLevelElevation,
+    FileSystemWrite(String),
+    NetworkAccess,
+    SystemCommand(String),
+    ResourceLimitExceed,
+}
 
 /// Enhanced security tools that build on Q CLI's existing infrastructure
 pub struct SkillSecurityTools {
     pub logger: SecurityLogger,
     pub metrics: SecurityMetrics,
+    pub signoff_manager: SkillSignoffManager,
+    pub git_manager: SkillGitManager,
 }
 
 impl SkillSecurityTools {
-    pub fn new(log_dir: std::path::PathBuf) -> Self {
+    pub fn new(log_dir: std::path::PathBuf, repo_path: PathBuf) -> Self {
         Self {
             logger: SecurityLogger::new(log_dir),
             metrics: SecurityMetrics::new(),
+            signoff_manager: SkillSignoffManager::new(),
+            git_manager: SkillGitManager::new(repo_path),
         }
     }
     
@@ -342,5 +376,190 @@ mod tests {
         // Test command injection blocking
         let result = tools.validate_skill_command("echo hello; rm -rf /", &context);
         assert!(result.is_err());
+    }
+}
+
+pub struct SkillSignoffManager {
+    signoff_required_operations: Vec<SignoffTrigger>,
+}
+
+impl SkillSignoffManager {
+    pub fn new() -> Self {
+        Self {
+            signoff_required_operations: vec![
+                SignoffTrigger::FileSystemWrite("/".to_string()),
+                SignoffTrigger::NetworkAccess,
+                SignoffTrigger::SystemCommand("sudo".to_string()),
+                SignoffTrigger::SystemCommand("rm".to_string()),
+                SignoffTrigger::ResourceLimitExceed,
+            ],
+        }
+    }
+    
+    pub async fn check_signoff_required(
+        &self,
+        operation: &str,
+        context: &SecurityContext,
+    ) -> SecurityResult<SignoffDecision> {
+        let triggers = self.evaluate_signoff_triggers(operation, context);
+        
+        if !triggers.is_empty() {
+            let signoff_request = SignoffRequest {
+                operation_description: format!("Skill operation: {}", operation),
+                risk_level: self.assess_risk_level(&triggers),
+                details: serde_json::json!({
+                    "triggers": format!("{:?}", triggers),
+                    "trust_level": format!("{:?}", context.trust_level),
+                }),
+            };
+            
+            let user_decision = self.request_user_signoff(signoff_request).await?;
+            
+            Ok(SignoffDecision {
+                required: true,
+                approved: user_decision.approved,
+                conditions: user_decision.conditions,
+            })
+        } else {
+            Ok(SignoffDecision {
+                required: false,
+                approved: true,
+                conditions: vec![],
+            })
+        }
+    }
+    
+    fn evaluate_signoff_triggers(&self, operation: &str, context: &SecurityContext) -> Vec<SignoffTrigger> {
+        let mut triggers = vec![];
+        
+        if operation.contains("sudo") || operation.contains("su") {
+            triggers.push(SignoffTrigger::SystemCommand("privilege_escalation".to_string()));
+        }
+        
+        if operation.contains("rm") || operation.contains("del") {
+            triggers.push(SignoffTrigger::SystemCommand("file_deletion".to_string()));
+        }
+        
+        if operation.contains("curl") || operation.contains("wget") || operation.contains("nc") {
+            triggers.push(SignoffTrigger::NetworkAccess);
+        }
+        
+        if context.trust_level == TrustLevel::Untrusted && operation.contains("write") {
+            triggers.push(SignoffTrigger::FileSystemWrite("untrusted_write".to_string()));
+        }
+        
+        triggers
+    }
+    
+    fn assess_risk_level(&self, triggers: &[SignoffTrigger]) -> RiskLevel {
+        if triggers.iter().any(|t| matches!(t, SignoffTrigger::SystemCommand(_))) {
+            RiskLevel::High
+        } else if triggers.len() > 1 {
+            RiskLevel::Medium
+        } else {
+            RiskLevel::Low
+        }
+    }
+    
+    async fn request_user_signoff(&self, request: SignoffRequest) -> SecurityResult<UserSignoffDecision> {
+        println!("🔐 Skill Security Review Required");
+        println!("Operation: {}", request.operation_description);
+        println!("Risk Level: {:?}", request.risk_level);
+        println!();
+        println!("Do you want to allow this operation? (y/N)");
+        
+        let stdin = io::stdin();
+        let mut reader = BufReader::new(stdin);
+        let mut response = String::new();
+        
+        match reader.read_line(&mut response).await {
+            Ok(_) => {
+                let response = response.trim().to_lowercase();
+                match response.as_str() {
+                    "y" | "yes" => Ok(UserSignoffDecision {
+                        approved: true,
+                        conditions: vec![],
+                    }),
+                    _ => Ok(UserSignoffDecision {
+                        approved: false,
+                        conditions: vec![],
+                    }),
+                }
+            }
+            Err(_) => Ok(UserSignoffDecision {
+                approved: false,
+                conditions: vec![],
+            }),
+        }
+    }
+}
+
+pub struct SkillGitManager {
+    repo_path: PathBuf,
+}
+
+impl SkillGitManager {
+    pub fn new(repo_path: PathBuf) -> Self {
+        Self { repo_path }
+    }
+    
+    pub async fn backup_before_execution(&self, skill_name: &str, trust_level: &TrustLevel) -> SecurityResult<String> {
+        let commit_message = format!(
+            "Pre-execution backup: {} (trust: {:?})",
+            skill_name,
+            trust_level
+        );
+        
+        self.git_commit_changes(&commit_message).await
+    }
+    
+    pub async fn create_security_checkpoint(&self, event: &SecurityEvent) -> SecurityResult<()> {
+        if event.risk_level >= RiskLevel::High {
+            let commit_message = format!(
+                "Security checkpoint: {:?} - {}",
+                event.event_type,
+                event.skill_name
+            );
+            
+            self.git_commit_changes(&commit_message).await?;
+        }
+        
+        Ok(())
+    }
+    
+    async fn git_commit_changes(&self, message: &str) -> SecurityResult<String> {
+        use tokio::process::Command;
+        
+        let add_output = Command::new("git")
+            .args(&["add", "-A"])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .map_err(|e| SecurityError::SandboxViolation(format!("Git add failed: {}", e)))?;
+        
+        if !add_output.status.success() {
+            return Err(SecurityError::SandboxViolation("Git add failed".to_string()));
+        }
+        
+        let commit_output = Command::new("git")
+            .args(&["commit", "-m", message])
+            .current_dir(&self.repo_path)
+            .output()
+            .await
+            .map_err(|e| SecurityError::SandboxViolation(format!("Git commit failed: {}", e)))?;
+        
+        if commit_output.status.success() {
+            let hash_output = Command::new("git")
+                .args(&["rev-parse", "HEAD"])
+                .current_dir(&self.repo_path)
+                .output()
+                .await
+                .map_err(|e| SecurityError::SandboxViolation(format!("Git hash failed: {}", e)))?;
+            
+            let commit_hash = String::from_utf8_lossy(&hash_output.stdout).trim().to_string();
+            Ok(commit_hash)
+        } else {
+            Ok("no-changes".to_string())
+        }
     }
 }

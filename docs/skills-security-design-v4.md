@@ -223,6 +223,171 @@ impl SecureSkillExecutor {
 
 ## Enhanced Security Tool Collection
 
+### 1. User Signoff Integration (Leveraging Q CLI's existing capability)
+
+```rust
+pub struct SkillSignoffManager {
+    signoff_required_operations: Vec<SignoffTrigger>,
+}
+
+#[derive(Debug, Clone)]
+pub enum SignoffTrigger {
+    TrustLevelElevation,
+    FileSystemWrite(String),  // Specific paths requiring signoff
+    NetworkAccess,
+    SystemCommand(String),    // Dangerous commands
+    ResourceLimitExceed,
+}
+
+impl SkillSignoffManager {
+    pub async fn check_signoff_required(
+        &self,
+        operation: &SkillOperation,
+        context: &SecurityContext,
+    ) -> SecurityResult<SignoffDecision> {
+        let triggers = self.evaluate_signoff_triggers(operation, context);
+        
+        if !triggers.is_empty() {
+            // Use Q CLI's existing user signoff mechanism
+            let signoff_request = SignoffRequest {
+                operation_description: format!("Skill '{}' wants to {}", 
+                    operation.skill_name, operation.description),
+                risk_level: self.assess_risk_level(&triggers),
+                details: serde_json::json!({
+                    "triggers": triggers,
+                    "trust_level": context.trust_level,
+                    "requested_permissions": operation.requested_permissions
+                }),
+            };
+            
+            // Integrate with Q CLI's signoff system
+            let user_decision = request_user_signoff(signoff_request).await?;
+            
+            Ok(SignoffDecision {
+                required: true,
+                approved: user_decision.approved,
+                conditions: user_decision.conditions,
+            })
+        } else {
+            Ok(SignoffDecision {
+                required: false,
+                approved: true,
+                conditions: vec![],
+            })
+        }
+    }
+}
+
+// Integration with Q CLI's existing signoff system
+async fn request_user_signoff(request: SignoffRequest) -> SecurityResult<UserSignoffDecision> {
+    // Use Q CLI's existing user interaction capabilities
+    println!("🔐 Skill Security Review Required");
+    println!("Operation: {}", request.operation_description);
+    println!("Risk Level: {:?}", request.risk_level);
+    println!("Details: {}", serde_json::to_string_pretty(&request.details)?);
+    println!();
+    println!("Do you want to allow this operation? (y/N/conditions)");
+    
+    // Use Q CLI's input handling
+    let response = read_user_input().await?;
+    
+    match response.to_lowercase().as_str() {
+        "y" | "yes" => Ok(UserSignoffDecision {
+            approved: true,
+            conditions: vec![],
+        }),
+        "c" | "conditions" => {
+            println!("Available conditions:");
+            println!("1. Run once only");
+            println!("2. Limit to current session");
+            println!("3. Add resource monitoring");
+            
+            let conditions = read_user_conditions().await?;
+            Ok(UserSignoffDecision {
+                approved: true,
+                conditions,
+            })
+        },
+        _ => Ok(UserSignoffDecision {
+            approved: false,
+            conditions: vec![],
+        }),
+    }
+}
+```
+
+### 2. Git Integration and Backup
+
+```rust
+pub struct SkillGitManager {
+    repo_path: PathBuf,
+}
+
+impl SkillGitManager {
+    pub async fn backup_before_execution(&self, skill: &dyn SecureSkill) -> SecurityResult<String> {
+        // Create backup commit before potentially dangerous operations
+        let commit_message = format!(
+            "Pre-execution backup: {} (trust: {:?})",
+            skill.name(),
+            skill.trust_level()
+        );
+        
+        // Use Q CLI's git integration
+        let commit_hash = git_commit_changes(&commit_message).await?;
+        
+        Ok(commit_hash)
+    }
+    
+    pub async fn create_security_checkpoint(&self, event: &SecurityEvent) -> SecurityResult<()> {
+        if event.risk_level >= RiskLevel::High {
+            let commit_message = format!(
+                "Security checkpoint: {} - {}",
+                event.event_type,
+                event.skill_name
+            );
+            
+            git_commit_changes(&commit_message).await?;
+        }
+        
+        Ok(())
+    }
+}
+```
+
+### 3. Automated Testing Integration
+
+```rust
+pub struct SkillTestRunner {
+    security_tools: SkillSecurityTools,
+}
+
+impl SkillTestRunner {
+    pub async fn run_security_tests_before_execution(
+        &self,
+        skill: &dyn SecureSkill,
+    ) -> SecurityResult<TestResults> {
+        // Run security validation tests
+        let validation_results = self.run_validation_tests(skill).await?;
+        let sandbox_results = self.run_sandbox_tests(skill).await?;
+        let permission_results = self.run_permission_tests(skill).await?;
+        
+        let overall_result = TestResults {
+            validation: validation_results,
+            sandbox: sandbox_results,
+            permissions: permission_results,
+            passed: validation_results.passed && sandbox_results.passed && permission_results.passed,
+        };
+        
+        // Auto-commit test results
+        if !overall_result.passed {
+            self.create_test_failure_commit(&overall_result).await?;
+        }
+        
+        Ok(overall_result)
+    }
+}
+```
+
 ### 1. Skill Sandbox Manager (Using Q CLI Tools)
 
 ```rust
