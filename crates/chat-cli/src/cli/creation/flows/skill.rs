@@ -8,6 +8,9 @@ use eyre::Result;
 use serde::{Serialize, Deserialize};
 use std::path::Path;
 
+#[cfg(test)]
+mod skill_flow_tests;
+
 /// Skill creation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillConfig {
@@ -134,54 +137,86 @@ impl SkillCreationFlow {
             crate::cli::creation::SemanticColor::Info
         );
 
-        match self.mode {
-            CreationMode::Quick => {
-                // Use smart defaults, minimal prompts
-                if self.config.command.is_empty() {
-                    self.config.command = ui.prompt_required("Command")?;
-                }
-            }
-            CreationMode::Guided => {
-                // Step-by-step with explanations
+        // STEP 1: Always ask for skill type first
+        let skill_type_options = &[
+            ("command", "Execute shell commands and scripts"),
+            ("assistant", "AI conversational helper"),
+            ("template", "Text generation with variables"),
+            ("session", "Interactive interpreter (Python, Node, etc.)"),
+        ];
+
+        let selected_type = ui.select_option(
+            "What type of skill do you want to create?",
+            skill_type_options
+        )?;
+
+        // Set skill type based on selection
+        self.config.skill_type = match selected_type.as_str() {
+            "command" => SkillType::CodeInline,
+            "assistant" => SkillType::Conversation,
+            "template" => SkillType::PromptInline,
+            "session" => SkillType::CodeSession,
+            _ => SkillType::CodeInline, // Default fallback
+        };
+
+        // STEP 2: Ask type-specific questions based on selection
+        match selected_type.as_str() {
+            "command" => {
                 self.config.command = ui.prompt_required("Command to execute")?;
                 
-                if let Some(desc) = ui.prompt_optional("Description", Some(&self.config.description))? {
-                    self.config.description = desc;
-                }
-
-                // Skill type selection
-                ui.show_message("Skill types:", crate::cli::creation::SemanticColor::Info);
-                ui.show_message("  code_inline: Execute shell commands/scripts", crate::cli::creation::SemanticColor::Debug);
-                ui.show_message("  conversation: Chat-based assistant", crate::cli::creation::SemanticColor::Debug);
-                
-                let skill_type_input = ui.prompt_optional("Skill type", Some("code_inline"))?;
-                if let Some(st) = skill_type_input {
-                    match st.as_str() {
-                        "conversation" => self.config.skill_type = SkillType::Conversation,
-                        "code_session" => self.config.skill_type = SkillType::CodeSession,
-                        "prompt_inline" => self.config.skill_type = SkillType::PromptInline,
-                        _ => self.config.skill_type = SkillType::CodeInline,
+                if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Executes: {}", self.config.command)))? {
+                        self.config.description = desc;
                     }
                 }
             }
-            CreationMode::Expert => {
-                // Full configuration options
-                self.config.command = ui.prompt_required("Command/Prompt")?;
-                self.config.description = ui.prompt_required("Description")?;
+            "assistant" => {
+                self.config.command = ui.prompt_required("System prompt (e.g., 'You are a helpful code reviewer')")?;
                 
-                let skill_type_input = ui.prompt_required("Skill type (code_inline|code_session|conversation|prompt_inline)")?;
-                match skill_type_input.as_str() {
-                    "code_inline" => self.config.skill_type = SkillType::CodeInline,
-                    "code_session" => self.config.skill_type = SkillType::CodeSession,
-                    "conversation" => self.config.skill_type = SkillType::Conversation,
-                    "prompt_inline" => self.config.skill_type = SkillType::PromptInline,
-                    _ => return Err(crate::cli::creation::CreationError::validation_failed(
-                        "skill_type", &skill_type_input, "Invalid skill type", "Use: code_inline"
-                    ).into()),
+                if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("AI assistant: {}", self.config.name)))? {
+                        self.config.description = desc;
+                    }
+                }
+            }
+            "template" => {
+                self.config.command = ui.prompt_required("Template text (use {{variable}} for parameters)")?;
+                
+                if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Text generator: {}", self.config.name)))? {
+                        self.config.description = desc;
+                    }
+                }
+            }
+            "session" => {
+                let interpreter_options = &[
+                    ("python3", "Python interpreter"),
+                    ("node", "Node.js JavaScript runtime"),
+                    ("bash", "Bash shell"),
+                    ("ruby", "Ruby interpreter"),
+                ];
+
+                let interpreter = ui.select_option(
+                    "Which interpreter should this session use?",
+                    interpreter_options
+                )?;
+
+                self.config.command = interpreter.clone();
+                
+                if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Interactive {} session", interpreter)))? {
+                        self.config.description = desc;
+                    }
                 }
             }
             _ => {}
         }
+
+        // STEP 3: Expert mode additional configuration
+        if matches!(self.mode, CreationMode::Expert) {
+            // Security configuration will be handled in execute_security phase
+        }
+
         Ok(PhaseResult::Continue)
     }
 

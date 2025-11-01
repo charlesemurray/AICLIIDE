@@ -73,6 +73,10 @@ impl CreationArtifact for CommandArtifact {
             CommandType::Builtin => CommandHandler::Builtin {
                 function_name: self.config.command.clone(),
             },
+            CommandType::Executable => CommandHandler::Script {
+                command: self.config.command.clone(),
+                args: vec![],
+            },
         };
 
         let custom_command = CustomCommand {
@@ -157,26 +161,57 @@ impl CommandCreationFlow {
             crate::cli::creation::SemanticColor::Info
         );
 
-        match self.mode {
-            CreationMode::Quick => {
-                // Quick mode: minimal prompts
-                self.config.command = ui.prompt_required("Command")?;
-                self.detect_command_type();
-                Ok(PhaseResult::Continue)
+        // STEP 1: Ask for command type first
+        let command_type_options = &[
+            ("executable", "Run a system program or script"),
+            ("alias", "Shortcut to existing command with preset arguments"),
+            ("script", "Multi-step script with several commands"),
+        ];
+
+        let selected_type = ui.select_option(
+            "What type of command do you want to create?",
+            command_type_options
+        )?;
+
+        // STEP 2: Ask type-specific questions
+        match selected_type.as_str() {
+            "executable" => {
+                self.config.command = ui.prompt_required("Command to execute")?;
+                self.config.command_type = CommandType::Executable;
             }
-            CreationMode::Guided => {
-                // Guided mode: step by step
-                self.config.command = ui.prompt_required("Command")?;
-                self.detect_command_type();
-                
-                if let Some(desc) = ui.prompt_optional("Description", Some(&self.config.description))? {
-                    self.config.description = desc;
+            "alias" => {
+                self.config.command = ui.prompt_required("Base command")?;
+                let args = ui.prompt_optional("Default arguments", None)?;
+                if let Some(args) = args {
+                    self.config.command = format!("{} {}", self.config.command, args);
                 }
-                
-                Ok(PhaseResult::Continue)
+                self.config.command_type = CommandType::Alias;
             }
-            _ => Ok(PhaseResult::Continue),
+            "script" => {
+                self.config.command = ui.prompt_required("Script commands (one per line or semicolon-separated)")?;
+                self.config.command_type = CommandType::Script;
+            }
+            _ => {
+                self.config.command = ui.prompt_required("Command")?;
+                self.detect_command_type();
+            }
         }
+
+        // STEP 3: Description (for guided/expert modes)
+        if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+            let default_desc = match selected_type.as_str() {
+                "executable" => format!("Executes: {}", self.config.command),
+                "alias" => format!("Alias for: {}", self.config.command),
+                "script" => format!("Script: {}", self.config.name),
+                _ => format!("Command: {}", self.config.name),
+            };
+
+            if let Some(desc) = ui.prompt_optional("Description", Some(&default_desc))? {
+                self.config.description = desc;
+            }
+        }
+
+        Ok(PhaseResult::Continue)
     }
 
     fn execute_basic_config(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {

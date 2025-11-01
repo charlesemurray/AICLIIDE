@@ -189,6 +189,7 @@ pub enum CommandType {
     Script,
     Alias,
     Builtin,
+    Executable,
 }
 
 /// Security configuration levels
