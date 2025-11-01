@@ -1,0 +1,8 @@
+{
+  "name": "sysinfo",
+  "description": "Quick sysinfo skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "uname -a",
+  "args": []
+}

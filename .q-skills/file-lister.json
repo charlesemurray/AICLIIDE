@@ -1,0 +1,17 @@
+{
+  "name": "file-lister",
+  "description": "List files with details",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "ls",
+  "args": [
+    "-la"
+  ],
+  "timeout": 30,
+  "security": {
+    "resource_limits": {
+      "max_memory_mb": 100,
+      "max_execution_time": 30
+    }
+  }
+}

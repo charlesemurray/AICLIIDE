@@ -1,0 +1,14 @@
+{
+  "name": "greeter",
+  "description": "A greeter prompt skill",
+  "version": "1.0.0",
+  "type": "prompt_inline",
+  "prompt": "Generate a greeting for {name}",
+  "parameters": [
+    {
+      "name": "input",
+      "type": "string",
+      "required": true
+    }
+  ]
+}
