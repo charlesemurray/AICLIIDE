@@ -1,7 +1,8 @@
 //! Creation assistant orchestrator that manages the creation workflow
 
 use crate::cli::creation::{
-    CreationFlow, TerminalUI, TerminalUIImpl, CreationType, CreationPhase, PhaseResult, SemanticColor
+    CreationFlow, TerminalUI, TerminalUIImpl, CreationType, CreationPhase, PhaseResult, SemanticColor,
+    CreationConfig, CreationArtifact
 };
 use eyre::Result;
 use std::process::ExitCode;

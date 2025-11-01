@@ -16,7 +16,7 @@ mod tests;
 
 pub use types::*;
 pub use errors::CreationError;
-pub use ui::{TerminalUIImpl, TerminalUI};
+pub use ui::TerminalUIImpl;
 #[cfg(test)]
 pub use ui::MockTerminalUI;
 pub use assistant::CreationAssistant;

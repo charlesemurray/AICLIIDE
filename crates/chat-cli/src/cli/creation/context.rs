@@ -64,7 +64,7 @@ impl CreationContext {
         }
 
         if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
-            let suggestion = name
+            let suggestion: String = name
                 .to_lowercase()
                 .replace(' ', "-")
                 .chars()
@@ -95,11 +95,10 @@ impl CreationContext {
     }
 
     pub fn suggest_similar_names(&self, name: &str) -> Vec<String> {
-        let all_names = [
-            &self.existing_skills,
-            &self.existing_commands,
-            &self.existing_agents,
-        ].concat();
+        let mut all_names = Vec::new();
+        all_names.extend(&self.existing_skills);
+        all_names.extend(&self.existing_commands);
+        all_names.extend(&self.existing_agents);
 
         all_names
             .into_iter()
