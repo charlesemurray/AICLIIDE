@@ -1,0 +1,26 @@
+{
+  "name": "prompt-inline-test",
+  "description": "Test prompt inline skill",
+  "version": "1.0.0",
+  "type": "prompt_inline", 
+  "prompt": "Generate {type} for {language}",
+  "parameters": [
+    {
+      "name": "type",
+      "type": "enum",
+      "values": ["test", "documentation", "example"],
+      "required": true
+    },
+    {
+      "name": "language", 
+      "type": "string",
+      "pattern": "^[a-zA-Z]+$",
+      "required": true
+    }
+  ],
+  "security": {
+    "resource_limits": {
+      "max_execution_time": 60
+    }
+  }
+}

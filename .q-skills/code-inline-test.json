@@ -1,0 +1,15 @@
+{
+  "name": "code-inline-test",
+  "description": "Test code inline skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "echo",
+  "args": ["Code inline execution successful"],
+  "timeout": 30,
+  "security": {
+    "resource_limits": {
+      "max_memory_mb": 100,
+      "max_execution_time": 30
+    }
+  }
+}

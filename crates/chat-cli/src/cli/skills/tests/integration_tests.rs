@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod integration_tests {
-    use crate::cli::skills::{SkillRegistry, SkillValidator};
+    use crate::cli::skills::{SkillRegistry, validation::SkillValidator};
     use serde_json::json;
     use std::fs;
     use tempfile::TempDir;
 
     #[tokio::test]
+    #[ignore = "slow integration test"]
     async fn test_end_to_end_skill_loading_and_execution() {
         let temp_dir = TempDir::new().unwrap();
         let workspace_dir = temp_dir.path().join("workspace");

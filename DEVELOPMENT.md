@@ -1,280 +1,191 @@
 # Development Guide
 
-## Project Structure
+This guide covers how to develop and test the Amazon Q CLI locally using cargo.
 
-### Crate Organization
-```
-crates/
-├── chat-cli/              # Main CLI application
-│   └── src/
-│       ├── cli/           # CLI commands and subcommands
-│       │   ├── chat/      # Chat command implementation
-│       │   ├── agent/     # Agent command implementation
-│       │   └── mcp.rs     # MCP command
-│       ├── auth/          # Authentication (Builder ID, IAM Identity Center)
-│       ├── database/      # SQLite database and settings
-│       ├── api_client/    # API client for Q Developer services
-│       ├── util/          # Utility functions
-│       ├── os/            # OS-specific functionality
-│       ├── telemetry/     # Telemetry and metrics
-│       ├── theme/         # UI theming
-│       └── mcp_client/    # Model Context Protocol client
-├── agent/                 # Agent framework
-├── chat-cli-ui/          # UI components
-├── semantic-search-client/ # Semantic search functionality
-└── amzn-*-client/        # Generated API clients
-```
+## Prerequisites
 
-### Module Organization Patterns
+- Rust toolchain (install via [rustup](https://rustup.rs/))
+- Git
 
-**Simple features:** Single file in appropriate directory
-```rust
-// crates/chat-cli/src/util/my_feature.rs
-pub fn my_function() -> Result<()> {
-    // implementation
-}
+## Setup
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_my_function() {
-        // test implementation
-    }
-}
-```
-
-**Complex features:** Directory with mod.rs + submodules
-```
-cli/my_feature/
-├── mod.rs           # Public API and main logic
-├── parser.rs        # Parsing logic
-└── handler.rs       # Handler implementation
-```
-
-## Building
-
-### Build the CLI
+1. Clone the repository:
 ```bash
-cargo build --bin chat_cli
+git clone https://github.com/aws/amazon-q-developer-cli.git
+cd amazon-q-developer-cli
 ```
 
-### Build with optimizations (release)
+2. Install Rust toolchain:
 ```bash
-cargo build --bin chat_cli --release
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup default stable
+rustup toolchain install nightly
+cargo install typos-cli
 ```
 
-### Run without building
+3. Set up cargo environment:
 ```bash
+source ~/.cargo/env  # Add cargo to PATH
+```
+
+## Running Q CLI with Cargo
+
+### Basic Usage
+```bash
+# Run Q CLI directly
 cargo run --bin chat_cli
+
+# Run with arguments (note the -- separator)
+cargo run --bin chat_cli -- --help
+cargo run --bin chat_cli -- --version
 ```
 
-### Run with subcommand
+### Chat Interface
 ```bash
-cargo run --bin chat_cli -- <subcommand>
-# Examples:
-cargo run --bin chat_cli -- login
-cargo run --bin chat_cli -- chat "hello"
+# Start interactive chat
+cargo run --bin chat_cli -- chat
+
+# Non-interactive chat
+echo "Hello" | cargo run --bin chat_cli -- chat
+```
+
+### Skills System (Development)
+```bash
+# List available skills
+cargo run --bin chat_cli -- skills list
+
+# Create a new skill
+cargo run --bin chat_cli -- skills create my-skill
+
+# Run a skill
+cargo run --bin chat_cli -- skills run calculator --params '{"a": 2, "b": 3, "op": "add"}'
+
+# Get skill info
+cargo run --bin chat_cli -- skills info calculator
+```
+
+### Other Commands
+```bash
+# Settings
+cargo run --bin chat_cli -- settings list
+
+# Version info
+cargo run --bin chat_cli -- --version
+
+# Help
 cargo run --bin chat_cli -- --help
+```
+
+## Development Workflow
+
+### 1. Make Changes
+Edit source code in `crates/chat-cli/src/`
+
+### 2. Test Changes
+```bash
+# Quick test - run the binary
+cargo run --bin chat_cli -- --help
+
+# Run unit tests
+cargo test
+
+# Run specific tests
+cargo test skills::unit_tests
+```
+
+### 3. Build and Test
+```bash
+# Debug build (faster compilation)
+cargo build --bin chat_cli
+
+# Release build (optimized)
+cargo build --bin chat_cli --release
+
+# Test the built binary
+./target/debug/chat_cli --help
+./target/release/chat_cli --help
 ```
 
 ## Testing
 
-### Run all tests
+### Unit Tests
 ```bash
-cargo test
+cargo test                           # All tests
+cargo test skills                    # Skills-related tests
+cargo test skills::unit_tests        # Fast unit tests only
 ```
 
-### Run tests for specific crate
+### Integration Tests
 ```bash
-cargo test -p chat_cli
+cargo test --test integration_tests
 ```
 
-### Run specific test
+### Performance Testing
 ```bash
-cargo test test_name
-```
-
-### Run tests with output
-```bash
-cargo test -- --nocapture
-```
-
-### Run ignored tests (require auth/CI)
-```bash
-cargo test -- --ignored
-```
-
-## Testing Conventions
-
-### Inline Tests
-Tests are co-located with implementation using `#[cfg(test)]`:
-
-```rust
-pub fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add() {
-        assert_eq!(add(2, 2), 4);
-    }
-}
-```
-
-### Snapshot Testing
-Uses `insta` crate for snapshot tests:
-
-```rust
-#[test]
-fn test_output_format() {
-    let output = format_output("test");
-    insta::assert_snapshot!(output, @"expected output");
-}
-```
-
-### Async Tests
-```rust
-#[tokio::test]
-async fn test_async_function() {
-    let result = async_function().await;
-    assert!(result.is_ok());
-}
-```
-
-### Test Utilities
-- Mock database: `Database::new().await` (returns test DB in test mode)
-- Test tokens: `BuilderIdToken::test()` (available in test builds)
-- Test context: Use `cfg!(test)` for test-specific behavior
-
-## Code Quality
-
-### Format code
-```bash
-cargo +nightly fmt
-```
-
-### Run lints
-```bash
-cargo clippy
-```
-
-### Check for typos
-```bash
-typos
-```
-
-### Run all checks
-```bash
-cargo +nightly fmt && cargo clippy && cargo test
-```
-
-## Adding New Features
-
-### 1. Determine Location
-- **CLI command:** `crates/chat-cli/src/cli/`
-- **Utility function:** `crates/chat-cli/src/util/`
-- **API integration:** `crates/chat-cli/src/api_client/`
-- **Database feature:** `crates/chat-cli/src/database/`
-
-### 2. Write Tests First (TDD)
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_new_feature() {
-        // Arrange
-        let input = "test";
-        
-        // Act
-        let result = new_feature(input);
-        
-        // Assert
-        assert_eq!(result, expected);
-    }
-}
-```
-
-### 3. Implement Feature
-Write minimal code to pass tests.
-
-### 4. Add to Module Tree
-Update `mod.rs` to expose new module:
-```rust
-pub mod my_feature;
-```
-
-### 5. Integrate with CLI (if applicable)
-Add to command structure in `cli/mod.rs` or appropriate subcommand.
-
-## Authentication
-
-### Internal Amazon Users
-- Start URL: `https://amzn.awsapps.com/start`
-- Supports Midway for private specs
-- Check with: `BuilderIdToken::is_amzn_user()`
-
-### Public Users
-- Start URL: `https://view.awsapps.com/start`
-- Builder ID authentication
-
-## Database
-
-### Migrations
-Located in: `crates/chat-cli/src/database/sqlite_migrations/`
-
-Format: `NNN_description.sql`
-
-### Adding Migration
-1. Create new file with next number
-2. Write SQL migration
-3. Migrations run automatically on startup
-
-## Common Patterns
-
-### Error Handling
-```rust
-use eyre::Result;
-
-pub fn my_function() -> Result<String> {
-    Ok("success".to_string())
-}
-```
-
-### Async Functions
-```rust
-pub async fn fetch_data(client: &Client) -> Result<Data> {
-    let response = client.get().await?;
-    Ok(response)
-}
-```
-
-### Configuration
-Settings stored in database via `Database::settings()`:
-```rust
-let settings = database.settings();
-let value = settings.get("key").await?;
+# Release build for performance testing
+cargo build --bin chat_cli --release
+time ./target/release/chat_cli skills list
 ```
 
 ## Debugging
 
-### Enable verbose logging
+### Debug Mode
 ```bash
-cargo run --bin chat_cli -- -vvv chat "test"
+# Run with debug output
+RUST_LOG=debug cargo run --bin chat_cli -- skills list
+
+# Run with trace output
+RUST_LOG=trace cargo run --bin chat_cli -- skills list
 ```
 
-### Check logs location
-Logs are written to system temp directory and displayed with verbose flags.
+### Using Built Binary
+```bash
+# Build once, run multiple times (faster for testing)
+cargo build --bin chat_cli
+./target/debug/chat_cli skills create test-skill
+./target/debug/chat_cli skills list
+./target/debug/chat_cli skills run test-skill
+```
 
-## Resources
+## Common Issues
 
-- Main README: [README.md](README.md)
-- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Security: [SECURITY.md](SECURITY.md)
+### Cargo Not Found
+```bash
+# Add cargo to PATH
+source ~/.cargo/env
+```
+
+### Compilation Errors
+```bash
+# Clean and rebuild
+cargo clean
+cargo build --bin chat_cli
+```
+
+### Skills Not Loading
+```bash
+# Check current directory has .rs files
+ls *.rs
+
+# Run with debug output
+RUST_LOG=debug cargo run --bin chat_cli -- skills list
+```
+
+## Project Structure
+
+- `crates/chat-cli/` - Main CLI application
+- `crates/chat-cli/src/cli/skills/` - Skills system
+- `crates/agent/` - Agent system  
+- `scripts/` - Build and deployment scripts
+- `docs/` - Technical documentation
+
+## Comparison: Development vs Released CLI
+
+| Command | Development (cargo) | Released CLI |
+|---------|-------------------|--------------|
+| Basic usage | `cargo run --bin chat_cli` | `q` |
+| Chat | `cargo run --bin chat_cli -- chat` | `q chat` |
+| Skills | `cargo run --bin chat_cli -- skills list` | Not available yet |
+| Help | `cargo run --bin chat_cli -- --help` | `q --help` |
+
+**Note**: The skills system is only available in the development version built with cargo, not in the released Q CLI yet.

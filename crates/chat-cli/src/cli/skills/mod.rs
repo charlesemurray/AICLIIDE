@@ -11,13 +11,14 @@ pub mod security_logging;
 pub mod security_testing;
 pub mod security_tools;
 pub mod tests;
-
-#[cfg(test)]
-mod unit_tests;
 pub mod types;
 pub mod validation;
 
+#[cfg(test)]
+mod unit_tests;
+
 pub use registry::SkillRegistry;
+pub use types::*;
 pub use types::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +55,8 @@ pub enum SkillError {
     NotFound,
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(String),
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
     #[error("Execution timeout after {0}s")]

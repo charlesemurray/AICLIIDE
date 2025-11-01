@@ -348,7 +348,7 @@ mod tests {
     #[tokio::test]
     async fn test_secure_file_operations() {
         let temp_dir = TempDir::new().unwrap();
-        let tools = SkillSecurityTools::new(temp_dir.path().to_path_buf());
+        let tools = SkillSecurityTools::new(temp_dir.path().to_path_buf(), temp_dir.path().to_path_buf());
         let context = SecurityContext::for_trust_level(TrustLevel::UserVerified);
         
         // Test valid file write
@@ -366,7 +366,7 @@ mod tests {
     #[tokio::test]
     async fn test_command_validation() {
         let temp_dir = TempDir::new().unwrap();
-        let tools = SkillSecurityTools::new(temp_dir.path().to_path_buf());
+        let tools = SkillSecurityTools::new(temp_dir.path().to_path_buf(), temp_dir.path().to_path_buf());
         let context = SecurityContext::for_trust_level(TrustLevel::Untrusted);
         
         // Test dangerous command blocking

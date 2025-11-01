@@ -259,7 +259,7 @@ mod security_tests {
     #[test]
     fn test_security_configuration_validation() {
         // Test that security configurations are properly validated
-        use crate::cli::skills::SkillValidator;
+        use crate::cli::skills::validation::SkillValidator;
 
         // Valid security configuration
         let valid_config = json!({

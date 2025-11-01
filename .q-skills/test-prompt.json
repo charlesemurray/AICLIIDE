@@ -1,0 +1,25 @@
+{
+  "name": "test-prompt",
+  "description": "A test-prompt skill",
+  "version": "1.0.0",
+  "type": "prompt_inline",
+  "prompt": "Generate {type} for {language}",
+  "parameters": [
+    {
+      "name": "type",
+      "type": "enum",
+      "values": [
+        "test",
+        "documentation",
+        "example"
+      ],
+      "required": true
+    },
+    {
+      "name": "language",
+      "type": "string",
+      "pattern": "^[a-zA-Z]+$",
+      "required": true
+    }
+  ]
+}

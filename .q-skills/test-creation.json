@@ -1,0 +1,17 @@
+{
+  "name": "test-creation",
+  "description": "A test-creation skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "echo",
+  "args": [
+    "Hello from code inline skill!"
+  ],
+  "timeout": 30,
+  "security": {
+    "resource_limits": {
+      "max_memory_mb": 100,
+      "max_execution_time": 30
+    }
+  }
+}

@@ -194,7 +194,7 @@ mod resilience_tests {
         let registry = SkillRegistry::with_workspace_skills(&workspace_dir).await.unwrap();
         
         for (name, _, _, expected_type) in &[
-            ("network-error", "", vec![], "transient"),
+            ("network-error", "", vec![] as Vec<String>, "transient"),
             ("permission-error", "", vec![], "permanent"),
             ("not-found-error", "", vec![], "permanent"),
             ("timeout-error", "", vec![], "transient"),

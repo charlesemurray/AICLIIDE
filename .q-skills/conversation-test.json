@@ -1,0 +1,17 @@
+{
+  "name": "conversation-test",
+  "description": "Test conversation skill",
+  "version": "1.0.0", 
+  "type": "conversation",
+  "prompt_template": "Review this code: {code}",
+  "context_files": {
+    "patterns": ["*.rs", "*.py"],
+    "max_files": 10,
+    "max_file_size_kb": 100
+  },
+  "security": {
+    "permissions": {
+      "file_read": ["./src", "./tests"]
+    }
+  }
+}

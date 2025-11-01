@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod manual_verification_test {
-    use crate::cli::skills::{SkillRegistry, SkillValidator};
+    use crate::cli::skills::{SkillRegistry, validation::SkillValidator};
     use serde_json::json;
     use std::fs;
     use tempfile::TempDir;

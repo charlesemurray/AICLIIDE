@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod validation_tests {
-    use crate::cli::skills::{SkillValidator, SkillType, SkillParameter};
+    use crate::cli::skills::{validation::SkillValidator, SkillType, SkillParameter};
     use serde_json::json;
 
     #[test]

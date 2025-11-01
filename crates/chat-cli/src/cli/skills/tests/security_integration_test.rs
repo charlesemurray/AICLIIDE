@@ -93,7 +93,7 @@ mod security_integration_tests {
         ];
         
         for trust_level in trust_levels {
-            let context = SecurityContext::for_trust_level(trust_level);
+            let context = SecurityContext::for_trust_level(trust_level.clone());
             
             // Test file access permissions
             let workspace_file = "./test.txt";

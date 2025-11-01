@@ -1,4 +1,5 @@
 use super::{Skill, SkillError, SkillResult};
+use crate::cli::skills::builtin::PlaceholderSkill;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -230,10 +231,15 @@ impl SkillRegistry {
     }
 
     async fn load_workspace_skills(&mut self, workspace_path: &Path) -> Result<(), SkillError> {
+        // Load from .q-skills directory (JSON skills)
         let skills_dir = workspace_path.join(".q-skills");
         if skills_dir.exists() {
             self.load_from_directory(&skills_dir).await?;
         }
+        
+        // Load .rs files from workspace directory
+        self.load_rust_skills_from_directory(workspace_path).await?;
+        
         Ok(())
     }
 
@@ -254,13 +260,44 @@ impl SkillRegistry {
                     .map_err(|e| SkillError::Io(e))?;
                 
                 // Try enhanced skill format with validation first
+                // Temporarily disabled until TypedSkill is implemented
+                /*
                 if let Ok(enhanced_info) = crate::cli::skills::validation::SkillValidator::validate_skill_json(&content) {
                     let typed_skill = crate::cli::skills::builtin::TypedSkill::new(enhanced_info)?;
                     let _ = self.register_override(Box::new(typed_skill));
-                } else if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {
+                } else 
+                */
+                if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {
                     // Fall back to basic JSON skill
                     let json_skill = crate::cli::skills::builtin::JsonSkill::new(skill_info, content)?;
                     let _ = self.register_override(Box::new(json_skill));
+                }
+            }
+        }
+        
+        Ok(())
+    }
+
+    async fn load_rust_skills_from_directory(&mut self, path: &Path) -> Result<(), SkillError> {
+        if !path.exists() {
+            return Ok(());
+        }
+
+        let entries = std::fs::read_dir(path)
+            .map_err(|e| SkillError::Io(e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| SkillError::Io(e))?;
+            let file_path = entry.path();
+            
+            if file_path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                if let Some(file_name) = file_path.file_stem().and_then(|s| s.to_str()) {
+                    // Extract skill name from filename (remove -skill suffix if present)
+                    let skill_name = file_name.strip_suffix("-skill").unwrap_or(file_name);
+                    
+                    // Create a placeholder skill for the .rs file
+                    let placeholder = PlaceholderSkill::new(skill_name.to_string());
+                    let _ = self.register_override(Box::new(placeholder));
                 }
             }
         }

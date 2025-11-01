@@ -39,12 +39,15 @@ cargo install typos-cli
 
 #### 3. Develop locally
 
+See [DEVELOPMENT.md](DEVELOPMENT.md) for comprehensive development instructions.
+
+Quick start:
 - To compile and run: `cargo run --bin chat_cli`.
 - To run tests: `cargo test`.
 - To run lints: `cargo clippy`.
 - To format rust files: `cargo +nightly fmt`.
 - To run subcommands: `cargo run --bin chat_cli -- {subcommand}`.
-  - Login would then be: `cargo run --bin chat_cli -- login`
+  - Example: `cargo run --bin chat_cli -- skills list`
 
 ## Project Layout
 

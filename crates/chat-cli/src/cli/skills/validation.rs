@@ -1,10 +1,11 @@
-use crate::cli::skills::{EnhancedSkillInfo, SkillType, SkillError};
+use crate::cli::skills::SkillError;
+use crate::cli::skills::types::JsonSkill;
 use serde_json::Value;
 
 pub struct SkillValidator;
 
 impl SkillValidator {
-    pub fn validate_skill_json(content: &str) -> Result<EnhancedSkillInfo, SkillError> {
+    pub fn validate_skill_json(content: &str) -> Result<Value, SkillError> {
         // First, validate it's valid JSON
         let json: Value = serde_json::from_str(content)
             .map_err(|e| SkillError::InvalidInput(format!("Invalid JSON: {}", e)))?;
@@ -15,9 +16,11 @@ impl SkillValidator {
         // Validate skill type specific fields
         Self::validate_skill_type(&json)?;
 
-        // If validation passes, deserialize to EnhancedSkillInfo
-        serde_json::from_str::<EnhancedSkillInfo>(content)
-            .map_err(|e| SkillError::InvalidInput(format!("Invalid skill configuration: {}", e)))
+        // Try to parse as JsonSkill to ensure all fields are valid
+        JsonSkill::from_json(json.clone())
+            .map_err(|e| SkillError::InvalidConfiguration(format!("Invalid skill configuration: {}", e)))?;
+
+        Ok(json)
     }
 
     fn validate_required_fields(json: &Value) -> Result<(), SkillError> {
@@ -75,29 +78,64 @@ impl SkillValidator {
                 }
             }
             _ => {
-                return Err(SkillError::InvalidInput(format!("Unknown skill type: {}", skill_type)));
+                return Err(SkillError::InvalidInput(format!("Unknown skill type: {}. Valid types: code_inline, code_session, conversation, prompt_inline", skill_type)));
             }
         }
 
         Ok(())
     }
 
-    pub fn validate_parameters(skill_type: &SkillType, params: &Value) -> Result<(), SkillError> {
-        match skill_type {
-            SkillType::PromptInline { parameters: Some(param_defs), .. } => {
-                let param_obj = params.as_object()
-                    .ok_or_else(|| SkillError::InvalidInput("Parameters must be an object".to_string()))?;
+    pub fn validate_parameters(params: &Value, param_defs: &[crate::cli::skills::types::Parameter]) -> Result<(), SkillError> {
+        let param_obj = params.as_object()
+            .ok_or_else(|| SkillError::InvalidInput("Parameters must be an object".to_string()))?;
 
-                // Check required parameters
-                for param_def in param_defs {
-                    if param_def.required && !param_obj.contains_key(&param_def.name) {
-                        return Err(SkillError::InvalidInput(format!("Missing required parameter: {}", param_def.name)));
+        // Check required parameters
+        for param_def in param_defs {
+            if param_def.required.unwrap_or(false) && !param_obj.contains_key(&param_def.name) {
+                return Err(SkillError::InvalidInput(format!("Missing required parameter: {}", param_def.name)));
+            }
+            
+            // Validate parameter types
+            if let Some(value) = param_obj.get(&param_def.name) {
+                Self::validate_parameter_type(value, param_def)?;
+            }
+        }
+
+        Ok(())
+    }
+    
+    fn validate_parameter_type(value: &Value, param_def: &crate::cli::skills::types::Parameter) -> Result<(), SkillError> {
+        match param_def.param_type.as_str() {
+            "string" => {
+                if !value.is_string() {
+                    return Err(SkillError::InvalidInput(format!("Parameter '{}' must be a string", param_def.name)));
+                }
+                
+                // Validate pattern if provided
+                if let (Some(pattern), Some(str_val)) = (&param_def.pattern, value.as_str()) {
+                    let regex = regex::Regex::new(pattern)
+                        .map_err(|_| SkillError::InvalidInput(format!("Invalid regex pattern for parameter '{}'", param_def.name)))?;
+                    if !regex.is_match(str_val) {
+                        return Err(SkillError::InvalidInput(format!("Parameter '{}' does not match pattern '{}'", param_def.name, pattern)));
                     }
                 }
             }
-            _ => {} // Other skill types don't have parameter validation yet
+            "enum" => {
+                if let Some(str_val) = value.as_str() {
+                    if let Some(allowed_values) = &param_def.values {
+                        if !allowed_values.contains(&str_val.to_string()) {
+                            return Err(SkillError::InvalidInput(format!("Parameter '{}' must be one of: {:?}", param_def.name, allowed_values)));
+                        }
+                    }
+                } else {
+                    return Err(SkillError::InvalidInput(format!("Parameter '{}' must be a string for enum type", param_def.name)));
+                }
+            }
+            _ => {
+                return Err(SkillError::InvalidInput(format!("Unknown parameter type: {}", param_def.param_type)));
+            }
         }
-
+        
         Ok(())
     }
 }

@@ -1,6 +1,8 @@
 use crate::cli::skills::security::*;
 use std::path::PathBuf;
 use tokio::time::Duration;
+use serde_json::json;
+use std::time::Instant;
 
 #[cfg(test)]
 mod security_attack_tests {
@@ -53,7 +55,7 @@ mod security_attack_tests {
             Err(SecurityError::ResourceLimitExceeded("Memory limit exceeded".to_string()))
         };
         
-        let result = execute_with_resource_limits(memory_bomb, &limits).await;
+        let result = execute_with_resource_limits::<_, Result<(), SecurityError>>(memory_bomb, &limits).await;
         assert!(matches!(result, Err(SecurityError::ResourceLimitExceeded(_))));
         
         // Test CPU bomb
