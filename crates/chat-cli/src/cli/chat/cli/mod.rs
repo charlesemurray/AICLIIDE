@@ -265,6 +265,8 @@ impl SlashCommand {
             Self::Checkpoint(_) => "checkpoint",
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
+            Self::Sessions(_) => "sessions",
+            Self::Switch { .. } => "switch",
             // Self::Status(_) => "status",
             Self::Paste(_) => "paste",
         }
@@ -275,6 +277,8 @@ impl SlashCommand {
             SlashCommand::Agent(sub) => Some(sub.name()),
             SlashCommand::Context(sub) => Some(sub.name()),
             SlashCommand::Knowledge(sub) => Some(sub.name()),
+            SlashCommand::Sessions(sub) => Some(sub.name()),
+            SlashCommand::Skills(sub) => Some(sub.name()),
             SlashCommand::Tools(arg) => arg.subcommand_name(),
             SlashCommand::Prompts(arg) => arg.subcommand_name(),
             _ => None,

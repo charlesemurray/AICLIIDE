@@ -1,5 +1,9 @@
 use clap::Subcommand;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 
 #[derive(Debug, PartialEq, Subcommand)]
@@ -39,6 +43,17 @@ pub enum SessionsSubcommand {
 }
 
 impl SessionsSubcommand {
+    pub fn name(&self) -> &'static str {
+        match self {
+            SessionsSubcommand::List => "list",
+            SessionsSubcommand::Create { .. } => "create",
+            SessionsSubcommand::Close { .. } => "close",
+            SessionsSubcommand::DevSessions => "dev",
+            SessionsSubcommand::Cleanup { .. } => "cleanup",
+            SessionsSubcommand::Recover { .. } => "recover",
+        }
+    }
+
     pub async fn execute(
         &self,
         _chat_session: &mut ChatSession,
