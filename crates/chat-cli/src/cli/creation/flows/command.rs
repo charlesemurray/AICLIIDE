@@ -257,23 +257,20 @@ impl CreationFlow for CommandCreationFlow {
     fn execute_phase(&mut self, phase: CreationPhase) -> Result<PhaseResult> {
         self.current_phase = Some(phase.clone());
         
-        // Use injected UI or create default
-        let mut default_ui;
-        let ui: &mut dyn TerminalUI = if let Some(ref mut ui) = self.ui {
-            ui.as_mut()
-        } else {
-            default_ui = crate::cli::creation::TerminalUIImpl::new();
-            &mut default_ui
-        };
-        
         match phase {
-            CreationPhase::Discovery => self.execute_discovery(ui),
-            CreationPhase::BasicConfig => self.execute_basic_config(ui),
+            CreationPhase::Discovery => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_discovery(&mut ui)
+            }
+            CreationPhase::BasicConfig => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_basic_config(&mut ui)
+            }
             CreationPhase::Completion => {
                 self.config.apply_defaults();
                 Ok(PhaseResult::Complete)
             }
-            _ => Ok(PhaseResult::Continue), // Skip phases not needed for commands
+            _ => Ok(PhaseResult::Continue),
         }
     }
 

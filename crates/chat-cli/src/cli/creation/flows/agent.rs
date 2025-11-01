@@ -231,31 +231,29 @@ impl CreationFlow for AgentCreationFlow {
     }
 
     fn execute_phase(&mut self, phase: CreationPhase) -> Result<PhaseResult> {
-        // Use injected UI or create default
-        let mut default_ui;
-        let ui: &mut dyn TerminalUI = if let Some(ref mut ui) = self.ui {
-            ui.as_mut()
-        } else {
-            default_ui = crate::cli::creation::TerminalUIImpl::new();
-            &mut default_ui
-        };
-
         match phase {
-            CreationPhase::Discovery => self.execute_discovery(ui),
+            CreationPhase::Discovery => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_discovery(&mut ui)
+            }
             CreationPhase::BasicConfig => {
                 if self.config.basic.description.is_empty() {
                     self.config.basic.description = format!("Agent: {}", self.config.basic.name);
                 }
                 Ok(PhaseResult::Continue)
             }
-            CreationPhase::AdvancedConfig => self.execute_advanced_config(ui),
+            CreationPhase::AdvancedConfig => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_advanced_config(&mut ui)
+            }
             CreationPhase::Security => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 ui.show_message("Agent security managed by MCP server permissions", crate::cli::creation::SemanticColor::Info);
                 Ok(PhaseResult::Continue)
             }
             CreationPhase::Testing => {
-                // Validate agent configuration
                 self.config.validate()?;
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 ui.show_message("Agent configuration validated", crate::cli::creation::SemanticColor::Success);
                 Ok(PhaseResult::Continue)
             }

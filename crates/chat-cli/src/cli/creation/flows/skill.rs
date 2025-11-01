@@ -231,27 +231,24 @@ impl CreationFlow for SkillCreationFlow {
     }
 
     fn execute_phase(&mut self, phase: CreationPhase) -> Result<PhaseResult> {
-        // Use injected UI or create default
-        let mut default_ui;
-        let ui: &mut dyn TerminalUI = if let Some(ref mut ui) = self.ui {
-            ui.as_mut()
-        } else {
-            default_ui = crate::cli::creation::TerminalUIImpl::new();
-            &mut default_ui
-        };
-
         match phase {
-            CreationPhase::Discovery => self.execute_discovery(ui),
+            CreationPhase::Discovery => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_discovery(&mut ui)
+            }
             CreationPhase::BasicConfig => {
                 if self.config.description.is_empty() {
                     self.config.description = format!("Skill: {}", self.config.name);
                 }
                 Ok(PhaseResult::Continue)
             }
-            CreationPhase::Security => self.execute_security(ui),
+            CreationPhase::Security => {
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                self.execute_security(&mut ui)
+            }
             CreationPhase::Testing => {
-                // Validate skill configuration
                 self.config.validate()?;
+                let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 ui.show_message("Skill configuration validated", crate::cli::creation::SemanticColor::Success);
                 Ok(PhaseResult::Continue)
             }

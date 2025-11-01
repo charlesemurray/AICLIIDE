@@ -104,9 +104,10 @@ impl CreationContext {
             .into_iter()
             .filter(|existing| {
                 // Simple similarity check
-                existing.contains(name) || name.contains(existing) ||
+                existing.contains(name) || name.contains(existing.as_str()) ||
                 self.levenshtein_distance(name, existing) <= 2
             })
+            .cloned()
             .collect()
     }
 
