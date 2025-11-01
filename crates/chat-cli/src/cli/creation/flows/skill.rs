@@ -143,17 +143,89 @@ impl SkillCreationFlow {
     
     // Stub methods for tests
     pub fn collect_input_single_pass(&mut self) -> Result<SkillConfig> {
-        Ok(SkillConfig {
-            name: self.config.name.clone(),
-            description: "Test skill".to_string(),
-            skill_type: SkillType::CodeInline,
-            command: "echo test".to_string(),
-            security: SecurityConfig { 
-                enabled: false, 
-                level: SecurityLevel::Low, 
-                resource_limit: 100 
-            },
-        })
+        if let Some(ui) = &mut self.ui {
+            let mut config = SkillConfig {
+                name: self.config.name.clone(),
+                skill_type: SkillType::CodeInline,
+                command: String::new(),
+                description: String::new(),
+                security: SecurityConfig::default(),
+            };
+
+            match self.mode {
+                CreationMode::Quick => {
+                    // Quick mode: only prompt for command
+                    config.command = ui.prompt_required("Command")?;
+                    config.skill_type = SkillType::CodeInline;
+                    // Description stays empty for quick mode
+                }
+                CreationMode::Guided => {
+                    // Guided mode: command, description, security
+                    config.command = ui.prompt_required("Command")?;
+                    config.description = ui.prompt_required("Description")?;
+                    config.skill_type = SkillType::CodeInline;
+                    
+                    let enable_security = ui.confirm("Enable security?")?;
+                    if enable_security {
+                        config.security.enabled = true;
+                        let level_input = ui.prompt_required("Security level")?;
+                        config.security.level = match level_input.as_str() {
+                            "low" => SecurityLevel::Low,
+                            "medium" => SecurityLevel::Medium,
+                            "high" => SecurityLevel::High,
+                            _ => SecurityLevel::Medium,
+                        };
+                    }
+                }
+                CreationMode::Expert => {
+                    // Expert mode: skill type, command/prompt, description, security
+                    let skill_type_input = ui.prompt_required("Skill type")?;
+                    config.skill_type = match skill_type_input.as_str() {
+                        "conversation" => SkillType::Conversation,
+                        "code_inline" => SkillType::CodeInline,
+                        "code_session" => SkillType::CodeSession,
+                        "prompt_inline" => SkillType::PromptInline,
+                        _ => SkillType::CodeInline,
+                    };
+                    
+                    config.command = ui.prompt_required("System prompt")?;
+                    config.description = ui.prompt_required("Description")?;
+                    
+                    let enable_security = ui.confirm("Enable security?")?;
+                    if enable_security {
+                        config.security.enabled = true;
+                        let level_input = ui.prompt_required("Security level")?;
+                        config.security.level = match level_input.as_str() {
+                            "low" => SecurityLevel::Low,
+                            "medium" => SecurityLevel::Medium,
+                            "high" => SecurityLevel::High,
+                            _ => SecurityLevel::Medium,
+                        };
+                        
+                        let resource_limit_input = ui.prompt_required("Resource limit")?;
+                        config.security.resource_limit = resource_limit_input.parse().unwrap_or(1000);
+                    }
+                }
+                CreationMode::Template | CreationMode::Preview | CreationMode::Batch => {
+                    return Err(eyre::eyre!("Unsupported creation mode for skills"));
+                }
+            }
+
+            Ok(config)
+        } else {
+            // Fallback for when no UI is provided
+            Ok(SkillConfig {
+                name: self.config.name.clone(),
+                description: "Test skill".to_string(),
+                skill_type: SkillType::CodeInline,
+                command: "echo test".to_string(),
+                security: SecurityConfig { 
+                    enabled: false, 
+                    level: SecurityLevel::Low, 
+                    resource_limit: 100 
+                },
+            })
+        }
     }
     
     pub fn run_single_pass(&mut self) -> Result<SkillConfig> {

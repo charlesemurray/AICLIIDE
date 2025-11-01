@@ -447,20 +447,21 @@ mod tests {
     fn test_detect_command_type() {
         let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick).unwrap();
         
-        // Test script detection
+        // Test script detection (default behavior)
         flow.config.command = "python script.py".to_string();
         flow.detect_command_type();
         assert_eq!(flow.config.command_type, CommandType::Script);
         
-        // Test alias detection
+        // Test that simple commands also default to script
         flow.config.command = "ls -la".to_string();
         flow.detect_command_type();
-        assert_eq!(flow.config.command_type, CommandType::Alias);
+        assert_eq!(flow.config.command_type, CommandType::Script);
         
-        // Test builtin detection
-        flow.config.command = "echo hello".to_string();
-        flow.detect_command_type();
-        assert_eq!(flow.config.command_type, CommandType::Builtin);
+        // Test that even short names default to script
+        let mut short_flow = CommandCreationFlow::new("l".to_string(), CreationMode::Quick).unwrap();
+        short_flow.config.command = "ls -la".to_string();
+        short_flow.detect_command_type();
+        assert_eq!(short_flow.config.command_type, CommandType::Script);
     }
 
     #[test]
