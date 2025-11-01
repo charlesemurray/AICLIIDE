@@ -14,3 +14,4 @@ pub mod timeout_test;
 pub mod security_integration_test;
 pub mod cli_integration_test;
 pub mod skill_creation_workflow_test;
+pub mod json_schema_tests;

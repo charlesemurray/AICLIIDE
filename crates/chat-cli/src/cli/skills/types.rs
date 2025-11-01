@@ -43,7 +43,7 @@ pub struct Permissions {
     pub network_access: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceLimits {
     pub max_memory_mb: Option<u32>,
     pub max_execution_time: Option<u32>,
@@ -185,8 +185,7 @@ impl JsonSkill {
     }
     
     async fn execute_prompt_inline(&self, params: HashMap<String, String>) -> Result<String, String> {
-        let prompt = self.extra.get("prompt")
-            .and_then(|v| v.as_str())
+        let prompt = self.prompt_template.as_ref()
             .ok_or("No prompt specified")?;
             
         let mut result = prompt.to_string();

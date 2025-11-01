@@ -74,19 +74,19 @@ impl MockTerminalUI {
     }
 
     pub fn show_success(&mut self, message: &str) {
-        self.outputs.push(format!("SUCCESS: {}", message));
+        self.outputs.push(format!("\x1b[32mSUCCESS: {}\x1b[0m", message));
     }
 
     pub fn show_error(&mut self, message: &str) {
-        self.outputs.push(format!("ERROR: {}", message));
+        self.outputs.push(format!("\x1b[31mERROR: {}\x1b[0m", message));
     }
 
     pub fn show_info(&mut self, message: &str) {
-        self.outputs.push(format!("INFO: {}", message));
+        self.outputs.push(format!("\x1b[34mINFO: {}\x1b[0m", message));
     }
 
     pub fn show_warning(&mut self, message: &str) {
-        self.outputs.push(format!("WARNING: {}", message));
+        self.outputs.push(format!("\x1b[33mWARNING: {}\x1b[0m", message));
     }
 
     pub fn show_contextual_help(&mut self, context: &str) -> String {
@@ -98,13 +98,31 @@ impl MockTerminalUI {
         help
     }
 
-    pub fn prompt_with_validation<F>(&mut self, prompt: &str, _validator: F) -> Result<String>
+    pub fn show_progress(&mut self, current: usize, total: usize, message: &str) {
+        let percentage = (current * 100) / total;
+        let filled = (current * 8) / total;
+        let empty = 8 - filled;
+        let bar = "█".repeat(filled) + &"░".repeat(empty);
+        
+        self.outputs.push(format!("{} {}% {}/{} {}", bar, percentage, current, total, message));
+    }
+
+    pub fn prompt_with_validation<F>(&mut self, prompt: &str, validator: F) -> Result<String>
     where
         F: Fn(&str) -> Result<(), String>,
     {
-        let input = self.next_input();
-        self.outputs.push(format!("PROMPT: {} -> {}", prompt, input));
-        Ok(input)
+        loop {
+            let input = self.next_input();
+            self.outputs.push(format!("PROMPT: {} -> {}", prompt, input));
+            
+            match validator(&input) {
+                Ok(()) => return Ok(input),
+                Err(error_msg) => {
+                    self.outputs.push(error_msg);
+                    // Continue loop to get next input
+                }
+            }
+        }
     }
 }
 

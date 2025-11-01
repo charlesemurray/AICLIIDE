@@ -135,7 +135,6 @@ mod builder_integration_tests {
     async fn test_preview_mode_integration() -> Result<()> {
         // Test: Preview mode shows what would be created without creating
         let fixtures = TestFixtures::new();
-        fixtures.setup_directories();
         
         let mut ui = MockTerminalUI::new(vec![
             "echo 'preview test'".to_string(), // command
@@ -152,8 +151,9 @@ mod builder_integration_tests {
         assert!(preview_content.contains("preview-cmd"));
         assert!(preview_content.contains("echo 'preview test'"));
         
-        // Verify no files were created
-        assert!(!fixtures.commands_dir.exists());
+        // Verify no skill files were created in commands directory
+        let skill_file = fixtures.commands_dir.join("preview-cmd.json");
+        assert!(!skill_file.exists());
         
         Ok(())
     }

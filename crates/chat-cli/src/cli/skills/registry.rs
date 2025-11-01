@@ -268,8 +268,9 @@ impl SkillRegistry {
                         version: "1.0.0".to_string(),
                     };
                     
-                    let json_skill = crate::cli::skills::builtin::JsonSkill::new(skill_info, content)?;
-                    let _ = self.register_override(Box::new(json_skill));
+                    if let Ok(json_skill) = crate::cli::skills::builtin::JsonSkill::new(skill_info, content) {
+                        let _ = self.register_override(Box::new(json_skill));
+                    }
                 }
             }
         }

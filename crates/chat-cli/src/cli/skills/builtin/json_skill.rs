@@ -15,10 +15,21 @@ impl JsonSkill {
         let enhanced_skill = serde_json::from_str::<EnhancedJsonSkill>(&config)
             .map_err(|e| SkillError::InvalidConfiguration(format!("Failed to parse enhanced JSON skill: {}", e)))?;
             
+        // Extract resource limits from security config
+        let limits = enhanced_skill.security
+            .as_ref()
+            .and_then(|s| s.resource_limits.as_ref())
+            .map(|rl| crate::cli::skills::ResourceLimits {
+                timeout_seconds: rl.max_execution_time.unwrap_or(30) as u64,
+                max_memory_mb: rl.max_memory_mb.map(|m| m as u64),
+                max_cpu_percent: rl.max_cpu_percent.map(|c| c as u64),
+            })
+            .unwrap_or_default();
+            
         Ok(Self {
             info,
             enhanced_skill,
-            limits: ResourceLimits::default(),
+            limits,
         })
     }
 }
