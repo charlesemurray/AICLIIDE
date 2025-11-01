@@ -90,6 +90,7 @@ pub trait CreationConfig {
     fn validate(&self) -> Result<()>;
     fn apply_defaults(&mut self);
     fn is_complete(&self) -> bool;
+    fn get_name(&self) -> &str;
 }
 
 /// Artifact persistence and validation

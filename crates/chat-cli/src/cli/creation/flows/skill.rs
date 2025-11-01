@@ -52,6 +52,10 @@ impl CreationConfig for SkillConfig {
     fn is_complete(&self) -> bool {
         !self.name.is_empty() && !self.command.is_empty()
     }
+
+    fn get_name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// Skill creation artifact
