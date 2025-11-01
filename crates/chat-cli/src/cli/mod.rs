@@ -5,8 +5,8 @@ use crate::util::env_var::{
 };
 mod agent;
 pub mod chat;
+pub mod creation;
 pub mod custom_commands;
-pub mod unified_creation_assistant;
 mod debug;
 mod diagnostics;
 pub mod experiment;
@@ -52,6 +52,7 @@ use tracing::{
 };
 
 use crate::cli::chat::ChatArgs;
+use crate::cli::creation::CreateArgs;
 use crate::cli::mcp::McpSubcommand;
 use crate::cli::user::{
     LoginArgs,
@@ -103,6 +104,8 @@ pub enum RootSubcommand {
     Agent(AgentArgs),
     /// AI assistant in your terminal
     Chat(ChatArgs),
+    /// Create skills, commands, and agents
+    Create(CreateArgs),
     /// Log in to Amazon Q
     Login(LoginArgs),
     /// Log out of Amazon Q
@@ -171,6 +174,8 @@ impl RootSubcommand {
 
         match self {
             Self::Agent(args) => args.execute(os).await,
+            Self::Chat(args) => args.execute(os).await,
+            Self::Create(args) => args.execute(os).await,
             Self::Diagnostic(args) => args.execute(os).await,
             Self::Login(args) => args.execute(os).await,
             Self::Logout => user::logout(os).await,
@@ -197,6 +202,7 @@ impl Display for RootSubcommand {
         let name = match self {
             Self::Agent(_) => "agent",
             Self::Chat(_) => "chat",
+            Self::Create(_) => "create",
             Self::Login(_) => "login",
             Self::Logout => "logout",
             Self::Whoami(_) => "whoami",
