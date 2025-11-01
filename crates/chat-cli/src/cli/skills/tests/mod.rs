@@ -7,3 +7,4 @@ pub mod skill_types_tests;
 pub mod integration_tests;
 pub mod validation_tests;
 pub mod global_skills_tests;
+pub mod manual_verification_test;
