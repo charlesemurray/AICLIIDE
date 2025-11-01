@@ -13,6 +13,7 @@ pub mod security_tools;
 pub mod tests;
 pub mod types;
 pub mod validation;
+pub mod creation_assistant;
 
 #[cfg(test)]
 mod unit_tests;

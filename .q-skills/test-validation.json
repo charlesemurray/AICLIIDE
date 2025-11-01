@@ -1,0 +1,8 @@
+{
+  "name": "test-validation",
+  "description": "Quick test-validation skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "echo 'validation test'",
+  "args": []
+}

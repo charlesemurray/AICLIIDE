@@ -1,6 +1,6 @@
 {
-  "name": "test-skill",
-  "description": "A test-skill skill",
+  "name": "my-assistant",
+  "description": "A my-assistant skill",
   "version": "1.0.0",
   "type": "conversation",
   "prompt_template": "You are a helpful assistant for {}",

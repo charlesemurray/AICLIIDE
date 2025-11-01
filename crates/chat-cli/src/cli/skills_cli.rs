@@ -8,6 +8,18 @@ use std::fs;
 use std::process::ExitCode;
 use std::io::{self, Write};
 
+// Map user-friendly names to internal types
+fn map_user_type_to_internal(user_type: &str) -> &str {
+    match user_type {
+        "command" => "code_inline",
+        "repl" => "code_session", 
+        "assistant" => "conversation",
+        "template" => "prompt_inline",
+        // Pass through internal types for backward compatibility
+        internal => internal,
+    }
+}
+
 #[derive(Debug, Args, PartialEq)]
 pub struct SkillsArgs {
     #[command(subcommand)]
@@ -83,13 +95,9 @@ pub enum SkillsSlashCommand {
 
 impl SkillsArgs {
     pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
-        let mut registry = SkillRegistry::with_builtins();
-        
-        // Load skills from current directory
         let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        if let Err(e) = registry.reload_workspace_skills(&current_dir).await {
-            eprintln!("Warning: Failed to load workspace skills: {}", e);
-        }
+        let mut registry = SkillRegistry::with_workspace_skills(&current_dir).await
+            .unwrap_or_else(|_| SkillRegistry::with_builtins());
         
         match self.command {
             SkillsCommand::List => {
@@ -145,14 +153,16 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Create { name, skill_type, interactive, wizard, quick, command, template } => {
+                let internal_type = skill_type.as_ref().map(|t| map_user_type_to_internal(t));
+                
                 if wizard {
                     create_skill_wizard(&name).await?;
                 } else if interactive || skill_type.is_none() {
                     create_skill_interactive(&name).await?;
                 } else if quick {
-                    create_skill_quick(&name, skill_type.as_ref().unwrap(), command.as_deref(), template.as_deref())?;
+                    create_skill_quick(&name, internal_type.as_ref().unwrap(), command.as_deref(), template.as_deref())?;
                 } else {
-                    create_skill_template(&name, skill_type.as_ref().unwrap())?;
+                    create_skill_template(&name, internal_type.as_ref().unwrap())?;
                 }
                 Ok(ExitCode::SUCCESS)
             },
@@ -162,7 +172,9 @@ impl SkillsArgs {
 
 impl SkillsSlashCommand {
     pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
-        let registry = SkillRegistry::with_builtins();
+        let current_dir = std::env::current_dir()?;
+        let registry = SkillRegistry::with_workspace_skills(&current_dir).await
+            .unwrap_or_else(|_| SkillRegistry::with_builtins());
         
         match self {
             Self::List => {
@@ -223,12 +235,128 @@ impl SkillsSlashCommand {
 fn create_skill_template(name: &str, skill_type: &str) -> Result<()> {
     match skill_type {
         "rust" => create_rust_skill_template(name),
-        "code_inline" => create_json_skill_template(name, "code_inline"),
-        "code_session" => create_json_skill_template(name, "code_session"),
-        "conversation" => create_json_skill_template(name, "conversation"),
-        "prompt_inline" => create_json_skill_template(name, "prompt_inline"),
+        "code_inline" => create_simple_command_skill(name),
+        "code_session" => create_simple_repl_skill(name),
+        "conversation" => create_simple_assistant_skill(name),
+        "prompt_inline" => create_simple_template_skill(name),
         _ => Err(eyre::eyre!("Unknown skill type: {}. Valid types: rust, code_inline, code_session, conversation, prompt_inline", skill_type)),
     }
+}
+
+fn create_simple_command_skill(name: &str) -> Result<()> {
+    println!("Creating command skill: {}", name);
+    println!("Setting up command execution skill...");
+    print!("What command should this skill execute?");
+    println!("\n(Press Enter for default: echo 'Hello from skill!')");
+    
+    let mut command = String::new();
+    io::stdin().read_line(&mut command)?;
+    let _command = command.trim();
+    let _command = if _command.is_empty() { "echo 'Hello from skill!'" } else { _command };
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("Command execution skill: {}", name),
+        "version": "1.0.0",
+        "type": "code_inline",
+        "command": "echo",
+        "args": ["Hello from skill!"],
+        "timeout": 30
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("Skill created successfully: .q-skills/{}.json", name);
+    println!("Use '/skills run {}' to test your skill", name);
+    Ok(())
+}
+
+fn create_simple_repl_skill(name: &str) -> Result<()> {
+    println!("Creating repl skill: {}", name);
+    println!("Setting up interactive coding environment...");
+    print!("Which interpreter should this use? (python3, node, etc.)");
+    println!("\n(Press Enter for default: python3)");
+    
+    let mut interpreter = String::new();
+    io::stdin().read_line(&mut interpreter)?;
+    let interpreter = interpreter.trim();
+    let interpreter = if interpreter.is_empty() { "python3" } else { interpreter };
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("Interactive {} environment", interpreter),
+        "version": "1.0.0",
+        "type": "code_session",
+        "command": interpreter,
+        "session_config": {
+            "session_timeout": 3600,
+            "max_sessions": 5,
+            "cleanup_on_exit": true
+        }
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("Skill created successfully: .q-skills/{}.json", name);
+    println!("Use '/skills run {}' to test your skill", name);
+    Ok(())
+}
+
+fn create_simple_assistant_skill(name: &str) -> Result<()> {
+    println!("Creating assistant skill: {}", name);
+    println!("Setting up AI assistant...");
+    print!("What role should this assistant have?");
+    println!("\nExamples: code reviewer, documentation writer, domain expert");
+    println!("(Press Enter for default: helpful assistant)");
+    
+    let mut role = String::new();
+    io::stdin().read_line(&mut role)?;
+    let role = role.trim();
+    let role = if role.is_empty() { "helpful assistant" } else { role };
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("AI assistant: {}", name),
+        "version": "1.0.0",
+        "type": "conversation",
+        "prompt_template": format!("You are a helpful {} assistant", role),
+        "context_files": {
+            "patterns": ["*.rs", "*.py", "*.js", "*.md"],
+            "max_files": 10,
+            "max_file_size_kb": 100
+        }
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("Skill created successfully: .q-skills/{}.json", name);
+    println!("Development session created for assistant skill");
+    println!("Use '/switch {}' to test your assistant", name);
+    Ok(())
+}
+
+fn create_simple_template_skill(name: &str) -> Result<()> {
+    println!("Creating template skill: {}", name);
+    println!("Setting up prompt template...");
+    print!("What should this template generate?");
+    println!("\nExample: Generate documentation for {{function_name}}");
+    println!("(Press Enter for default template)");
+    
+    let mut template = String::new();
+    io::stdin().read_line(&mut template)?;
+    let template = template.trim();
+    let template = if template.is_empty() { format!("Help me with {}", name) } else { template.to_string() };
+    
+    let skill = json!({
+        "name": name,
+        "description": format!("Prompt template: {}", name),
+        "version": "1.0.0",
+        "type": "prompt_inline",
+        "prompt": template,
+        "parameters": []
+    });
+    
+    save_and_validate_json_skill(name, &skill)?;
+    println!("Skill created successfully: .q-skills/{}.json", name);
+    println!("Use '/skills run {}' to test your skill", name);
+    Ok(())
 }
 
 fn create_rust_skill_template(name: &str) -> Result<()> {
@@ -581,7 +709,8 @@ async fn create_conversation_skill_wizard(name: &str) -> Result<()> {
         "prompt_template": format!("{}: {{input}}", prompt),
         "context_files": {
             "patterns": ["*.rs", "*.py", "*.js", "*.md"],
-            "max_files": 10
+            "max_files": 10,
+            "max_file_size_kb": 100
         }
     });
     
@@ -732,7 +861,8 @@ async fn create_conversation_interactive(name: &str) -> Result<()> {
         "prompt_template": prompt,
         "context_files": {
             "patterns": ["*.rs", "*.py", "*.js"],
-            "max_files": 10
+            "max_files": 10,
+            "max_file_size_kb": 100
         }
     });
     

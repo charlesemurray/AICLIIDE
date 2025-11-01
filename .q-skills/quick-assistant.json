@@ -1,0 +1,8 @@
+{
+  "name": "quick-assistant",
+  "description": "AI assistant: quick-assistant",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "You are a helpful quick-assistant assistant",
+  "context_files": []
+}

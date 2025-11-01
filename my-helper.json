@@ -1,0 +1,8 @@
+{
+  "name": "my-helper",
+  "description": "AI assistant: my-helper",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "You are a helpful my-helper assistant",
+  "context_files": []
+}

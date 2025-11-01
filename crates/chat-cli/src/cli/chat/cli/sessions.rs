@@ -5,6 +5,14 @@ use crate::cli::chat::{
     ChatState,
 };
 use crate::os::Os;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+
+static SESSIONS: OnceLock<Arc<Mutex<HashMap<String, String>>>> = OnceLock::new();
+
+pub fn get_sessions() -> &'static Arc<Mutex<HashMap<String, String>>> {
+    SESSIONS.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
+}
 
 #[derive(Debug, PartialEq, Subcommand)]
 pub enum SessionsSubcommand {
@@ -61,26 +69,47 @@ impl SessionsSubcommand {
     ) -> Result<ChatState, ChatError> {
         match self {
             SessionsSubcommand::List => {
+                let sessions = get_sessions().lock().unwrap();
                 println!("📋 Active Sessions:");
                 println!("  • main (current conversation)");
-                println!("  • No development sessions active");
+                if sessions.is_empty() {
+                    println!("  • No development sessions active");
+                } else {
+                    for (name, session_type) in sessions.iter() {
+                        println!("  • {} ({})", name, session_type);
+                    }
+                }
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Create { name, session_type } => {
+                let mut sessions = get_sessions().lock().unwrap();
+                sessions.insert(name.clone(), session_type.clone());
                 println!("🔧 Creating {} development session: {}", session_type, name);
                 println!("✓ Session created successfully");
                 println!("Use '/switch {}' to enter the session", name);
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Close { name } => {
-                println!("🔒 Closing development session: {}", name);
-                println!("✓ Session closed successfully");
+                let mut sessions = get_sessions().lock().unwrap();
+                if sessions.remove(name).is_some() {
+                    println!("🔒 Closing development session: {}", name);
+                    println!("✓ Session closed successfully");
+                } else {
+                    println!("❌ Session '{}' not found", name);
+                }
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::DevSessions => {
+                let sessions = get_sessions().lock().unwrap();
                 println!("🔧 Active Development Sessions:");
-                println!("  No development sessions currently active");
-                println!("\nUse '/sessions create <name>' to start a new development session");
+                if sessions.is_empty() {
+                    println!("  No development sessions currently active");
+                    println!("\nUse '/sessions create <name>' to start a new development session");
+                } else {
+                    for (name, session_type) in sessions.iter() {
+                        println!("  • {} ({})", name, session_type);
+                    }
+                }
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SessionsSubcommand::Cleanup { completed, older_than } => {

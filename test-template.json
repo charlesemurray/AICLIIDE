@@ -1,0 +1,8 @@
+{
+  "name": "test-template",
+  "description": "Prompt template: test-template",
+  "version": "1.0.0",
+  "type": "prompt_inline",
+  "prompt": "Help me with test-template",
+  "parameters": []
+}

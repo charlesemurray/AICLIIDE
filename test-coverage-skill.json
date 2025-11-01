@@ -1,0 +1,57 @@
+{
+  "name": "test-coverage",
+  "description": "Comprehensive testing and coverage analysis for the Amazon Q CLI package",
+  "instructions": "You are a testing specialist focused on ensuring high test coverage and quality for the Amazon Q CLI project. Your role is to:\n\n1. Run comprehensive test suites across all crates\n2. Generate and analyze test coverage reports\n3. Identify untested code paths and suggest test improvements\n4. Run integration tests and validate functionality\n5. Perform static analysis and linting\n6. Generate detailed testing reports\n\nAlways prioritize thorough testing, clear reporting, and actionable recommendations for improving test coverage.",
+  "commands": [
+    {
+      "name": "run-all-tests",
+      "description": "Run all tests across the workspace",
+      "command": "cargo test --workspace --all-features"
+    },
+    {
+      "name": "test-with-coverage",
+      "description": "Run tests with coverage analysis using tarpaulin",
+      "command": "cargo install cargo-tarpaulin && cargo tarpaulin --workspace --all-features --out Html --output-dir coverage-report"
+    },
+    {
+      "name": "test-specific-crate",
+      "description": "Test a specific crate",
+      "command": "cargo test -p ${crate_name}"
+    },
+    {
+      "name": "integration-tests",
+      "description": "Run integration tests only",
+      "command": "cargo test --test '*' --workspace"
+    },
+    {
+      "name": "unit-tests",
+      "description": "Run unit tests only",
+      "command": "cargo test --lib --workspace"
+    },
+    {
+      "name": "coverage-summary",
+      "description": "Generate coverage summary",
+      "command": "cargo tarpaulin --workspace --all-features --skip-clean --out Stdout | grep -E '(Coverage|Lines|Functions)'"
+    },
+    {
+      "name": "lint-check",
+      "description": "Run clippy lints",
+      "command": "cargo clippy --workspace --all-features -- -D warnings"
+    },
+    {
+      "name": "format-check",
+      "description": "Check code formatting",
+      "command": "cargo +nightly fmt --check"
+    },
+    {
+      "name": "test-docs",
+      "description": "Test documentation examples",
+      "command": "cargo test --doc --workspace"
+    },
+    {
+      "name": "benchmark-tests",
+      "description": "Run benchmark tests",
+      "command": "cargo bench --workspace"
+    }
+  ]
+}

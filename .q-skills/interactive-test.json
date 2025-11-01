@@ -1,0 +1,8 @@
+{
+  "name": "interactive-test",
+  "description": "Prompt template: interactive-test",
+  "version": "1.0.0",
+  "type": "prompt_inline",
+  "prompt": "Help me with interactive-test",
+  "parameters": []
+}

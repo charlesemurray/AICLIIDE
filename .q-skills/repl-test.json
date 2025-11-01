@@ -1,0 +1,11 @@
+{
+  "name": "repl-test",
+  "description": "Interactive coding environment: repl-test",
+  "version": "1.0.0",
+  "type": "code_session",
+  "command": "python3",
+  "session_config": {
+    "session_timeout": 3600,
+    "persistent_state": true
+  }
+}

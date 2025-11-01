@@ -1,0 +1,57 @@
+{
+  "name": "test-coverage-analyzer",
+  "description": "Comprehensive test coverage analysis and quality assurance for Amazon Q CLI",
+  "instructions": "You are an expert testing and quality assurance specialist for the Amazon Q CLI project. Your primary responsibilities include:\n\n1. **Test Execution**: Run comprehensive test suites across all workspace crates\n2. **Coverage Analysis**: Generate detailed coverage reports and identify gaps\n3. **Quality Assurance**: Perform static analysis, linting, and code quality checks\n4. **Reporting**: Provide actionable insights and recommendations\n5. **Continuous Improvement**: Suggest testing strategies and coverage improvements\n\nAlways focus on thorough analysis, clear reporting, and practical recommendations for improving code quality and test coverage.",
+  "commands": [
+    {
+      "name": "full-analysis",
+      "description": "Run complete test coverage analysis with detailed reporting",
+      "command": "python3 scripts/test_coverage.py"
+    },
+    {
+      "name": "quick-test",
+      "description": "Run all tests quickly without coverage",
+      "command": "cargo test --workspace --all-features"
+    },
+    {
+      "name": "coverage-only",
+      "description": "Generate coverage report only",
+      "command": "cargo tarpaulin --workspace --all-features --out Html --output-dir coverage-report"
+    },
+    {
+      "name": "test-crate",
+      "description": "Test specific crate with coverage",
+      "command": "cargo tarpaulin -p ${crate_name} --out Html --output-dir coverage-report/${crate_name}"
+    },
+    {
+      "name": "lint-all",
+      "description": "Run all linting and formatting checks",
+      "command": "cargo clippy --workspace --all-features -- -D warnings && cargo +nightly fmt --check"
+    },
+    {
+      "name": "test-integration",
+      "description": "Run integration tests only",
+      "command": "cargo test --test '*' --workspace --all-features"
+    },
+    {
+      "name": "test-unit",
+      "description": "Run unit tests only",
+      "command": "cargo test --lib --workspace --all-features"
+    },
+    {
+      "name": "test-docs",
+      "description": "Test documentation examples",
+      "command": "cargo test --doc --workspace"
+    },
+    {
+      "name": "coverage-summary",
+      "description": "Show coverage summary",
+      "command": "cargo tarpaulin --workspace --all-features --skip-clean --out Stdout | tail -20"
+    },
+    {
+      "name": "install-tools",
+      "description": "Install required testing tools",
+      "command": "cargo install cargo-tarpaulin"
+    }
+  ]
+}

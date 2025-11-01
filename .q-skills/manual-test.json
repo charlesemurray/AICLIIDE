@@ -1,0 +1,8 @@
+{
+  "name": "manual-test",
+  "description": "Quick manual-test skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "echo 'Hello from manual test!'",
+  "args": []
+}

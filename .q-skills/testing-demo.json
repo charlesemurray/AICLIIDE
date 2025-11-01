@@ -1,0 +1,8 @@
+{
+  "name": "testing-demo",
+  "description": "AI assistant: testing-demo",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "You are a helpful testing-demo assistant",
+  "context_files": []
+}
