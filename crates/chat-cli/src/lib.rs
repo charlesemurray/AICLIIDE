@@ -1,4 +1,3 @@
-#![cfg(not(test))]
 //! This lib.rs is only here for testing purposes.
 //! `test_mcp_server/test_server.rs` is declared as a separate binary and would need a way to
 //! reference types defined inside of this crate, hence the export.
@@ -15,5 +14,13 @@ pub mod request;
 pub mod telemetry;
 pub mod theme;
 pub mod util;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_basic() {
+        assert_eq!(2 + 2, 4);
+    }
+}
 
 pub use mcp_client::*;

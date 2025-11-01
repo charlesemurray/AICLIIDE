@@ -1,0 +1,29 @@
+{
+  "name": "status",
+  "description": "Demo command showing theme system colored output",
+  "version": "1.0.0",
+  "command": {
+    "program": "echo",
+    "args": [
+      "✓ Q CLI is running",
+      "✓ Theme system loaded", 
+      "✓ Session management ready"
+    ]
+  },
+  "options": [
+    {
+      "name": "detailed",
+      "description": "Show detailed system information",
+      "type": "flag"
+    }
+  ],
+  "autocomplete": {
+    "subcommands": [],
+    "options": {
+      "detailed": {
+        "type": "flag",
+        "description": "Show detailed system information"
+      }
+    }
+  }
+}

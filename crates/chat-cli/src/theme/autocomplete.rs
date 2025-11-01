@@ -90,17 +90,17 @@ impl AutocompleteEngine {
 
         let command = parts[0].trim_start_matches('/');
         
-        if let Some(config) = self.configs.get(command) {
+        if let Some(config) = self.configs.get(command).cloned() {
             if parts.len() == 1 {
                 // Complete subcommands
-                self.get_subcommand_completions(config)
+                self.get_subcommand_completions(&config)
             } else if parts.len() == 2 {
                 // Complete options for subcommand
                 let subcommand = parts[1];
-                self.get_option_completions(config, subcommand)
+                self.get_option_completions(&config, subcommand)
             } else {
                 // Complete option values
-                self.get_option_value_completions(config, &parts)
+                self.get_option_value_completions(&config, &parts)
             }
         } else {
             // Command not found, return root completions

@@ -253,7 +253,9 @@ mod tests {
         assert!(formatted.is_some());
         
         let formatted = formatted.unwrap();
-        assert!(formatted.contains("debug: Test message"));
+        // Check for the prefix and message content, accounting for ANSI color codes
+        assert!(formatted.contains("debug:"));
+        assert!(formatted.contains("Test message"));
     }
 
     #[test]

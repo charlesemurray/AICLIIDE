@@ -93,7 +93,7 @@ impl SessionDisplay {
 
     /// Format session message with colored prefix using crossterm
     pub fn format_message(&self, message: impl Into<String>, colors: &SessionColors) -> String {
-        use crossterm::style::{Stylize, Color};
+        use crossterm::style::Stylize;
         
         let prefix = format!("{}:", self.session_type.prefix());
         let color = self.session_type.color(colors);
@@ -139,6 +139,7 @@ impl SessionDisplay {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::style::Color;
 
     #[test]
     fn test_session_type_colors() {

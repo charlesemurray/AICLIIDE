@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::theme::{StatusColors, UiColors, formatter};
+use crate::theme::formatter;
 
 /// Enhanced error display with colored output and suggestions
 #[derive(Debug)]
