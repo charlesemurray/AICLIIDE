@@ -19,8 +19,6 @@ pub mod creation_assistant;
 mod unit_tests;
 
 pub use registry::SkillRegistry;
-pub use types::*;
-pub use types::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {

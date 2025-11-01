@@ -5,23 +5,9 @@ use crate::cli::chat::{
     ChatState,
 };
 use crate::cli::skills::SkillRegistry;
+use crate::cli::creation::{CreateArgs, CreateCommand, SkillMode};
 use crate::os::Os;
-use super::sessions::get_sessions;
 
-// Centralized skill type mapping - easy to change names here
-fn map_user_type_to_internal(user_type: &str) -> Option<&'static str> {
-    match user_type {
-        "command" => Some("code_inline"),
-        "repl" => Some("code_session"),
-        "assistant" => Some("conversation"),
-        "template" => Some("prompt_inline"),
-        _ => None,
-    }
-}
-
-fn get_supported_types() -> &'static str {
-    "command, repl, assistant, template"
-}
 
 #[derive(Debug, PartialEq, Subcommand)]
 pub enum SkillsSubcommand {
@@ -56,8 +42,9 @@ pub enum SkillsSubcommand {
     Create {
         /// Name of the skill to create
         name: String,
-        /// Type of skill (command, repl, assistant, template)
-        skill_type: String,
+        /// Additional arguments (ignored - uses guided mode)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        _args: Vec<String>,
     },
     /// Remove a skill
     Remove {
@@ -196,106 +183,21 @@ impl SkillsSubcommand {
                 println!("✓ Skill installed successfully");
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
-            SkillsSubcommand::Create { name, skill_type } => {
-                // Map user-friendly type to internal type
-                let internal_type = match map_user_type_to_internal(skill_type) {
-                    Some(t) => t,
-                    None => {
-                        println!("Unknown skill type: {}", skill_type);
-                        println!("Supported types: {}", get_supported_types());
-                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+            SkillsSubcommand::Create { name, .. } => {
+                let create_args = CreateArgs {
+                    command: CreateCommand::Skill { 
+                        name: name.clone(), 
+                        mode: Some(SkillMode::Guided)
                     }
                 };
-
-                println!("Creating {} skill: {}", skill_type, name);
                 
-                // Use guided creation based on skill type
-                let skill_template = match internal_type {
-                    "code_inline" => {
-                        println!("Setting up command execution skill...");
-                        println!("What command should this skill execute?");
-                        println!("(Press Enter for default: echo 'Hello from skill!')");
-                        // For now, use default - in full implementation would prompt user
-                        serde_json::json!({
-                            "name": name,
-                            "description": format!("Command execution skill: {}", name),
-                            "version": "1.0.0",
-                            "type": "code_inline",
-                            "command": "echo",
-                            "args": ["Hello from skill!"],
-                            "timeout": 30
-                        })
-                    },
-                    "code_session" => {
-                        println!("Setting up interactive coding environment...");
-                        println!("Which interpreter should this use? (python3, node, etc.)");
-                        println!("(Press Enter for default: python3)");
-                        // For now, use default - in full implementation would prompt user
-                        serde_json::json!({
-                            "name": name,
-                            "description": format!("Interactive coding environment: {}", name),
-                            "version": "1.0.0",
-                            "type": "code_session",
-                            "command": "python3",
-                            "session_config": {
-                                "session_timeout": 3600,
-                                "persistent_state": true
-                            }
-                        })
-                    },
-                    "conversation" => {
-                        println!("Setting up AI assistant...");
-                        println!("What role should this assistant have?");
-                        println!("Examples: code reviewer, documentation writer, domain expert");
-                        println!("(Press Enter for default: helpful assistant)");
-                        // For now, use default - in full implementation would prompt user
-                        let role = format!("You are a helpful {} assistant", name);
-                        serde_json::json!({
-                            "name": name,
-                            "description": format!("AI assistant: {}", name),
-                            "version": "1.0.0",
-                            "type": "conversation",
-                            "prompt_template": role,
-                            "context_files": []
-                        })
-                    },
-                    "prompt_inline" => {
-                        println!("Setting up prompt template...");
-                        println!("What should this template generate?");
-                        println!("Example: Generate documentation for {{function_name}}");
-                        println!("(Press Enter for default template)");
-                        // For now, use default - in full implementation would prompt user
-                        serde_json::json!({
-                            "name": name,
-                            "description": format!("Prompt template: {}", name),
-                            "version": "1.0.0",
-                            "type": "prompt_inline",
-                            "prompt": format!("Help me with {}", name),
-                            "parameters": []
-                        })
-                    },
-                    _ => unreachable!(),
-                };
-                
-                // Write skill file to .q-skills directory
-                std::fs::create_dir_all(".q-skills").ok();
-                let skill_filename = format!(".q-skills/{}.json", name);
-                match std::fs::write(&skill_filename, serde_json::to_string_pretty(&skill_template).unwrap()) {
+                let mut os = Os::new().await.unwrap();
+                match create_args.execute(&mut os).await {
                     Ok(_) => {
-                        println!("Skill created successfully: {}", skill_filename);
-                        
-                        // Auto-create session for assistant skills
-                        if skill_type == "assistant" {
-                            let mut sessions = get_sessions().lock().unwrap();
-                            sessions.insert(name.clone(), "conversation".to_string());
-                            println!("Development session created for assistant skill");
-                            println!("Use '/switch {}' to test your assistant", name);
-                        } else {
-                            println!("Use '/skills run {}' to test your skill", name);
-                        }
+                        println!("✓ Skill '{}' created successfully", name);
                     }
                     Err(e) => {
-                        println!("Failed to create skill file: {}", e);
+                        println!("❌ Failed to create skill: {}", e);
                     }
                 }
                 

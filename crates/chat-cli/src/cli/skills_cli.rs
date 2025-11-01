@@ -152,18 +152,16 @@ impl SkillsArgs {
                 println!("Skill installation not yet implemented");
                 Ok(ExitCode::SUCCESS)
             },
-            SkillsCommand::Create { name, skill_type, interactive, wizard, quick, command, template } => {
-                let internal_type = skill_type.as_ref().map(|t| map_user_type_to_internal(t));
+            SkillsCommand::Create { name, .. } => {
+                println!("⚠️  The standalone 'skills create' command has been replaced.");
+                println!("Please use the chat interface instead:");
+                println!();
+                println!("  q chat");
+                println!("  > /skills create {} command", name);
+                println!();
+                println!("Or use the new unified creation system:");
+                println!("  q create skill {} guided", name);
                 
-                if wizard {
-                    create_skill_wizard(&name).await?;
-                } else if interactive || skill_type.is_none() {
-                    create_skill_interactive(&name).await?;
-                } else if quick {
-                    create_skill_quick(&name, internal_type.as_ref().unwrap(), command.as_deref(), template.as_deref())?;
-                } else {
-                    create_skill_template(&name, internal_type.as_ref().unwrap())?;
-                }
                 Ok(ExitCode::SUCCESS)
             },
         }
