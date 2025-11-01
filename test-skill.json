@@ -1,0 +1,11 @@
+{
+  "name": "test-skill",
+  "description": "A test-skill skill",
+  "version": "1.0.0",
+  "type": "code_inline",
+  "command": "echo",
+  "args": [
+    "Hello from skill!"
+  ],
+  "timeout": 30
+}

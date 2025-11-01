@@ -4,6 +4,7 @@ use crate::cli::chat::{
     ChatSession,
     ChatState,
 };
+use crate::cli::skills::SkillRegistry;
 use crate::os::Os;
 
 #[derive(Debug, PartialEq, Subcommand)]
@@ -100,8 +101,28 @@ impl SkillsSubcommand {
         match self {
             SkillsSubcommand::List { scope } => {
                 println!("📋 Skills ({})", scope);
-                println!("  No skills currently installed");
-                println!("\nUse '/skills create <name>' to create a new skill");
+                
+                // Try to load actual skills from the current directory
+                let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                
+                match SkillRegistry::with_workspace_skills(&current_dir).await {
+                    Ok(registry) => {
+                        let skills = registry.list();
+                        if skills.is_empty() {
+                            println!("  No skills currently installed");
+                            println!("\nUse '/skills create <name>' to create a new skill");
+                        } else {
+                            for skill in skills {
+                                println!("  • {} - {}", skill.name(), skill.description());
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        println!("  No skills currently installed");
+                        println!("\nUse '/skills create <name>' to create a new skill");
+                    }
+                }
+                
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Run { skill_name, params } => {
@@ -109,7 +130,43 @@ impl SkillsSubcommand {
                 if let Some(p) = params {
                     println!("   Parameters: {}", p);
                 }
-                println!("✓ Skill execution completed");
+                
+                let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                
+                match SkillRegistry::with_workspace_skills(&current_dir).await {
+                    Ok(registry) => {
+                        if let Some(skill) = registry.get(skill_name) {
+                            let params_json = if let Some(p) = params {
+                                match serde_json::from_str(p) {
+                                    Ok(json) => json,
+                                    Err(_) => {
+                                        println!("❌ Invalid JSON parameters: {}", p);
+                                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                                    }
+                                }
+                            } else {
+                                serde_json::json!({})
+                            };
+                            
+                            match skill.execute(params_json).await {
+                                Ok(result) => {
+                                    println!("✓ Skill execution completed");
+                                    println!("Output: {}", result.output);
+                                }
+                                Err(e) => {
+                                    println!("❌ Skill execution failed: {}", e);
+                                }
+                            }
+                        } else {
+                            println!("❌ Skill '{}' not found", skill_name);
+                            println!("   Use '/skills list' to see available skills");
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to load skills: {}", e);
+                    }
+                }
+                
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Info { skill_name } => {
@@ -126,8 +183,64 @@ impl SkillsSubcommand {
             }
             SkillsSubcommand::Create { name, skill_type } => {
                 println!("🔧 Creating {} skill: {}", skill_type, name);
-                println!("✓ Skill template created");
-                println!("   Edit the skill configuration and use '/skills validate' to test");
+                
+                // Create skill template based on type
+                let skill_template = match skill_type.as_str() {
+                    "code_inline" => serde_json::json!({
+                        "name": name,
+                        "description": format!("A {} skill", name),
+                        "version": "1.0.0",
+                        "type": "code_inline",
+                        "command": "echo",
+                        "args": ["Hello from skill!"],
+                        "timeout": 30
+                    }),
+                    "code_session" => serde_json::json!({
+                        "name": name,
+                        "description": format!("A {} skill", name),
+                        "version": "1.0.0",
+                        "type": "code_session",
+                        "command": "python3",
+                        "session_config": {
+                            "session_timeout": 3600,
+                            "persistent_state": true
+                        }
+                    }),
+                    "conversation" => serde_json::json!({
+                        "name": name,
+                        "description": format!("A {} skill", name),
+                        "version": "1.0.0",
+                        "type": "conversation",
+                        "prompt_template": "You are a helpful assistant for {}",
+                        "context_files": []
+                    }),
+                    "prompt_inline" => serde_json::json!({
+                        "name": name,
+                        "description": format!("A {} skill", name),
+                        "version": "1.0.0",
+                        "type": "prompt_inline",
+                        "prompt": "Help me with {}",
+                        "parameters": []
+                    }),
+                    _ => {
+                        println!("❌ Unknown skill type: {}", skill_type);
+                        println!("   Supported types: code_inline, code_session, conversation, prompt_inline");
+                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                    }
+                };
+                
+                // Write skill file
+                let skill_filename = format!("{}.json", name);
+                match std::fs::write(&skill_filename, serde_json::to_string_pretty(&skill_template).unwrap()) {
+                    Ok(_) => {
+                        println!("✓ Skill template created: {}", skill_filename);
+                        println!("   Edit the skill configuration and use '/skills validate {}' to test", skill_filename);
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to create skill file: {}", e);
+                    }
+                }
+                
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Remove { skill_name } => {
@@ -155,7 +268,53 @@ impl SkillsSubcommand {
             }
             SkillsSubcommand::Validate { file } => {
                 println!("✅ Validating skill file: {}", file);
-                println!("✓ Skill configuration is valid");
+                
+                match std::fs::read_to_string(file) {
+                    Ok(content) => {
+                        // Try to parse as JSON first
+                        match serde_json::from_str::<serde_json::Value>(&content) {
+                            Ok(json) => {
+                                // Basic validation
+                                let mut errors = Vec::new();
+                                
+                                if !json.get("name").and_then(|v| v.as_str()).is_some() {
+                                    errors.push("Missing required field: name");
+                                }
+                                if !json.get("description").and_then(|v| v.as_str()).is_some() {
+                                    errors.push("Missing required field: description");
+                                }
+                                if !json.get("version").and_then(|v| v.as_str()).is_some() {
+                                    errors.push("Missing required field: version");
+                                }
+                                if !json.get("type").and_then(|v| v.as_str()).is_some() {
+                                    errors.push("Missing required field: type");
+                                }
+                                
+                                if errors.is_empty() {
+                                    println!("✓ Skill configuration is valid");
+                                    if let Some(skill_type) = json.get("type").and_then(|v| v.as_str()) {
+                                        println!("   Type: {}", skill_type);
+                                    }
+                                    if let Some(name) = json.get("name").and_then(|v| v.as_str()) {
+                                        println!("   Name: {}", name);
+                                    }
+                                } else {
+                                    println!("❌ Validation failed:");
+                                    for error in errors {
+                                        println!("   • {}", error);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("❌ Invalid JSON format: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to read file: {}", e);
+                    }
+                }
+                
                 Ok(ChatState::PromptUser { skip_printing_tools: true })
             }
             SkillsSubcommand::Status => {
