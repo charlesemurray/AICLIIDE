@@ -322,15 +322,44 @@ impl CommandCreationFlow {
     fn is_simple_alias(&self) -> bool {
         // Check if it's a simple command alias (no pipes, redirects, etc.)
         let cmd = &self.config.command;
-        !cmd.contains('|') && !cmd.contains('>') && !cmd.contains('<') && 
-        !cmd.contains('&') && !cmd.contains(';') && cmd.split_whitespace().count() <= 3
+        let name = &self.config.name;
+        
+        // Basic checks for alias-like patterns
+        if cmd.contains('|') || cmd.contains('>') || cmd.contains('<') || 
+           cmd.contains('&') || cmd.contains(';') {
+            return false;
+        }
+        
+        let words: Vec<&str> = cmd.split_whitespace().collect();
+        
+        // Consider it an alias if:
+        // 1. It's a short command (2-3 words)
+        // 2. The name is shorter than the first word of the command (typical alias pattern)
+        // 3. Or it's a known alias pattern like "ll" -> "ls -la"
+        if words.len() >= 2 && words.len() <= 3 {
+            let first_word = words[0];
+            // Classic alias patterns
+            if (name == "ll" && first_word == "ls") ||
+               (name.len() < first_word.len()) {
+                return true;
+            }
+        }
+        
+        false
     }
 
     fn is_builtin_function(&self) -> bool {
-        // Check against known builtin functions
+        // Check against known builtin functions, but only if it's a single word (no arguments)
         let builtins = ["cd", "pwd", "echo", "exit", "help"];
-        let first_word = self.config.command.split_whitespace().next().unwrap_or("");
-        builtins.contains(&first_word)
+        let words: Vec<&str> = self.config.command.split_whitespace().collect();
+        
+        // Only consider it a builtin if it's a single word command
+        if words.len() == 1 {
+            let first_word = words[0];
+            builtins.contains(&first_word)
+        } else {
+            false
+        }
     }
 
     fn detect_parameters(&mut self) {
