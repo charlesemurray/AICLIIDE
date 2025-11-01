@@ -7,6 +7,8 @@ pub mod builtin;
 pub mod platform;
 pub mod registry;
 pub mod security;
+pub mod security_logging;
+pub mod security_testing;
 pub mod tests;
 pub mod types;
 pub mod validation;
