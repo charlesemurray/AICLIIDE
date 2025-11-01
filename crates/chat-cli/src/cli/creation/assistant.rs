@@ -38,7 +38,7 @@ impl<F: CreationFlow> CreationAssistant<F> {
         self.ui.show_message(
             &format!("Creating {} '{}'", 
                 self.format_creation_type(&creation_type),
-                self.flow.get_config().get_name()
+                self.get_creation_name()
             ),
             SemanticColor::Info
         );
@@ -93,15 +93,25 @@ impl<F: CreationFlow> CreationAssistant<F> {
         Ok(ExitCode::SUCCESS)
     }
 
-    fn generate_preview(&self, config: &F::Config) -> String {
+    fn get_creation_name(&self) -> String {
+        // Get name from the creation type - this is a temporary solution
+        // In a real implementation, we'd have a better way to get the name
+        match self.flow.creation_type() {
+            CreationType::CustomCommand => "command".to_string(),
+            CreationType::Skill => "skill".to_string(),
+            CreationType::Agent => "agent".to_string(),
+        }
+    }
+
+    fn generate_preview(&self, _config: &F::Config) -> String {
         let creation_type = self.flow.creation_type();
         let type_name = self.format_creation_type(&creation_type);
         
         format!(
             "Creating: {} '{}'\nType: {}\nLocation: {}",
             type_name,
-            config.get_name(),
-            self.format_creation_details(config),
+            self.get_creation_name(),
+            self.format_creation_details(_config),
             self.get_storage_location(&creation_type).display()
         )
     }

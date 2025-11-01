@@ -2,7 +2,7 @@
 
 use crate::cli::creation::{
     CreationFlow, CreationConfig, CreationArtifact, CreationType, CreationPhase, PhaseResult,
-    CreationMode, SkillType, SecurityLevel
+    CreationMode, SkillType, SecurityLevel, TerminalUI, CreationContext
 };
 use eyre::Result;
 use serde::{Serialize, Deserialize};
@@ -51,10 +51,6 @@ impl CreationConfig for SkillConfig {
 
     fn is_complete(&self) -> bool {
         !self.name.is_empty() && !self.command.is_empty()
-    }
-
-    fn get_name(&self) -> &str {
-        &self.name
     }
 }
 

@@ -47,10 +47,6 @@ impl CreationConfig for CommandConfig {
     fn is_complete(&self) -> bool {
         !self.name.is_empty() && !self.command.is_empty()
     }
-
-    fn get_name(&self) -> &str {
-        &self.name
-    }
 }
 
 /// Command creation artifact

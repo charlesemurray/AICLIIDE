@@ -2,7 +2,7 @@
 
 use crate::cli::creation::{
     CreationFlow, CreationConfig, CreationArtifact, CreationType, CreationPhase, PhaseResult,
-    CreationMode
+    CreationMode, TerminalUI, CreationContext
 };
 use eyre::Result;
 use serde::{Serialize, Deserialize};
@@ -61,10 +61,6 @@ impl CreationConfig for AgentConfig {
 
     fn is_complete(&self) -> bool {
         !self.basic.name.is_empty() && !self.basic.prompt.is_empty()
-    }
-
-    fn get_name(&self) -> &str {
-        &self.basic.name
     }
 }
 
