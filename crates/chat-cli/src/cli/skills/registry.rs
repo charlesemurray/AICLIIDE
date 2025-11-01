@@ -29,6 +29,18 @@ impl SkillRegistry {
         registry
     }
 
+    pub async fn with_all_skills(workspace_path: &Path) -> Result<Self, SkillError> {
+        let mut registry = Self::with_builtins();
+        
+        // Load global skills first
+        registry.load_global_skills().await?;
+        
+        // Load workspace skills (can override global)
+        registry.load_workspace_skills(workspace_path).await?;
+        
+        Ok(registry)
+    }
+
     pub async fn with_workspace_skills(workspace_path: &Path) -> Result<Self, SkillError> {
         let mut registry = Self::with_builtins();
         registry.load_workspace_skills(workspace_path).await?;
@@ -199,6 +211,24 @@ impl SkillRegistry {
         self.load_workspace_skills(workspace_path).await
     }
 
+    async fn load_global_skills(&mut self) -> Result<(), SkillError> {
+        // Try to find global skills directory
+        let global_dirs = [
+            dirs::config_dir().map(|d| d.join("q-cli").join("skills")),
+            dirs::home_dir().map(|d| d.join(".q-skills")),
+            Some(std::path::PathBuf::from("/usr/local/share/q-cli/skills")),
+        ];
+
+        for global_dir in global_dirs.into_iter().flatten() {
+            if global_dir.exists() {
+                self.load_from_directory(&global_dir).await?;
+                break; // Use first available global directory
+            }
+        }
+        
+        Ok(())
+    }
+
     async fn load_workspace_skills(&mut self, workspace_path: &Path) -> Result<(), SkillError> {
         let skills_dir = workspace_path.join(".q-skills");
         if skills_dir.exists() {
@@ -223,8 +253,8 @@ impl SkillRegistry {
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| SkillError::Io(e))?;
                 
-                if let Ok(enhanced_info) = serde_json::from_str::<crate::cli::skills::types::EnhancedSkillInfo>(&content) {
-                    // Try enhanced skill format first
+                // Try enhanced skill format with validation first
+                if let Ok(enhanced_info) = crate::cli::skills::validation::SkillValidator::validate_skill_json(&content) {
                     let typed_skill = crate::cli::skills::builtin::TypedSkill::new(enhanced_info)?;
                     let _ = self.register_override(Box::new(typed_skill));
                 } else if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {

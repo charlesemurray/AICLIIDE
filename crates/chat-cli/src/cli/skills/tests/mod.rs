@@ -4,3 +4,6 @@ pub mod chat_integration_tests;
 pub mod cli_commands_tests;
 pub mod advanced_features_tests;
 pub mod skill_types_tests;
+pub mod integration_tests;
+pub mod validation_tests;
+pub mod global_skills_tests;

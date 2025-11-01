@@ -5,9 +5,11 @@ pub mod builtin;
 pub mod registry;
 pub mod tests;
 pub mod types;
+pub mod validation;
 
 pub use registry::SkillRegistry;
 pub use types::*;
+pub use validation::SkillValidator;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {
