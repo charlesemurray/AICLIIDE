@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::future::Future;
 use async_trait::async_trait;
 use crate::cli::skills::{SkillResult, SkillUI};
+
+// Re-export sysinfo for cross-platform monitoring
+pub use sysinfo::{System, SystemExt, ProcessExt, Pid};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {
@@ -215,4 +219,38 @@ pub trait SecureSkill: Send + Sync {
     // UI rendering
     async fn render_ui(&self) -> SecurityResult<SkillUI>;
     fn supports_interactive(&self) -> bool { false }
+}
+
+// Cross-platform sandbox abstraction
+#[async_trait]
+pub trait PlatformSandbox: Send + Sync {
+    async fn execute_sandboxed<F, T>(&self, future: F, config: &SandboxConfig) -> SecurityResult<T>
+    where
+        F: Future<Output = SecurityResult<T>> + Send,
+        T: Send;
+        
+    fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage>;
+    fn terminate_process(&self, pid: u32) -> SecurityResult<()>;
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceUsage {
+    pub cpu_percent: f32,
+    pub memory_mb: u64,
+    pub disk_io_mb: u64,
+}
+
+// Factory function for platform-specific sandbox
+pub fn create_platform_sandbox() -> Box<dyn PlatformSandbox> {
+    #[cfg(target_os = "linux")]
+    return Box::new(crate::cli::skills::platform::linux::LinuxSandbox::new());
+    
+    #[cfg(target_os = "macos")]
+    return Box::new(crate::cli::skills::platform::macos::MacOSSandbox::new());
+    
+    #[cfg(target_os = "windows")]
+    return Box::new(crate::cli::skills::platform::windows::WindowsSandbox::new());
+    
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    return Box::new(crate::cli::skills::platform::generic::GenericSandbox::new());
 }

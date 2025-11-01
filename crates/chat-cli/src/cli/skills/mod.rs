@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 pub mod builtin;
+pub mod platform;
 pub mod registry;
 pub mod security;
 pub mod tests;
