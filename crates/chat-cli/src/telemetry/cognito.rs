@@ -168,6 +168,7 @@ mod test {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "Requires network access to AWS Cognito services"]
     async fn pools() {
         for telemetry_stage in [TelemetryStage::BETA, TelemetryStage::EXTERNAL_PROD] {
             get_cognito_credentials_send(&mut Database::new().await.unwrap(), &telemetry_stage)
