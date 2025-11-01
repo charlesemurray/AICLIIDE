@@ -1,0 +1,8 @@
+{
+  "name": "chat-bot",
+  "description": "A chat-bot skill",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "You are a helpful assistant for {}",
+  "context_files": []
+}

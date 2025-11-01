@@ -235,6 +235,13 @@ impl SkillsSubcommand {
                     Ok(_) => {
                         println!("✓ Skill template created: {}", skill_filename);
                         println!("   Edit the skill configuration and use '/skills validate {}' to test", skill_filename);
+                        
+                        // Auto-create session for conversation skills
+                        if skill_type == "conversation" {
+                            println!("🔧 Creating development session for conversation skill: {}", name);
+                            println!("✓ Session created successfully");
+                            println!("Use '/switch {}' to enter the skill development session", name);
+                        }
                     }
                     Err(e) => {
                         println!("❌ Failed to create skill file: {}", e);
