@@ -379,21 +379,11 @@ mod tests {
     }
 }
 
-pub struct SkillSignoffManager {
-    signoff_required_operations: Vec<SignoffTrigger>,
-}
+pub struct SkillSignoffManager;
 
 impl SkillSignoffManager {
     pub fn new() -> Self {
-        Self {
-            signoff_required_operations: vec![
-                SignoffTrigger::FileSystemWrite("/".to_string()),
-                SignoffTrigger::NetworkAccess,
-                SignoffTrigger::SystemCommand("sudo".to_string()),
-                SignoffTrigger::SystemCommand("rm".to_string()),
-                SignoffTrigger::ResourceLimitExceed,
-            ],
-        }
+        Self
     }
     
     pub async fn check_signoff_required(

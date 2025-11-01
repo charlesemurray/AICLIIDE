@@ -1,24 +1,19 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SecurityError, SandboxConfig, ResourceUsage};
+use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SecurityError, ResourceUsage};
 use async_trait::async_trait;
-use std::future::Future;
-use tokio::time::{timeout, Duration};
+use tokio::time::Duration;
 use sysinfo::{System, Pid};
 
-pub struct GenericSandbox {
-    system: System,
-}
+pub struct GenericSandbox;
 
 impl GenericSandbox {
     pub fn new() -> Self {
-        Self {
-            system: System::new_all(),
-        }
+        Self
     }
 }
 
 #[async_trait]
 impl PlatformSandbox for GenericSandbox {
-    async fn execute_with_timeout(&self, timeout_secs: u64) -> SecurityResult<()> {
+    async fn execute_with_timeout(&self, _timeout_secs: u64) -> SecurityResult<()> {
         // Basic timeout implementation for unsupported platforms
         tokio::time::sleep(Duration::from_millis(100)).await;
         Ok(())

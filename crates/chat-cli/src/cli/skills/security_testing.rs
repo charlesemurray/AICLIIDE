@@ -1,6 +1,6 @@
 use crate::cli::skills::security::*;
 use std::path::PathBuf;
-use tokio::time::{Duration, Instant};
+use tokio::time::Duration;
 
 #[cfg(test)]
 mod security_attack_tests {
@@ -146,6 +146,7 @@ mod security_validation_tests {
 }
 
 // Security validation functions
+#[cfg(test)]
 fn validate_file_path(path: &str) -> SecurityResult<PathBuf> {
     let path_buf = PathBuf::from(path);
     
@@ -169,6 +170,7 @@ fn validate_file_path(path: &str) -> SecurityResult<PathBuf> {
     Ok(path_buf)
 }
 
+#[cfg(test)]
 fn validate_command_input(command: &str) -> SecurityResult<()> {
     // Check for command injection patterns
     let injection_patterns = [";", "&&", "||", "|", "`", "$(", "${"];
@@ -193,6 +195,7 @@ fn validate_command_input(command: &str) -> SecurityResult<()> {
     Ok(())
 }
 
+#[cfg(test)]
 fn validate_privilege_operation(operation: &str) -> SecurityResult<()> {
     let privilege_patterns = ["sudo", "su", "runas", "setuid", "chmod +s"];
     for pattern in privilege_patterns {
@@ -205,6 +208,7 @@ fn validate_privilege_operation(operation: &str) -> SecurityResult<()> {
     Ok(())
 }
 
+#[cfg(test)]
 fn validate_network_access(command: &str, context: &SecurityContext) -> SecurityResult<()> {
     let network_commands = ["curl", "wget", "nc", "netcat", "telnet", "ssh"];
     let has_network_command = network_commands.iter().any(|cmd| command.contains(cmd));
@@ -232,6 +236,7 @@ fn validate_network_access(command: &str, context: &SecurityContext) -> Security
     Ok(())
 }
 
+#[cfg(test)]
 fn sanitize_skill_input(input: &serde_json::Value) -> SecurityResult<serde_json::Value> {
     // Basic input sanitization
     let input_str = input.to_string();
@@ -249,6 +254,7 @@ fn sanitize_skill_input(input: &serde_json::Value) -> SecurityResult<serde_json:
     Ok(input.clone())
 }
 
+#[cfg(test)]
 async fn execute_with_resource_limits<F, T>(
     future: F,
     limits: &ResourceLimits,

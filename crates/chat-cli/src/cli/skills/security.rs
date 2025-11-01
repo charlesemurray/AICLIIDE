@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::future::Future;
 use async_trait::async_trait;
 use crate::cli::skills::{SkillResult, SkillUI};
-
-// Re-export sysinfo for cross-platform monitoring
-pub use sysinfo::{System, Pid};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {

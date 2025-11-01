@@ -1,4 +1,4 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SandboxConfig, ResourceUsage};
+use crate::cli::skills::security::{PlatformSandbox, SecurityResult, ResourceUsage};
 use crate::cli::skills::platform::generic::GenericSandbox;
 use async_trait::async_trait;
 
