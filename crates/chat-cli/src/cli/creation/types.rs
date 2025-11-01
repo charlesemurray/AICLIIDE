@@ -118,6 +118,10 @@ pub trait TerminalUI {
     fn show_preview(&mut self, content: &str);
     fn show_progress(&mut self, current: usize, total: usize, message: &str);
     fn show_message(&mut self, message: &str, color: SemanticColor);
+    
+    // New multiple choice methods
+    fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String>;
+    fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>>;
 }
 
 /// Smart defaults and suggestions based on context

@@ -13,6 +13,8 @@ mod templates;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod ui_integration_tests;
 
 pub use types::*;
 pub use errors::CreationError;

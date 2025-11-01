@@ -142,6 +142,102 @@ impl TerminalUI for TerminalUIImpl {
     fn show_message(&mut self, message: &str, color: SemanticColor) {
         println!("{}", self.colorize(message, color));
     }
+
+    fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String> {
+        loop {
+            println!("{}", self.colorize(prompt, SemanticColor::Info));
+            
+            // Display options with colors
+            for (i, (key, description)) in options.iter().enumerate() {
+                println!(
+                    "  {}. {} - {}",
+                    self.colorize(&(i + 1).to_string(), SemanticColor::Info),
+                    self.colorize(key, SemanticColor::Success),
+                    self.colorize(description, SemanticColor::Debug)
+                );
+            }
+            
+            print!("\nChoose (1-{}): ", options.len());
+            io::stdout().flush()?;
+            
+            let input = self.read_input()?;
+            
+            // Handle numeric selection (1-based)
+            if let Ok(num) = input.parse::<usize>() {
+                if num > 0 && num <= options.len() {
+                    return Ok(options[num - 1].0.to_string());
+                }
+            }
+            
+            // Handle key selection
+            for (key, _) in options {
+                if input == *key {
+                    return Ok(key.to_string());
+                }
+            }
+            
+            self.show_message(
+                &format!("Invalid selection: {}. Please choose 1-{} or enter the key name.", input, options.len()),
+                SemanticColor::Error
+            );
+        }
+    }
+
+    fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>> {
+        println!("{}", self.colorize(prompt, SemanticColor::Info));
+        
+        // Display options with colors
+        for (i, (key, description)) in options.iter().enumerate() {
+            println!(
+                "  {}. {} - {}",
+                self.colorize(&(i + 1).to_string(), SemanticColor::Info),
+                self.colorize(key, SemanticColor::Success),
+                self.colorize(description, SemanticColor::Debug)
+            );
+        }
+        
+        if allow_other {
+            println!("{}", self.colorize("  (You can also type custom values)", SemanticColor::Debug));
+        }
+        
+        print!("\nChoose multiple (comma-separated, e.g., 1,3,5): ");
+        io::stdout().flush()?;
+        
+        let input = self.read_input()?;
+        if input.is_empty() {
+            return Ok(Vec::new());
+        }
+        
+        let mut selections = Vec::new();
+        for part in input.split(',') {
+            let part = part.trim();
+            
+            // Handle numeric selection
+            if let Ok(num) = part.parse::<usize>() {
+                if num > 0 && num <= options.len() {
+                    selections.push(options[num - 1].0.to_string());
+                    continue;
+                }
+            }
+            
+            // Handle key selection
+            let mut found = false;
+            for (key, _) in options {
+                if part == *key {
+                    selections.push(key.to_string());
+                    found = true;
+                    break;
+                }
+            }
+            
+            // Handle custom values if allowed
+            if !found && allow_other && !part.is_empty() {
+                selections.push(part.to_string());
+            }
+        }
+        
+        Ok(selections)
+    }
 }
 
 /// Mock UI for testing
@@ -227,6 +323,61 @@ impl TerminalUI for MockTerminalUI {
     fn show_message(&mut self, message: &str, color: SemanticColor) {
         // Record without ANSI codes for testing
         self.record_output(format!("{:?}: {}", color, message));
+    }
+
+    fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String> {
+        self.record_output(format!("SELECT: {}", prompt));
+        for (i, (key, desc)) in options.iter().enumerate() {
+            self.record_output(format!("  {}. {} - {}", i + 1, key, desc));
+        }
+        
+        let input = self.next_input();
+        
+        // Handle numeric selection (1-based)
+        if let Ok(num) = input.parse::<usize>() {
+            if num > 0 && num <= options.len() {
+                return Ok(options[num - 1].0.to_string());
+            }
+        }
+        
+        // Handle key selection
+        for (key, _) in options {
+            if input == *key {
+                return Ok(key.to_string());
+            }
+        }
+        
+        Err(eyre::eyre!("Invalid selection: {}", input))
+    }
+
+    fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], _allow_other: bool) -> Result<Vec<String>> {
+        self.record_output(format!("SELECT_MULTI: {}", prompt));
+        for (i, (key, desc)) in options.iter().enumerate() {
+            self.record_output(format!("  {}. {} - {}", i + 1, key, desc));
+        }
+        
+        let input = self.next_input();
+        if input.is_empty() {
+            return Ok(Vec::new());
+        }
+        
+        let selections: Vec<String> = input
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                // Handle numeric selection
+                if let Ok(num) = s.parse::<usize>() {
+                    if num > 0 && num <= options.len() {
+                        return options[num - 1].0.to_string();
+                    }
+                }
+                // Handle key selection or custom value
+                s.to_string()
+            })
+            .collect();
+        
+        Ok(selections)
     }
 }
 
