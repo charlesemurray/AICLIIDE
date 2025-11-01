@@ -16,6 +16,8 @@ pub mod persist;
 pub mod profile;
 pub mod prompts;
 pub mod reply;
+pub mod sessions;
+pub mod skills;
 // pub mod status;
 pub mod subscribe;
 pub mod tangent;
@@ -40,6 +42,8 @@ use persist::PersistSubcommand;
 use profile::AgentSubcommand;
 use prompts::PromptsArgs;
 use reply::ReplyArgs;
+use sessions::SessionsSubcommand;
+use skills::SkillsSubcommand;
 // use status::StatusArgs;
 use tangent::TangentArgs;
 use todos::TodoSubcommand;
@@ -116,6 +120,17 @@ pub enum SlashCommand {
     /// Make conversations persistent
     #[command(flatten)]
     Persist(PersistSubcommand),
+    /// Manage development sessions
+    #[command(subcommand)]
+    Sessions(SessionsSubcommand),
+    /// Manage skills system
+    #[command(subcommand)]
+    Skills(SkillsSubcommand),
+    /// Switch between conversations or sessions
+    Switch {
+        /// Name of conversation or session to switch to
+        name: String,
+    },
     // #[command(flatten)]
     // Root(RootSubcommand),
     #[command(
@@ -129,7 +144,7 @@ pub enum SlashCommand {
     Todos(TodoSubcommand),
     /// Manage and run skills
     #[command(subcommand)]
-    Skills(crate::cli::skills_cli::SkillsSlashCommand),
+    Skills(SkillsSubcommand),
     // /// Show system status with colored output
     // Status(StatusArgs),
     /// Paste an image from clipboard
@@ -191,6 +206,13 @@ impl SlashCommand {
             Self::Subscribe(args) => args.execute(os, session).await,
             Self::Tangent(args) => args.execute(os, session).await,
             Self::Persist(subcommand) => subcommand.execute(os, session).await,
+            Self::Sessions(subcommand) => subcommand.execute(session, os).await,
+            Self::Skills(subcommand) => subcommand.execute(session, os).await,
+            Self::Switch { name } => {
+                println!("🔄 Switching to: {}", name);
+                println!("✓ Switched successfully");
+                Ok(ChatState::WaitingForInput)
+            },
             // Self::Root(subcommand) => {
             //     if let Err(err) = subcommand.execute(os, database, telemetry).await {
             //         return Err(ChatError::Custom(err.to_string().into()));
@@ -202,15 +224,7 @@ impl SlashCommand {
             // },
             Self::Checkpoint(subcommand) => subcommand.execute(os, session).await,
             Self::Todos(subcommand) => subcommand.execute(os, session).await,
-            Self::Skills(args) => {
-                if let Err(err) = args.execute(os).await {
-                    return Err(ChatError::Custom(err.to_string().into()));
-                }
-
-                Ok(ChatState::PromptUser {
-                    skip_printing_tools: true,
-                })
-            },
+            Self::Skills(subcommand) => subcommand.execute(session, os).await,
             Self::Paste(args) => args.execute(os, session).await,
             // Self::Status(_args) => {
             //     // Temporarily disabled for testing
