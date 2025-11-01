@@ -1,10 +1,11 @@
-use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, Result};
+use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, Result, ResourceLimits, execute_with_timeout};
 use crate::cli::skills::registry::SkillInfo;
 use async_trait::async_trait;
 
 pub struct JsonSkill {
     info: SkillInfo,
     _config: String, // Store the full JSON config for future use
+    limits: ResourceLimits,
 }
 
 impl JsonSkill {
@@ -12,6 +13,7 @@ impl JsonSkill {
         Ok(Self {
             info,
             _config: config,
+            limits: ResourceLimits::default(),
         })
     }
 }
@@ -27,13 +29,17 @@ impl Skill for JsonSkill {
     }
 
     async fn execute(&self, _params: serde_json::Value) -> Result<SkillResult> {
-        // For now, just return a simple success message
-        // In a full implementation, this would execute the command specified in the JSON
-        Ok(SkillResult {
-            output: format!("Executed {} skill", self.info.name),
-            ui_updates: None,
-            state_changes: None,
-        })
+        let execution_future = async {
+            // For now, just return a simple success message
+            // In a full implementation, this would execute the command specified in the JSON
+            Ok(SkillResult {
+                output: format!("Executed {} skill", self.info.name),
+                ui_updates: None,
+                state_changes: None,
+            })
+        };
+        
+        execute_with_timeout(execution_future, &self.limits).await
     }
 
     async fn render_ui(&self) -> Result<SkillUI> {

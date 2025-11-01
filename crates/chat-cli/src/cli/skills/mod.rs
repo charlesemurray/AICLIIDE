@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tokio::time::timeout;
 
 pub mod builtin;
 pub mod registry;
@@ -47,6 +49,10 @@ pub enum SkillError {
     InvalidInput(String),
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
+    #[error("Execution timeout after {0}s")]
+    Timeout(u64),
+    #[error("Resource limit exceeded: {0}")]
+    ResourceLimit(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
@@ -68,3 +74,30 @@ pub trait Skill: Send + Sync {
 }
 
 pub type Result<T> = std::result::Result<T, SkillError>;
+
+#[derive(Debug, Clone)]
+pub struct ResourceLimits {
+    pub timeout_seconds: u64,
+    pub max_memory_mb: Option<u64>,
+    pub max_cpu_percent: Option<u64>,
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self {
+            timeout_seconds: 30,
+            max_memory_mb: Some(512),
+            max_cpu_percent: Some(80),
+        }
+    }
+}
+
+pub async fn execute_with_timeout<T>(
+    future: impl std::future::Future<Output = Result<T>>,
+    limits: &ResourceLimits,
+) -> Result<T> {
+    match timeout(Duration::from_secs(limits.timeout_seconds), future).await {
+        Ok(result) => result,
+        Err(_) => Err(SkillError::Timeout(limits.timeout_seconds)),
+    }
+}

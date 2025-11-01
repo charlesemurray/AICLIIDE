@@ -8,3 +8,6 @@ pub mod integration_tests;
 pub mod validation_tests;
 pub mod global_skills_tests;
 pub mod manual_verification_test;
+pub mod security_tests;
+pub mod resilience_tests;
+pub mod timeout_test;

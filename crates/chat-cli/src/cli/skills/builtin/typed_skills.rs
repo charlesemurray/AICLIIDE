@@ -1,15 +1,19 @@
-use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, Result};
+use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, Result, ResourceLimits, execute_with_timeout};
 use crate::cli::skills::types::{EnhancedSkillInfo, SkillType};
 use async_trait::async_trait;
 use std::process::Command;
 
 pub struct TypedSkill {
     info: EnhancedSkillInfo,
+    limits: ResourceLimits,
 }
 
 impl TypedSkill {
     pub fn new(info: EnhancedSkillInfo) -> std::result::Result<Self, SkillError> {
-        Ok(Self { info })
+        Ok(Self { 
+            info,
+            limits: ResourceLimits::default(),
+        })
     }
 }
 
@@ -28,20 +32,24 @@ impl Skill for TypedSkill {
     }
 
     async fn execute(&self, params: serde_json::Value) -> Result<SkillResult> {
-        match &self.info.skill_type {
-            SkillType::CodeInline { command, args, working_dir } => {
-                self.execute_code_inline(command, args.as_ref(), working_dir.as_ref()).await
+        let execution_future = async {
+            match &self.info.skill_type {
+                SkillType::CodeInline { command, args, working_dir } => {
+                    self.execute_code_inline(command, args.as_ref(), working_dir.as_ref()).await
+                }
+                SkillType::CodeSession { command, args, working_dir, .. } => {
+                    self.execute_code_session(command, args.as_ref(), working_dir.as_ref()).await
+                }
+                SkillType::Conversation { prompt_template, .. } => {
+                    self.execute_conversation(prompt_template, &params).await
+                }
+                SkillType::PromptInline { prompt, .. } => {
+                    self.execute_prompt_inline(prompt, &params).await
+                }
             }
-            SkillType::CodeSession { command, args, working_dir, .. } => {
-                self.execute_code_session(command, args.as_ref(), working_dir.as_ref()).await
-            }
-            SkillType::Conversation { prompt_template, .. } => {
-                self.execute_conversation(prompt_template, &params).await
-            }
-            SkillType::PromptInline { prompt, .. } => {
-                self.execute_prompt_inline(prompt, &params).await
-            }
-        }
+        };
+        
+        execute_with_timeout(execution_future, &self.limits).await
     }
 
     async fn render_ui(&self) -> Result<SkillUI> {

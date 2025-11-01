@@ -3,7 +3,6 @@ mod advanced_features_tests {
     use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, SkillRegistry};
     use serde_json::json;
     use tempfile::TempDir;
-    use std::path::Path;
 
     struct MockSkillWithAliases {
         name: String,

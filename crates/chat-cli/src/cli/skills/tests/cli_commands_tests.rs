@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod cli_commands_tests {
     use crate::cli::skills::{SkillRegistry, SkillError};
-    use clap::{Args, Subcommand, Parser};
+    use clap::{Subcommand, Parser};
     use serde_json::json;
     use std::process::ExitCode;
 
