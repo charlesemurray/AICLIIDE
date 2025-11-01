@@ -223,11 +223,13 @@ impl SkillRegistry {
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| SkillError::Io(e))?;
                 
-                if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {
-                    // Create a JSON-based skill implementation
+                if let Ok(enhanced_info) = serde_json::from_str::<crate::cli::skills::types::EnhancedSkillInfo>(&content) {
+                    // Try enhanced skill format first
+                    let typed_skill = crate::cli::skills::builtin::TypedSkill::new(enhanced_info)?;
+                    let _ = self.register_override(Box::new(typed_skill));
+                } else if let Ok(skill_info) = serde_json::from_str::<SkillInfo>(&content) {
+                    // Fall back to basic JSON skill
                     let json_skill = crate::cli::skills::builtin::JsonSkill::new(skill_info, content)?;
-                    
-                    // Register the skill, potentially overriding builtins
                     let _ = self.register_override(Box::new(json_skill));
                 }
             }

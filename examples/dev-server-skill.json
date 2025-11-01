@@ -1,0 +1,11 @@
+{
+  "name": "dev-server",
+  "description": "Start development server with hot reload",
+  "version": "1.0.0",
+  "aliases": ["dev", "serve"],
+  "type": "code_session",
+  "command": "npm",
+  "args": ["run", "dev"],
+  "working_dir": "./",
+  "session_timeout": 3600
+}

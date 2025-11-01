@@ -1,0 +1,9 @@
+{
+  "name": "git-status",
+  "description": "Show git repository status",
+  "version": "1.0.0",
+  "aliases": ["gs", "status"],
+  "type": "code_inline",
+  "command": "git",
+  "args": ["status", "--porcelain"]
+}

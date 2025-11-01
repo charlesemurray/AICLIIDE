@@ -3,3 +3,4 @@ pub mod registry_tests;
 pub mod chat_integration_tests;
 pub mod cli_commands_tests;
 pub mod advanced_features_tests;
+pub mod skill_types_tests;

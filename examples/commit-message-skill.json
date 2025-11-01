@@ -1,0 +1,30 @@
+{
+  "name": "commit-message",
+  "description": "Generate conventional commit messages",
+  "version": "1.0.0",
+  "aliases": ["cm", "commit"],
+  "type": "prompt_inline",
+  "prompt": "{type}({scope}): {description}\n\n{body}",
+  "parameters": [
+    {
+      "name": "type",
+      "description": "Commit type (feat, fix, docs, etc.)",
+      "required": true
+    },
+    {
+      "name": "scope",
+      "description": "Scope of the change",
+      "required": false
+    },
+    {
+      "name": "description",
+      "description": "Brief description of the change",
+      "required": true
+    },
+    {
+      "name": "body",
+      "description": "Detailed description",
+      "required": false
+    }
+  ]
+}

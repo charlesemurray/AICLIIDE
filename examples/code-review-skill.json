@@ -1,0 +1,9 @@
+{
+  "name": "code-review",
+  "description": "AI-powered code review assistant",
+  "version": "1.0.0",
+  "type": "conversation",
+  "prompt_template": "Please review this code for best practices, potential bugs, and improvements:\n\n{code}\n\nFocus on: {focus_areas}",
+  "context_files": ["*.py", "*.js", "*.rs"],
+  "model": "claude-3-sonnet"
+}

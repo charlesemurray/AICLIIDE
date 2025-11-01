@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 pub mod builtin;
 pub mod registry;
 pub mod tests;
+pub mod types;
 
 pub use registry::SkillRegistry;
+pub use types::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {
