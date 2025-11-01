@@ -11,6 +11,9 @@ pub mod security_logging;
 pub mod security_testing;
 pub mod security_tools;
 pub mod tests;
+
+#[cfg(test)]
+mod unit_tests;
 pub mod types;
 pub mod validation;
 
