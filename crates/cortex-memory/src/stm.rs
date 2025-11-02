@@ -1,4 +1,4 @@
-use crate::{CortexError, MemoryNote, Result};
+use crate::{MemoryNote, Result};
 use std::collections::{HashMap, VecDeque};
 
 pub struct ShortTermMemory {
