@@ -3,12 +3,25 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use eyre::{Result, bail};
-use tokio::sync::{Mutex, mpsc};
+use eyre::{
+    Result,
+    bail,
+};
+use tokio::sync::{
+    Mutex,
+    mpsc,
+};
 
-use crate::cli::chat::managed_session::{ManagedSession, OutputBuffer};
+use crate::cli::chat::managed_session::{
+    ManagedSession,
+    OutputBuffer,
+};
 use crate::cli::chat::session_mode::SessionStateChange;
-use crate::theme::session::{SessionDisplay, SessionStatus, SessionType};
+use crate::theme::session::{
+    SessionDisplay,
+    SessionStatus,
+    SessionType,
+};
 
 /// Configuration for multi-session coordinator
 #[derive(Debug, Clone)]
@@ -70,16 +83,11 @@ impl MultiSessionCoordinator {
 
         // Check session limit
         if sessions.len() >= self.config.max_active_sessions {
-            bail!(
-                "Maximum active sessions ({}) reached",
-                self.config.max_active_sessions
-            );
+            bail!("Maximum active sessions ({}) reached", self.config.max_active_sessions);
         }
 
         // Generate name if not provided
-        let session_name = name.unwrap_or_else(|| {
-            format!("session-{}", sessions.len() + 1)
-        });
+        let session_name = name.unwrap_or_else(|| format!("session-{}", sessions.len() + 1));
 
         // Check for duplicate names
         if sessions.values().any(|s| s.display.name == session_name) {
@@ -178,10 +186,12 @@ impl MultiSessionCoordinator {
         let sessions = self.sessions.lock().await;
         sessions
             .values()
-            .filter(|s| matches!(
-                s.state,
-                crate::cli::chat::managed_session::SessionState::WaitingForInput
-            ))
+            .filter(|s| {
+                matches!(
+                    s.state,
+                    crate::cli::chat::managed_session::SessionState::WaitingForInput
+                )
+            })
             .map(|s| s.display.name.clone())
             .collect()
     }
@@ -200,12 +210,8 @@ impl MultiSessionCoordinator {
             // Update display status
             session.display.status = match new_state {
                 crate::cli::chat::managed_session::SessionState::Active => SessionStatus::Active,
-                crate::cli::chat::managed_session::SessionState::WaitingForInput => {
-                    SessionStatus::WaitingForInput
-                }
-                crate::cli::chat::managed_session::SessionState::Processing => {
-                    SessionStatus::Processing
-                }
+                crate::cli::chat::managed_session::SessionState::WaitingForInput => SessionStatus::WaitingForInput,
+                crate::cli::chat::managed_session::SessionState::Processing => SessionStatus::Processing,
             };
         }
 
@@ -222,32 +228,26 @@ impl MultiSessionCoordinator {
         while let Ok(change) = self.state_rx.try_recv() {
             match change {
                 SessionStateChange::NeedsInput(id) => {
-                    self.update_session_state(
-                        &id,
-                        crate::cli::chat::managed_session::SessionState::WaitingForInput,
-                    )
-                    .await?;
-                }
+                    self.update_session_state(&id, crate::cli::chat::managed_session::SessionState::WaitingForInput)
+                        .await?;
+                },
                 SessionStateChange::Processing(id) => {
-                    self.update_session_state(
-                        &id,
-                        crate::cli::chat::managed_session::SessionState::Processing,
-                    )
-                    .await?;
-                }
+                    self.update_session_state(&id, crate::cli::chat::managed_session::SessionState::Processing)
+                        .await?;
+                },
                 SessionStateChange::Completed(id) => {
                     // Mark as completed
                     let mut sessions = self.sessions.lock().await;
                     if let Some(session) = sessions.get_mut(&id) {
                         session.display.status = SessionStatus::Completed;
                     }
-                }
+                },
                 SessionStateChange::Error(id, error) => {
                     let mut sessions = self.sessions.lock().await;
                     if let Some(session) = sessions.get_mut(&id) {
                         session.last_error = Some(error);
                     }
-                }
+                },
             }
         }
         Ok(())
@@ -263,7 +263,11 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
 
         let id = coordinator
-            .create_session("test-1".to_string(), SessionType::Development, Some("dev-session".to_string()))
+            .create_session(
+                "test-1".to_string(),
+                SessionType::Development,
+                Some("dev-session".to_string()),
+            )
             .await
             .unwrap();
 
@@ -276,7 +280,11 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
 
         coordinator
-            .create_session("test-1".to_string(), SessionType::Development, Some("session-1".to_string()))
+            .create_session(
+                "test-1".to_string(),
+                SessionType::Development,
+                Some("session-1".to_string()),
+            )
             .await
             .unwrap();
 
@@ -322,7 +330,11 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
 
         coordinator
-            .create_session("test-1".to_string(), SessionType::Development, Some("session-1".to_string()))
+            .create_session(
+                "test-1".to_string(),
+                SessionType::Development,
+                Some("session-1".to_string()),
+            )
             .await
             .unwrap();
 
@@ -340,7 +352,11 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
 
         coordinator
-            .create_session("test-1".to_string(), SessionType::Development, Some("session-1".to_string()))
+            .create_session(
+                "test-1".to_string(),
+                SessionType::Development,
+                Some("session-1".to_string()),
+            )
             .await
             .unwrap();
 
@@ -356,15 +372,16 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
 
         let id = coordinator
-            .create_session("test-1".to_string(), SessionType::Development, Some("session-1".to_string()))
+            .create_session(
+                "test-1".to_string(),
+                SessionType::Development,
+                Some("session-1".to_string()),
+            )
             .await
             .unwrap();
 
         coordinator
-            .update_session_state(
-                &id,
-                crate::cli::chat::managed_session::SessionState::WaitingForInput,
-            )
+            .update_session_state(&id, crate::cli::chat::managed_session::SessionState::WaitingForInput)
             .await
             .unwrap();
 

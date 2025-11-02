@@ -2322,4 +2322,31 @@ mod tests {
         assert_eq!(manager.skill_registry.len(), 1);
         assert!(manager.skill_registry.get("test-skill").is_some());
     }
+
+    #[tokio::test]
+    async fn test_tool_manager_loads_workflows() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+        let workflow_path = dir.path().join("test_workflow.json");
+
+        let workflow_json = r#"{
+            "name": "test-workflow",
+            "version": "1.0.0",
+            "description": "A test workflow",
+            "steps": []
+        }"#;
+
+        fs::write(&workflow_path, workflow_json).unwrap();
+
+        // Create a ToolManager and manually load workflows
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        assert_eq!(manager.workflow_registry.len(), 1);
+        assert!(manager.workflow_registry.get("test-workflow").is_some());
+    }
 }
