@@ -6,6 +6,47 @@ Detailed implementation plan for adding skills and workflows natural language in
 
 **Related Document**: [Design Document](./skills-workflows-design.md)
 
+## Development Commands Reference
+
+### Essential Commands (from README & DEVELOPMENT.md)
+
+```bash
+# Format code (MUST use nightly)
+cargo +nightly fmt
+
+# Run lints
+cargo clippy
+
+# Run tests
+cargo test
+
+# Run specific tests
+cargo test skills::unit_tests
+
+# Build debug binary
+cargo build --bin chat_cli
+
+# Run the CLI
+cargo run --bin chat_cli
+
+# Run with arguments
+cargo run --bin chat_cli -- skills list
+
+# Debug mode
+RUST_LOG=debug cargo run --bin chat_cli -- skills list
+```
+
+### Before Every Commit
+```bash
+cargo +nightly fmt    # Format with nightly
+cargo clippy          # Check lints
+cargo test            # Run all tests
+git add -A            # Stage changes
+git commit -m "msg"   # Commit
+```
+
+---
+
 ## Development Workflow Rules
 
 ### Iteration Size
@@ -31,8 +72,8 @@ Detailed implementation plan for adding skills and workflows natural language in
 
 ### Quality Checks (Before Every Commit)
 ```bash
-cargo fmt
-cargo clippy --all-targets
+cargo +nightly fmt
+cargo clippy
 cargo test
 git add -A
 git commit -m "Clear, specific message"
@@ -1136,7 +1177,7 @@ git commit -m "Clear, specific message"
 - [ ] ✅ **Compile + Test + Commit**: "Fix test failures"
 
 #### Iteration 6.8: Run clippy (30 min)
-- [ ] Run `cargo clippy --all-targets`
+- [ ] Run `cargo clippy`
 - [ ] Fix all warnings
 - [ ] ✅ **Compile + Test + Commit**: "Fix clippy warnings"
 

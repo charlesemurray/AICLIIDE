@@ -41,8 +41,8 @@ cargo test
 ### 5. COMMIT AFTER EVERY ITERATION
 ```bash
 # The workflow:
-cargo fmt
-cargo clippy --all-targets
+cargo +nightly fmt
+cargo clippy
 cargo test
 git add -A
 git commit -m "Add Skill variant to ToolOrigin"
@@ -66,10 +66,10 @@ Examples:
 
 ```bash
 # 1. Format
-cargo fmt
+cargo +nightly fmt
 
 # 2. Lint
-cargo clippy --all-targets
+cargo clippy
 
 # 3. Test
 cargo test
@@ -163,8 +163,8 @@ Mark the commit hash next to completed iterations.
 2. Add `Skill(String)` to `ToolOrigin` enum
 3. Update `Display` impl
 4. Add test: `test_tool_origin_skill_display()`
-5. Run: `cargo fmt`
-6. Run: `cargo clippy --all-targets`
+5. Run: `cargo +nightly fmt`
+6. Run: `cargo clippy`
 7. Run: `cargo test`
 8. Commit: "Add Skill variant to ToolOrigin"
 9. ✅ Done in 30 minutes

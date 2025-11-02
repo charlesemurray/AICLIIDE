@@ -4,6 +4,10 @@ use std::collections::HashMap;
 pub mod types;
 pub mod template_manager;
 pub mod storage;
+pub mod creation_builder;
+pub mod prompt_builder;
+pub mod command_builder;
+pub mod examples;
 
 #[cfg(test)]
 mod tests;
@@ -23,8 +27,14 @@ mod performance_tests;
 #[cfg(test)]
 mod error_tests;
 
+#[cfg(test)]
+mod builder_tests;
+
 pub use types::*;
 pub use template_manager::{TemplateManager, DefaultTemplateManager};
+pub use creation_builder::{CreationBuilder, ValidationResult, ValidationIssue, IssueSeverity};
+pub use prompt_builder::PromptBuilder;
+pub use command_builder::{CommandBuilder, CommandConfig};
 
 /// Main entry point for the prompt building system
 pub struct PromptSystem {

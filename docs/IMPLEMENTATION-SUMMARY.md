@@ -103,8 +103,8 @@ See [WORKFLOW-RULES.md](./WORKFLOW-RULES.md) for detailed rules.
 
 ### Before Every Commit
 ```bash
-cargo fmt
-cargo clippy --all-targets
+cargo +nightly fmt
+cargo clippy
 cargo test
 git add -A
 git commit -m "Clear message"
