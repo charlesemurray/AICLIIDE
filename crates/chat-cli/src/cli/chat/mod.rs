@@ -14,6 +14,7 @@ pub mod input_router;
 pub mod managed_session;
 mod message;
 mod parse;
+pub mod rate_limiter;
 pub mod session_mode;
 pub mod terminal_state;
 use std::path::MAIN_SEPARATOR;
@@ -668,7 +669,7 @@ impl ChatSession {
             }
         });
 
-        Ok(Self {
+        let mut session = Self {
             stdout: control_end_stdout,
             stderr: control_end_stderr,
             initial_input: input,
@@ -699,7 +700,7 @@ impl ChatSession {
             analytics,
         };
 
-        // Log session start for analytics
+        // Log session start for analytics  
         if let Some(ref mut analytics) = session.analytics {
             if let Err(e) = analytics.start_session("") {
                 tracing::warn!("Failed to log session start: {}", e);
@@ -1255,9 +1256,9 @@ impl Drop for ChatSession {
         // Log session end for analytics
         if let Some(ref mut analytics) = self.analytics {
             let completion_status = if matches!(self.inner, Some(ChatState::Exit)) {
-                crate::analytics::SessionCompletionStatus::Completed
+                crate::analytics::logger::SessionCompletionStatus::Completed
             } else {
-                crate::analytics::SessionCompletionStatus::Abandoned
+                crate::analytics::logger::SessionCompletionStatus::Abandoned
             };
             
             if let Err(e) = analytics.end_session(completion_status) {
@@ -2091,7 +2092,7 @@ impl ChatSession {
                 
                 let event = crate::analytics::ConversationAnalyticsEvent::continuation_prompt(
                     session_id.to_string(),
-                    self.conversation.message_count(),
+                    self.conversation.history().len() as u32,
                     format!("Tool approval: {}", tool_name),
                     Some(self.tool_uses.len() as u32),
                 );
@@ -2279,21 +2280,21 @@ impl ChatSession {
         // Log user response for analytics
         if let Some(session_id) = self.analytics_session_id() {
             let response_type = if input.is_empty() {
-                crate::analytics::UserResponseType::Continue
+                crate::analytics::UserResponseType::Approved
             } else if input.starts_with('/') {
-                crate::analytics::UserResponseType::Modify
+                crate::analytics::UserResponseType::Modified
             } else if input.eq_ignore_ascii_case("stop") || input.eq_ignore_ascii_case("quit") {
-                crate::analytics::UserResponseType::Stop
+                crate::analytics::UserResponseType::Abandoned
             } else {
-                crate::analytics::UserResponseType::Question
+                crate::analytics::UserResponseType::Modified
             };
 
             let event = crate::analytics::ConversationAnalyticsEvent::new(
                 session_id.to_string(),
                 crate::analytics::AnalyticsEventType::UserResponse {
-                    response_type,
-                    at_message_count: self.conversation.message_count(),
-                    response_length: input.len(),
+                    prompt_type: crate::analytics::PromptType::ToolApproval,
+                    response: response_type,
+                    response_time_ms: 0, // We don't track timing yet
                 }
             );
             self.log_analytics_event(event);

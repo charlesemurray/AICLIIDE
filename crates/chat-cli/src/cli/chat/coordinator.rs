@@ -7,6 +7,7 @@ use eyre::{Result, bail};
 use tokio::sync::{Mutex, mpsc};
 
 use crate::cli::chat::managed_session::{ManagedSession, OutputBuffer};
+use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::session_mode::SessionStateChange;
 use crate::theme::session::{SessionDisplay, SessionStatus, SessionType};
 
@@ -43,12 +44,15 @@ pub struct MultiSessionCoordinator {
     state_rx: mpsc::UnboundedReceiver<SessionStateChange>,
     /// State change sender (cloned for each session)
     state_tx: mpsc::UnboundedSender<SessionStateChange>,
+    /// API rate limiter
+    rate_limiter: ApiRateLimiter,
 }
 
 impl MultiSessionCoordinator {
     /// Create a new coordinator
     pub fn new(config: CoordinatorConfig) -> Self {
         let (state_tx, state_rx) = mpsc::unbounded_channel();
+        let rate_limiter = ApiRateLimiter::new(config.max_concurrent_api_calls);
 
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
@@ -56,6 +60,7 @@ impl MultiSessionCoordinator {
             config,
             state_rx,
             state_tx,
+            rate_limiter,
         }
     }
 
@@ -208,6 +213,18 @@ impl MultiSessionCoordinator {
     /// Get state change sender for new sessions
     pub fn state_sender(&self) -> mpsc::UnboundedSender<SessionStateChange> {
         self.state_tx.clone()
+    }
+
+    /// Get rate limiter for API calls
+    pub fn rate_limiter(&self) -> ApiRateLimiter {
+        self.rate_limiter.clone()
+    }
+
+    /// Get current API call statistics
+    pub async fn api_stats(&self) -> (usize, usize) {
+        let active = self.rate_limiter.active_count().await;
+        let available = self.rate_limiter.available_permits();
+        (active, available)
     }
 
     /// Process state changes from background sessions
