@@ -717,6 +717,131 @@ impl MultiSessionCoordinator {
 - Update documentation
 - Test over SSH
 
+## Detailed Implementation Steps
+
+### Step 6 Details: Database Persistence
+
+**6.1 Database Schema Migration**
+```sql
+-- Migration 008: Add session metadata to conversations table
+ALTER TABLE conversations ADD COLUMN session_name TEXT;
+ALTER TABLE conversations ADD COLUMN session_type TEXT; 
+ALTER TABLE conversations ADD COLUMN session_status TEXT;
+ALTER TABLE conversations ADD COLUMN last_active INTEGER;
+
+CREATE INDEX idx_conversations_session_status ON conversations(session_status);
+```
+
+**6.2 Persistence Methods**
+```rust
+impl MultiSessionCoordinator {
+    async fn save_session(&self, session_id: &str, os: &Os) -> Result<()> {
+        let session = self.sessions.get(session_id).unwrap();
+        
+        // Save conversation state (already exists)
+        session.conversation.save(os).await?;
+        
+        // Save session metadata
+        os.database.execute(
+            "UPDATE conversations SET 
+             session_name = ?, 
+             session_type = ?, 
+             session_status = ?,
+             last_active = ?
+             WHERE conversation_id = ?",
+            params![
+                session.display.name,
+                format!("{:?}", session.display.session_type),
+                format!("{:?}", session.display.status),
+                time::OffsetDateTime::now_utc().unix_timestamp(),
+                session_id,
+            ]
+        ).await?;
+        
+        Ok(())
+    }
+    
+    async fn load_sessions(&mut self, os: &Os) -> Result<()> {
+        // Load recent sessions from database
+        let rows = os.database.query(
+            "SELECT conversation_id, session_name, session_type, session_status 
+             FROM conversations 
+             WHERE session_status IN ('Active', 'WaitingForInput', 'Paused')
+             ORDER BY last_active DESC
+             LIMIT 10",
+            []
+        ).await?;
+        
+        for row in rows {
+            // Reconstruct sessions from database
+        }
+        
+        Ok(())
+    }
+}
+```
+
+### Step 7: Entry Point Integration
+
+**7.1 Modify ChatCommand::execute()**
+```rust
+impl ChatCommand {
+    pub async fn execute(mut self, os: &mut Os) -> Result<ExitCode> {
+        // Check if multi-session mode is enabled
+        let multi_session_enabled = os.database
+            .settings
+            .get_bool(Setting::MultiSessionEnabled)
+            .unwrap_or(false);
+        
+        if multi_session_enabled {
+            // Use new multi-session coordinator
+            let mut coordinator = MultiSessionCoordinator::new(os).await?;
+            coordinator.load_sessions(os).await?;
+            
+            if coordinator.sessions.is_empty() {
+                let id = coordinator.create_session(os, SessionType::Development, None).await?;
+                coordinator.switch_to_session_by_id(&id).await?;
+            }
+            
+            coordinator.run(os).await?;
+            Ok(ExitCode::SUCCESS)
+        } else {
+            // Use existing single-session flow (backward compatibility)
+            // ... existing code ...
+        }
+    }
+}
+```
+
+### Step 8: Testing and Polish
+
+**8.1 Configuration Options**
+```toml
+[sessions]
+multi_session_enabled = false  # Feature flag
+max_active_sessions = 10
+auto_generate_names = true
+persist_sessions = true
+cleanup_after_days = 30
+
+[ui]
+show_session_indicator = true
+indicator_position = "top-right"
+max_indicator_sessions = 5
+```
+
+**8.2 Testing Strategy**
+- Unit tests for SessionManager operations
+- Integration tests for session switching
+- Manual testing over SSH
+- Test concurrent API calls
+- Test graceful shutdown and recovery
+
+**8.3 Rollout Plan**
+- Phase 1: Feature flag (default off)
+- Phase 2: Beta testing with opt-in
+- Phase 3: General availability
+
 ## Technical Considerations
 
 ### Leveraging Existing Code

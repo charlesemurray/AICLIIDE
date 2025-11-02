@@ -1,6 +1,10 @@
 //! Skill tool implementation
 
 use eyre::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::agent::{
     Agent,
@@ -12,6 +16,15 @@ use crate::os::Os;
 pub struct SkillTool {
     pub name: String,
     pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillDefinition {
+    pub name: String,
+    pub description: String,
+    pub skill_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<serde_json::Value>,
 }
 
 impl SkillTool {
@@ -78,5 +91,41 @@ mod tests {
 
         let result = skill.eval_perm(&os, &agent);
         assert_eq!(result, PermissionEvalResult::Allow);
+    }
+
+    #[test]
+    fn test_skill_definition_deserialize() {
+        let json = r#"{
+            "name": "test-skill",
+            "description": "A test skill",
+            "skill_type": "code_inline"
+        }"#;
+
+        let definition: SkillDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(definition.name, "test-skill");
+        assert_eq!(definition.description, "A test skill");
+        assert_eq!(definition.skill_type, "code_inline");
+    }
+
+    #[test]
+    fn test_skill_definition_with_parameters() {
+        let json = r#"{
+            "name": "calculator",
+            "description": "A calculator skill",
+            "skill_type": "code_inline",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}
+                }
+            }
+        }"#;
+
+        let definition: SkillDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(definition.name, "calculator");
+        assert!(definition.parameters.is_some());
+        let params = definition.parameters.unwrap();
+        assert!(params.get("type").is_some());
     }
 }

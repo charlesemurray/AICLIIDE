@@ -8,6 +8,317 @@
 4. **Git commits** - Commit after each completed step
 5. **Validation** - Verify against Python behavior at each phase
 6. **Analysis** - Document what works and what's next
+7. **Python Reference** - Leverage existing Python Cortex implementation for verification
+
+---
+
+## Python Implementation Verification Strategy
+
+### Overview
+The Python Cortex implementation at `/local/workspace/q-cli/cortex` is our reference. We verify Rust implementation consistency by comparing behavior, not by porting Python code directly.
+
+### Verification Methods
+
+#### 1. Test Fixture Generation
+**Goal**: Create golden datasets from Python Cortex
+
+**Process**:
+```bash
+# Create script to generate test fixtures
+cd /local/workspace/q-cli/cortex
+python3 scripts/generate_test_fixtures.py
+```
+
+**Fixtures to Generate**:
+- `fixtures/stm_operations.json` - STM add/search/evict operations with expected results
+- `fixtures/ltm_operations.json` - LTM store/recall operations
+- `fixtures/search_rankings.json` - Query → expected ranking order
+- `fixtures/metadata_filters.json` - Filter operations → expected results
+- `fixtures/edge_cases.json` - Empty queries, duplicates, large batches
+
+**Fixture Format**:
+```json
+{
+  "test_name": "stm_basic_search",
+  "setup": {
+    "capacity": 100,
+    "items": [
+      {"id": "1", "content": "rust programming", "embedding": [0.1, 0.2, ...], "metadata": {...}},
+      {"id": "2", "content": "python programming", "embedding": [0.15, 0.25, ...], "metadata": {...}}
+    ]
+  },
+  "operation": {
+    "type": "search",
+    "query_embedding": [0.1, 0.2, ...],
+    "k": 5
+  },
+  "expected": {
+    "result_ids": ["1", "2"],
+    "min_similarity": 0.8
+  }
+}
+```
+
+**Rust Test Usage**:
+```rust
+#[test]
+fn test_against_python_fixture() {
+    let fixture: TestFixture = load_fixture("fixtures/stm_operations.json");
+    
+    let mut stm = ShortTermMemory::new(fixture.setup.capacity);
+    
+    // Apply setup
+    for item in fixture.setup.items {
+        stm.add(item.id, item.content, item.embedding, item.metadata);
+    }
+    
+    // Execute operation
+    let results = stm.search(&fixture.operation.query_embedding, fixture.operation.k);
+    
+    // Verify against expected
+    assert_eq!(results.ids(), fixture.expected.result_ids);
+}
+```
+
+#### 2. Python Test Analysis
+**Goal**: Identify what Python tests cover and port to Rust
+
+**Process**:
+```bash
+# Find all Python tests
+find /local/workspace/q-cli/cortex -name "test_*.py" -o -name "*_test.py"
+
+# Analyze test coverage
+python3 -m pytest --collect-only /local/workspace/q-cli/cortex
+```
+
+**Test Categories to Port**:
+- STM: add, search, eviction, capacity limits
+- LTM: store, recall, metadata filtering
+- Integration: STM→LTM promotion, cross-memory search
+- Edge cases: empty inputs, duplicates, concurrent access
+- Performance: large datasets, search speed
+
+**Porting Checklist**:
+```markdown
+- [ ] test_stm_add_and_search → test_stm_add_and_search.rs
+- [ ] test_stm_lru_eviction → test_stm_lru_eviction.rs
+- [ ] test_ltm_metadata_filter → test_ltm_metadata_filter.rs
+- [ ] test_recall_by_keywords → test_recall_by_keywords.rs
+- [ ] test_empty_query → test_empty_query.rs
+```
+
+#### 3. Behavioral Comparison Tests
+**Goal**: Run identical operations in both implementations
+
+**Implementation**:
+```rust
+// crates/cortex-memory/tests/python_comparison.rs
+#[test]
+fn test_search_ranking_matches_python() {
+    // Load Python-generated results
+    let python_results = load_json("fixtures/search_rankings.json");
+    
+    // Run same query in Rust
+    let mut stm = ShortTermMemory::new(100);
+    setup_from_fixture(&mut stm, &python_results.setup);
+    
+    let rust_results = stm.search(&python_results.query, 10);
+    
+    // Compare rankings (allow small floating point differences)
+    for (rust_item, python_item) in rust_results.iter().zip(python_results.expected.iter()) {
+        assert_eq!(rust_item.id, python_item.id);
+        assert!((rust_item.score - python_item.score).abs() < 0.001);
+    }
+}
+```
+
+#### 4. Integration Test Harness
+**Goal**: Side-by-side execution comparison
+
+**Script**: `scripts/verify_rust_implementation.py`
+```python
+#!/usr/bin/env python3
+"""
+Runs identical operations in Python Cortex and Rust cortex-memory,
+compares results to verify consistency.
+"""
+
+import json
+import subprocess
+from cortex import ShortTermMemory as PythonSTM
+
+def test_stm_operations():
+    # Python execution
+    py_stm = PythonSTM(capacity=100)
+    py_stm.add("1", "content", embedding=[0.1, 0.2, 0.3], metadata={})
+    py_results = py_stm.search([0.1, 0.2, 0.3], k=5)
+    
+    # Rust execution via CLI
+    rust_output = subprocess.check_output([
+        "cargo", "run", "--bin", "cortex-test-harness", "--",
+        "--operation", "stm_search",
+        "--fixture", "test_data.json"
+    ])
+    rust_results = json.loads(rust_output)
+    
+    # Compare
+    assert py_results["ids"] == rust_results["ids"]
+    assert_similar_scores(py_results["scores"], rust_results["scores"])
+
+if __name__ == "__main__":
+    test_stm_operations()
+    print("✅ Rust implementation matches Python behavior")
+```
+
+**Usage**:
+```bash
+# Run after each phase
+python3 scripts/verify_rust_implementation.py --phase stm
+python3 scripts/verify_rust_implementation.py --phase ltm
+python3 scripts/verify_rust_implementation.py --phase integration
+```
+
+#### 5. Behavioral Documentation
+**Goal**: Document expected behavior from Python code
+
+**Process**:
+1. Read Python source: `/local/workspace/q-cli/cortex/cortex/memory/stm.py`
+2. Document behavior: `docs/python_behavior_reference.md`
+3. Check off as Rust matches
+
+**Example Documentation**:
+```markdown
+# Python Cortex Behavior Reference
+
+## ShortTermMemory
+
+### add() method
+**Python behavior**:
+- Accepts: id (str), content (str), embedding (list[float]), metadata (dict)
+- If capacity reached: evicts oldest item (FIFO)
+- Updates `updated_at` timestamp
+- Returns: None
+
+**Rust verification**:
+- [ ] Same parameters accepted
+- [ ] LRU eviction matches FIFO behavior
+- [ ] Timestamps updated correctly
+- [ ] Returns Result<()>
+
+### search() method
+**Python behavior**:
+- Brute-force cosine similarity
+- Returns top-k results sorted by similarity (descending)
+- Filters by metadata if provided
+- Empty query returns empty results
+
+**Rust verification**:
+- [ ] Cosine similarity calculation matches (within 0.001)
+- [ ] Ranking order identical
+- [ ] Metadata filtering works same way
+- [ ] Edge cases handled identically
+```
+
+#### 6. Continuous Verification
+**Goal**: Automated checks during development
+
+**CI Integration**:
+```yaml
+# .github/workflows/cortex-verification.yml
+name: Verify Cortex Implementation
+
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      
+      - name: Install Python Cortex
+        run: |
+          cd cortex
+          pip install -e .
+      
+      - name: Generate Test Fixtures
+        run: python3 scripts/generate_test_fixtures.py
+      
+      - name: Build Rust Implementation
+        run: cargo build --release -p cortex-memory
+      
+      - name: Run Verification Tests
+        run: |
+          cargo test -p cortex-memory --test python_comparison
+          python3 scripts/verify_rust_implementation.py
+```
+
+### Verification Schedule
+
+**Phase 0 (Foundation)**:
+- ✅ Data structures match Python equivalents
+- ✅ Serialization format compatible
+
+**Phase 1 (STM)**:
+- Generate STM fixtures from Python
+- Port Python STM tests to Rust
+- Run side-by-side comparison
+- Document any behavioral differences
+
+**Phase 2 (LTM)**:
+- Generate LTM fixtures from Python
+- Port Python LTM tests to Rust
+- Verify metadata filtering matches
+- Compare search rankings
+
+**Phase 3 (Integration)**:
+- Generate end-to-end fixtures
+- Test STM→LTM promotion behavior
+- Verify cross-memory search
+- Performance comparison
+
+**Phase 4 (Q CLI Integration)**:
+- Test with real Q CLI workflows
+- Compare memory persistence
+- Verify session isolation
+
+### Success Criteria
+
+For each phase, verification is complete when:
+- ✅ All Python tests ported and passing in Rust
+- ✅ Fixture-based tests passing (100% match)
+- ✅ Side-by-side comparison script passes
+- ✅ Behavioral documentation complete and checked off
+- ✅ No unexplained differences in behavior
+- ✅ Performance within acceptable range (document if slower)
+
+### Handling Differences
+
+If Rust behavior differs from Python:
+
+1. **Document the difference** in `docs/rust_python_differences.md`
+2. **Determine if intentional** (e.g., performance optimization)
+3. **If bug**: Fix Rust to match Python
+4. **If improvement**: Document why Rust approach is better
+5. **Update tests** to reflect intentional differences
+
+**Example**:
+```markdown
+## Difference: STM Eviction Strategy
+
+**Python**: FIFO (First In, First Out)
+**Rust**: LRU (Least Recently Used)
+
+**Reason**: LRU is more appropriate for memory cache behavior
+**Impact**: Items accessed recently stay in cache longer
+**Validation**: Tested with access patterns, Rust performs better
+**Status**: Intentional improvement ✅
+```
 
 ---
 
