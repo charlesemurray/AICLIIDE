@@ -260,6 +260,10 @@ impl SkillTool {
             )
         }
     }
+
+    pub fn format_error(&self, error: &eyre::Error) -> String {
+        format!("Error executing skill: {}", error)
+    }
 }
 
 #[cfg(test)]
@@ -695,5 +699,17 @@ mod tests {
         // Should be truncated
         assert!(result.len() < 150_000);
         assert!(result.contains("truncated"));
+    }
+
+    #[test]
+    fn test_format_error() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        let error = eyre::eyre!("Script execution failed: command not found");
+
+        let result = skill.format_error(&error);
+
+        assert!(result.contains("Error"));
+        assert!(result.contains("command not found"));
     }
 }
