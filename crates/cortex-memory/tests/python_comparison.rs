@@ -6,6 +6,13 @@ use std::fs;
 use tempfile::NamedTempFile;
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Expected {
+    Bool(bool),
+    Object(HashMap<String, Value>),
+}
+
+#[derive(Debug, Deserialize)]
 struct Operation {
     #[serde(rename = "type")]
     op_type: String,
@@ -24,7 +31,7 @@ struct Operation {
     #[serde(default)]
     expected_order: Vec<String>,
     #[serde(default)]
-    expected: Option<HashMap<String, Value>>,
+    expected: Option<Expected>,
     #[serde(default)]
     expected_ids: Vec<String>,
     #[serde(default)]
@@ -89,13 +96,18 @@ fn test_stm_lru_eviction_fixture() {
             "get" => {
                 let result = stm.get(&op.id);
                 if let Some(expected) = &op.expected {
-                    assert!(result.is_some(), "Expected to find id: {}", op.id);
-                    let note = result.unwrap();
-                    assert_eq!(note.id, expected.get("id").unwrap().as_str().unwrap());
-                    assert_eq!(
-                        note.content,
-                        expected.get("content").unwrap().as_str().unwrap()
-                    );
+                    match expected {
+                        Expected::Object(map) => {
+                            assert!(result.is_some(), "Expected to find id: {}", op.id);
+                            let note = result.unwrap();
+                            assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
+                            assert_eq!(
+                                note.content,
+                                map.get("content").unwrap().as_str().unwrap()
+                            );
+                        }
+                        Expected::Bool(_) => panic!("Expected object, got bool"),
+                    }
                 } else {
                     assert!(result.is_none(), "Expected id {} to be evicted", op.id);
                 }
@@ -121,9 +133,14 @@ fn test_stm_lru_access_order_fixture() {
             "get" => {
                 let result = stm.get(&op.id);
                 if let Some(expected) = &op.expected {
-                    assert!(result.is_some(), "Expected to find id: {}", op.id);
-                    let note = result.unwrap();
-                    assert_eq!(note.id, expected.get("id").unwrap().as_str().unwrap());
+                    match expected {
+                        Expected::Object(map) => {
+                            assert!(result.is_some(), "Expected to find id: {}", op.id);
+                            let note = result.unwrap();
+                            assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
+                        }
+                        Expected::Bool(_) => panic!("Expected object, got bool"),
+                    }
                 } else {
                     assert!(result.is_none(), "Expected id {} to not exist", op.id);
                 }
@@ -151,13 +168,18 @@ fn test_ltm_basic_operations_fixture() {
             "get" => {
                 let result = ltm.get(&op.id).unwrap();
                 if let Some(expected) = &op.expected {
-                    assert!(result.is_some(), "Expected to find id: {}", op.id);
-                    let note = result.unwrap();
-                    assert_eq!(note.id, expected.get("id").unwrap().as_str().unwrap());
-                    assert_eq!(
-                        note.content,
-                        expected.get("content").unwrap().as_str().unwrap()
-                    );
+                    match expected {
+                        Expected::Object(map) => {
+                            assert!(result.is_some(), "Expected to find id: {}", op.id);
+                            let note = result.unwrap();
+                            assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
+                            assert_eq!(
+                                note.content,
+                                map.get("content").unwrap().as_str().unwrap()
+                            );
+                        }
+                        Expected::Bool(_) => panic!("Expected object, got bool"),
+                    }
                 } else {
                     assert!(result.is_none(), "Expected id {} to not exist", op.id);
                 }
@@ -222,20 +244,23 @@ fn test_manager_stm_to_ltm_promotion_fixture() {
             }
             "promote" => {
                 let result = manager.promote_to_ltm(&op.id, op.embedding.clone()).unwrap();
-                if let Some(expected) = &op.expected {
-                    assert_eq!(result, expected.as_bool().unwrap());
-                }
+                assert!(result, "Expected promotion to succeed");
             }
             "get_from_ltm" => {
-                let result = manager.ltm.get(&op.id).unwrap();
+                let result = manager.get_ltm().get(&op.id).unwrap();
                 if let Some(expected) = &op.expected {
-                    assert!(result.is_some(), "Expected to find id in LTM: {}", op.id);
-                    let note = result.unwrap();
-                    assert_eq!(note.id, expected.get("id").unwrap().as_str().unwrap());
-                    assert_eq!(
-                        note.content,
-                        expected.get("content").unwrap().as_str().unwrap()
-                    );
+                    match expected {
+                        Expected::Object(map) => {
+                            assert!(result.is_some(), "Expected to find id in LTM: {}", op.id);
+                            let note = result.unwrap();
+                            assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
+                            assert_eq!(
+                                note.content,
+                                map.get("content").unwrap().as_str().unwrap()
+                            );
+                        }
+                        Expected::Bool(_) => panic!("Expected object, got bool"),
+                    }
                 }
             }
             _ => panic!("Unknown operation type: {}", op.op_type),
