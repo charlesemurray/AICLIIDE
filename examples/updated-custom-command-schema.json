@@ -1,0 +1,59 @@
+{
+  "name": "deploy-app",
+  "description": "Deploy application with security validation",
+  "handler": {
+    "Script": {
+      "command": "deploy.sh",
+      "args": ["--env", "{{environment}}", "--version", "{{version}}"]
+    }
+  },
+  "parameters": [
+    {
+      "name": "environment",
+      "type": "enum",
+      "required": true,
+      "default_value": null,
+      "description": "Target deployment environment",
+      "values": ["dev", "staging", "prod"],
+      "pattern": null
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "required": true,
+      "default_value": null,
+      "description": "Application version to deploy",
+      "values": null,
+      "pattern": "^v\\d+\\.\\d+\\.\\d+$"
+    },
+    {
+      "name": "replicas",
+      "type": "number",
+      "required": false,
+      "default_value": "3",
+      "description": "Number of replicas to deploy",
+      "values": null,
+      "pattern": null
+    },
+    {
+      "name": "force",
+      "type": "boolean",
+      "required": false,
+      "default_value": "false",
+      "description": "Force deployment even if validation fails",
+      "values": null,
+      "pattern": null
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "required": false,
+      "default_value": null,
+      "description": "Notification email address",
+      "values": null,
+      "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    }
+  ],
+  "created_at": "2025-11-02T00:00:00.000000000+00:00",
+  "usage_count": 0
+}

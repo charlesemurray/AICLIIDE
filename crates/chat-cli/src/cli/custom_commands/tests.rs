@@ -306,4 +306,117 @@ mod tests {
         assert!(pattern_param.validate("user@example.com").is_ok());
         assert!(pattern_param.validate("invalid-email").is_err());
     }
+
+    #[test]
+    fn test_json_serialization_with_new_schema() {
+        let mut cmd = CustomCommand::new_script(
+            "test-cmd".to_string(),
+            "Test command with new parameter schema".to_string(),
+            "echo 'Hello {{name}}'".to_string(),
+        );
+
+        // Add parameters with new ParameterType enum
+        cmd.add_parameter(
+            CommandParameter::new("name".to_string(), ParameterType::String)
+                .with_description("Name parameter".to_string())
+        );
+        
+        cmd.add_parameter(
+            CommandParameter::new("count".to_string(), ParameterType::Number)
+                .with_description("Count parameter".to_string())
+        );
+        
+        cmd.add_parameter(
+            CommandParameter::enum_param(
+                "env".to_string(),
+                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]
+            ).with_description("Environment parameter".to_string())
+        );
+
+        cmd.add_parameter(
+            CommandParameter::new("email".to_string(), ParameterType::String)
+                .with_pattern(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$".to_string())
+                .with_description("Email parameter with validation".to_string())
+        );
+
+        // Test serialization
+        let json = serde_json::to_string_pretty(&cmd).expect("Failed to serialize");
+
+        // Test deserialization
+        let deserialized: CustomCommand = serde_json::from_str(&json).expect("Failed to deserialize");
+        
+        // Verify the command was properly deserialized
+        assert_eq!(deserialized.name, "test-cmd");
+        assert_eq!(deserialized.parameters.len(), 4);
+        
+        // Verify parameter types are preserved
+        assert!(matches!(deserialized.parameters[0].param_type, ParameterType::String));
+        assert!(matches!(deserialized.parameters[1].param_type, ParameterType::Number));
+        assert!(matches!(deserialized.parameters[2].param_type, ParameterType::Enum));
+        assert!(matches!(deserialized.parameters[3].param_type, ParameterType::String));
+        
+        // Verify enum values are preserved
+        assert_eq!(deserialized.parameters[2].values, Some(vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]));
+        
+        // Verify pattern is preserved
+        assert_eq!(deserialized.parameters[3].pattern, Some(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$".to_string()));
+    }
+
+    #[test]
+    fn test_json_schema_compatibility() {
+        // Test that our new schema can be loaded from JSON
+        let json_content = r#"{
+  "name": "test-deploy",
+  "description": "Test deployment command",
+  "handler": {
+    "Script": {
+      "command": "echo",
+      "args": ["Deploying to {{env}}"]
+    }
+  },
+  "parameters": [
+    {
+      "name": "env",
+      "type": "enum",
+      "required": true,
+      "default_value": null,
+      "description": "Environment to deploy to",
+      "values": ["dev", "staging", "prod"],
+      "pattern": null
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "required": true,
+      "default_value": null,
+      "description": "Version to deploy",
+      "values": null,
+      "pattern": "^v\\d+\\.\\d+\\.\\d+$"
+    }
+  ],
+  "created_at": "2025-11-02T00:00:00.000000000+00:00",
+  "usage_count": 0
+}"#;
+
+        // Test deserialization
+        let command: CustomCommand = serde_json::from_str(json_content)
+            .expect("Failed to deserialize JSON with new schema");
+        
+        assert_eq!(command.name, "test-deploy");
+        assert_eq!(command.parameters.len(), 2);
+        
+        // Verify enum parameter
+        assert!(matches!(command.parameters[0].param_type, ParameterType::Enum));
+        assert_eq!(command.parameters[0].values, Some(vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]));
+        
+        // Verify string parameter with pattern
+        assert!(matches!(command.parameters[1].param_type, ParameterType::String));
+        assert_eq!(command.parameters[1].pattern, Some("^v\\d+\\.\\d+\\.\\d+$".to_string()));
+        
+        // Test parameter validation
+        assert!(command.parameters[0].validate("dev").is_ok());
+        assert!(command.parameters[0].validate("invalid").is_err());
+        assert!(command.parameters[1].validate("v1.2.3").is_ok());
+        assert!(command.parameters[1].validate("invalid-version").is_err());
+    }
 }
