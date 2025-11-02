@@ -7,6 +7,7 @@ pub mod knowledge_store;
 pub mod open;
 pub mod paths;
 pub mod pattern_matching;
+pub mod session_paths;
 pub mod spinner;
 pub mod system_info;
 #[cfg(test)]

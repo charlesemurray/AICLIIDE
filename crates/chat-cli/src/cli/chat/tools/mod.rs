@@ -6,6 +6,7 @@ pub mod fs_write;
 pub mod gh_issue;
 pub mod introspect;
 pub mod knowledge;
+pub mod skill;
 pub mod skill_tool;
 pub mod thinking;
 pub mod todo;
@@ -104,6 +105,7 @@ pub enum Tool {
     Thinking(Thinking),
     Todo(TodoList),
     Delegate(Delegate),
+    Skill(skill_tool::SkillTool),
 }
 
 impl Tool {
@@ -124,6 +126,7 @@ impl Tool {
             Tool::Thinking(_) => "thinking (prerelease)",
             Tool::Todo(_) => "todo_list",
             Tool::Delegate(_) => "delegate",
+            Tool::Skill(skill_tool) => &skill_tool.skill_name,
         }
         .to_owned()
     }
@@ -141,7 +144,8 @@ impl Tool {
             Tool::Thinking(_) => PermissionEvalResult::Allow,
             Tool::Todo(_) => PermissionEvalResult::Allow,
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
-            Tool::Delegate(_) => PermissionEvalResult::Allow, // Allow delegate tool
+            Tool::Delegate(_) => PermissionEvalResult::Allow,
+            Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
         }
     }
 
@@ -166,6 +170,12 @@ impl Tool {
             Tool::Thinking(think) => think.invoke(stdout).await,
             Tool::Todo(todo) => todo.invoke(os, stdout).await,
             Tool::Delegate(delegate) => delegate.invoke(os, stdout, agents).await,
+            Tool::Skill(skill_tool) => {
+                let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
+                    .await
+                    .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
+                skill_tool.invoke(&registry, stdout).await
+            },
         }
     }
 
@@ -186,6 +196,10 @@ impl Tool {
                 Tool::Thinking(thinking) => thinking.queue_description(&mut buf),
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(&mut buf),
+                Tool::Skill(skill_tool) => {
+                    writeln!(&mut buf, "Executing skill: {}", skill_tool.skill_name)?;
+                    Ok(())
+                },
             }?;
 
             let tool_call_args = ToolCallArgs {
@@ -209,6 +223,15 @@ impl Tool {
                 Tool::Introspect(_) => Introspect::queue_description(output),
                 Tool::Knowledge(knowledge) => knowledge.queue_description(os, output).await,
                 Tool::Thinking(thinking) => thinking.queue_description(output),
+                Tool::Skill(skill_tool) => {
+                    queue!(
+                        output,
+                        style::Print("Executing skill: "),
+                        style::Print(&skill_tool.skill_name),
+                        style::Print("\n")
+                    )?;
+                    Ok(())
+                },
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(output),
             }?;
@@ -230,7 +253,8 @@ impl Tool {
             Tool::Knowledge(knowledge) => knowledge.validate(os).await,
             Tool::Thinking(think) => think.validate(os).await,
             Tool::Todo(todo) => todo.validate(os).await,
-            Tool::Delegate(_) => Ok(()), // No validation needed for delegate tool
+            Tool::Delegate(_) => Ok(()),
+            Tool::Skill(_) => Ok(()), // Skills are validated by the registry
         }
     }
 
@@ -238,7 +262,6 @@ impl Tool {
     pub fn get_additional_info(&self) -> Option<serde_json::Value> {
         match self {
             Tool::UseAws(use_aws) => Some(use_aws.get_additional_info()),
-            // Add other tool types here as they implement get_additional_info()
             _ => None,
         }
     }
@@ -663,5 +686,33 @@ mod tests {
 
         let deserialized: ToolOrigin = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, workflow_origin);
+    }
+
+    #[tokio::test]
+    async fn test_skill_tool_in_enum() {
+        let tool = Tool::Skill(skill_tool::SkillTool::new(
+            "test-skill".to_string(),
+            serde_json::json!({}),
+        ));
+        assert_eq!(tool.display_name(), "test-skill");
+    }
+
+    #[tokio::test]
+    async fn test_skill_tool_invocation_through_enum() {
+        let os = Os::new().await.unwrap();
+        let agents = crate::cli::agent::Agents::default();
+        let tool = Tool::Skill(skill_tool::SkillTool::new(
+            "calculator".to_string(),
+            serde_json::json!({
+                "a": 5.0,
+                "b": 3.0,
+                "op": "add"
+            }),
+        ));
+        let mut output = Vec::new();
+        let mut line_tracker = std::collections::HashMap::new();
+
+        let result = tool.invoke(&os, &mut output, &mut line_tracker, &agents).await;
+        assert!(result.is_ok());
     }
 }

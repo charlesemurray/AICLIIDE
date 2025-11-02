@@ -97,6 +97,25 @@ impl FsWrite {
         })
     }
 
+    pub fn path_with_session(&self, os: &Os, conversation_id: Option<&str>) -> PathBuf {
+        let raw_path = match self {
+            FsWrite::Create { path, .. } => path.as_str(),
+            FsWrite::StrReplace { path, .. } => path.as_str(),
+            FsWrite::Insert { path, .. } => path.as_str(),
+            FsWrite::Append { path, .. } => path.as_str(),
+        };
+
+        if let Some(stripped) = raw_path.strip_prefix("@session/") {
+            if let Some(conv_id) = conversation_id {
+                if let Ok(cwd) = os.env.current_dir() {
+                    return cwd.join(paths::workspace::SESSIONS_DIR).join(conv_id).join(stripped);
+                }
+            }
+        }
+
+        sanitize_path_tool_arg(os, raw_path)
+    }
+
     pub async fn invoke(
         &self,
         os: &Os,

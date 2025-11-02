@@ -1,7 +1,12 @@
 //! CLI tests for Assistant command
 
 use clap::Parser;
-use crate::cli::creation::{CreateArgs, CreateCommand, AssistantMode};
+
+use crate::cli::creation::{
+    AssistantMode,
+    CreateArgs,
+    CreateCommand,
+};
 
 #[cfg(test)]
 mod tests {

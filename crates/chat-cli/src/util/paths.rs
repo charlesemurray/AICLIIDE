@@ -257,6 +257,23 @@ impl<'a> WorkspacePaths<'a> {
         }
         Ok(dir)
     }
+
+    pub fn session_dir(&self, conversation_id: &str) -> Result<PathBuf> {
+        Ok(self
+            .os
+            .env
+            .current_dir()?
+            .join(workspace::SESSIONS_DIR)
+            .join(conversation_id))
+    }
+
+    pub async fn ensure_session_dir(&self, conversation_id: &str) -> Result<PathBuf> {
+        let dir = self.session_dir(conversation_id)?;
+        if !dir.exists() {
+            self.os.fs.create_dir_all(&dir).await?;
+        }
+        Ok(dir)
+    }
 }
 
 /// Global-scoped path methods
