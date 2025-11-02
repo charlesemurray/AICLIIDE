@@ -4,16 +4,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use eyre::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::os::Os;
 
 #[derive(Debug, Clone)]
@@ -89,6 +83,20 @@ impl SkillTool {
             })
             .collect()
     }
+
+    pub fn execute_script(&self, definition: &SkillDefinition, params: &HashMap<String, Value>) -> Result<String> {
+        let script_path = self.get_script_path(definition)?;
+        let env_vars = self.build_env_vars(params);
+
+        let output = std::process::Command::new(&script_path).envs(&env_vars).output()?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(eyre::eyre!("Script execution failed: {}", stderr))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -126,10 +134,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_tool_eval_perm() {
-        use crate::cli::agent::{
-            Agent,
-            PermissionEvalResult,
-        };
+        use crate::cli::agent::{Agent, PermissionEvalResult};
         use crate::os::Os;
 
         let skill = SkillTool::new("test-skill".to_string(), "Test".to_string());
@@ -237,5 +242,52 @@ mod tests {
         assert_eq!(env_vars.get("SKILL_PARAM_name"), Some(&"Alice".to_string()));
         assert_eq!(env_vars.get("SKILL_PARAM_age"), Some(&"30".to_string()));
         assert_eq!(env_vars.get("SKILL_PARAM_active"), Some(&"true".to_string()));
+    }
+
+    #[test]
+    fn test_execute_simple_script() {
+        use std::collections::HashMap;
+        use std::fs;
+
+        use serde_json::json;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let script_path = dir.path().join("test.sh");
+
+        #[cfg(unix)]
+        let script_content = "#!/bin/bash\necho \"Hello $SKILL_PARAM_name\"";
+        #[cfg(windows)]
+        let script_content = "@echo off\necho Hello %SKILL_PARAM_name%";
+
+        fs::write(&script_path, script_content).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms).unwrap();
+        }
+
+        let definition = SkillDefinition {
+            name: "test".to_string(),
+            description: "Test".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Script {
+                path: script_path.to_string_lossy().to_string(),
+            }),
+        };
+
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+        let mut params = HashMap::new();
+        params.insert("name".to_string(), json!("World"));
+
+        let result = skill.execute_script(&definition, &params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("Hello World"));
     }
 }
