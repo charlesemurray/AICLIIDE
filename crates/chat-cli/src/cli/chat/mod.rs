@@ -242,6 +242,12 @@ pub struct ChatArgs {
     /// Whether the command should run without expecting user input
     #[arg(long, alias = "non-interactive")]
     pub no_interactive: bool,
+    /// Auto-approve next N tool executions (useful for multi-step plans)
+    #[arg(long, value_name = "COUNT")]
+    pub auto_approve: Option<u32>,
+    /// Batch mode: approve all tools until user types 'stop' or 'pause'
+    #[arg(long)]
+    pub batch_mode: bool,
     /// The first question to ask
     pub input: Option<String>,
     /// Control line wrapping behavior (default: auto-detect)
@@ -447,6 +453,8 @@ impl ChatArgs {
             !self.no_interactive,
             mcp_enabled,
             self.wrap,
+            self.auto_approve,
+            self.batch_mode,
         )
         .await?
         .spawn(os)
@@ -611,6 +619,10 @@ pub struct ChatSession {
     ctrlc_rx: broadcast::Receiver<()>,
     wrap: Option<WrapMode>,
     prompt_ack_rx: std::sync::mpsc::Receiver<()>,
+    /// Auto-approve remaining count for multi-step operations
+    auto_approve_remaining: Option<u32>,
+    /// Batch mode state - auto-approve until user stops
+    batch_mode_active: bool,
 }
 
 impl ChatSession {
@@ -629,6 +641,8 @@ impl ChatSession {
         interactive: bool,
         mcp_enabled: bool,
         wrap: Option<WrapMode>,
+        auto_approve: Option<u32>,
+        batch_mode: bool,
     ) -> Result<Self> {
         // Only load prior conversation if we need to resume
         let mut existing_conversation = false;
@@ -747,6 +761,8 @@ impl ChatSession {
             ctrlc_rx,
             wrap,
             prompt_ack_rx,
+            auto_approve_remaining: auto_approve,
+            batch_mode_active: batch_mode,
         })
     }
 
@@ -1902,7 +1918,43 @@ impl ChatSession {
         }
 
         let show_tool_use_confirmation_dialog = !skip_printing_tools && self.pending_tool_index.is_some();
+
+        // Check for auto-approve modes
         if show_tool_use_confirmation_dialog {
+            // Auto-approve if we have remaining count
+            if let Some(remaining) = self.auto_approve_remaining {
+                if remaining > 0 {
+                    self.auto_approve_remaining = Some(remaining - 1);
+                    execute!(
+                        self.stderr,
+                        StyledText::success_fg(),
+                        style::Print("Auto-approving tool ("),
+                        style::Print((remaining - 1).to_string()),
+                        style::Print(" remaining)\n"),
+                        StyledText::reset(),
+                    )?;
+                    if let Some(index) = self.pending_tool_index {
+                        self.tool_uses[index].accepted = true;
+                        return Ok(ChatState::ExecuteTools);
+                    }
+                }
+            }
+
+            // Auto-approve if batch mode is active
+            if self.batch_mode_active {
+                execute!(
+                    self.stderr,
+                    StyledText::success_fg(),
+                    style::Print("Auto-approving tool (batch mode - type 'stop' to pause)\n"),
+                    StyledText::reset(),
+                )?;
+                if let Some(index) = self.pending_tool_index {
+                    self.tool_uses[index].accepted = true;
+                    return Ok(ChatState::ExecuteTools);
+                }
+            }
+
+            // Show confirmation dialog
             execute!(
                 self.stderr,
                 StyledText::secondary_fg(),
@@ -1910,7 +1962,14 @@ impl ChatSession {
                 StyledText::success_fg(),
                 style::Print("t"),
                 StyledText::secondary_fg(),
-                style::Print("' to trust (always allow) this tool for the session. ["),
+                style::Print("' to trust (always allow) this tool for the session"),
+                if self.auto_approve_remaining.is_none() && !self.batch_mode_active {
+                    style::Print(", 'auto N' to auto-approve next N tools, 'batch' for batch mode")
+                } else {
+                    style::Print("")
+                },
+                StyledText::secondary_fg(),
+                style::Print(". ["),
                 StyledText::success_fg(),
                 style::Print("y"),
                 StyledText::secondary_fg(),
@@ -1921,6 +1980,16 @@ impl ChatSession {
                 style::Print("/"),
                 StyledText::success_fg(),
                 style::Print("t"),
+                if self.batch_mode_active {
+                    StyledText::secondary_fg()
+                } else {
+                    StyledText::secondary_fg()
+                },
+                if self.batch_mode_active {
+                    style::Print("/stop")
+                } else {
+                    style::Print("")
+                },
                 StyledText::secondary_fg(),
                 style::Print("]:\n\n"),
                 StyledText::reset(),
@@ -2265,6 +2334,54 @@ impl ChatSession {
             // Check for a pending tool approval
             if let Some(index) = self.pending_tool_index {
                 let is_trust = ["t", "T"].contains(&input);
+                let is_stop = ["stop", "Stop", "STOP", "pause", "Pause", "PAUSE"].contains(&input);
+                let is_batch = ["batch", "Batch", "BATCH"].contains(&input);
+
+                // Handle batch mode controls
+                if is_stop && self.batch_mode_active {
+                    self.batch_mode_active = false;
+                    execute!(
+                        self.stderr,
+                        StyledText::warning_fg(),
+                        style::Print("Batch mode stopped. Will ask for approval on next tool.\n"),
+                        StyledText::reset(),
+                    )?;
+                    return Ok(ChatState::PromptUser {
+                        skip_printing_tools: false,
+                    });
+                }
+
+                if is_batch {
+                    self.batch_mode_active = true;
+                    execute!(
+                        self.stderr,
+                        StyledText::success_fg(),
+                        style::Print("Batch mode activated. All tools will be auto-approved until you type 'stop'.\n"),
+                        StyledText::reset(),
+                    )?;
+                    let tool_use = &mut self.tool_uses[index];
+                    tool_use.accepted = true;
+                    return Ok(ChatState::ExecuteTools);
+                }
+
+                // Handle auto N command
+                if let Some(auto_cmd) = input.strip_prefix("auto ").or_else(|| input.strip_prefix("Auto ")) {
+                    if let Ok(count) = auto_cmd.trim().parse::<u32>() {
+                        if count > 0 {
+                            self.auto_approve_remaining = Some(count - 1); // -1 because we're approving this one
+                            execute!(
+                                self.stderr,
+                                StyledText::success_fg(),
+                                style::Print(format!("Auto-approve activated for {} tools.\n", count)),
+                                StyledText::reset(),
+                            )?;
+                            let tool_use = &mut self.tool_uses[index];
+                            tool_use.accepted = true;
+                            return Ok(ChatState::ExecuteTools);
+                        }
+                    }
+                }
+
                 let tool_use = &mut self.tool_uses[index];
                 if ["y", "Y"].contains(&input) || is_trust {
                     if is_trust {
@@ -4030,6 +4147,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()

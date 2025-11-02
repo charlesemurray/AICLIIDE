@@ -944,3 +944,545 @@ max_indicator_sessions = 5
 - Session names are descriptive 80%+ of the time
 - No performance degradation with up to 10 active sessions
 - Works reliably over SSH connections
+
+## Edge Cases and Additional Considerations
+
+### 1. Error Recovery & Fault Tolerance
+
+**Background Session Failures**
+```rust
+impl MultiSessionCoordinator {
+    async fn handle_session_error(&mut self, session_id: &str, error: ChatError) -> Result<()> {
+        let session = self.sessions.get_mut(session_id).unwrap();
+        
+        match error {
+            ChatError::NetworkTimeout => {
+                // Mark session as failed, allow retry
+                session.state = SessionState::Failed(error);
+                self.session_manager.update_session_state(
+                    &session.display.name,
+                    SessionStatus::Paused
+                )?;
+                // Notify user if it's the active session
+                if Some(session_id) == self.active_session_id.as_ref() {
+                    eprintln!("Session failed: {}. Use /retry to continue.", error);
+                }
+            }
+            ChatError::ApiError(_) => {
+                // Log error, keep session in waiting state
+                session.last_error = Some(error);
+            }
+            _ => {
+                // Critical error - close session
+                self.close_session_internal(session_id).await?;
+            }
+        }
+        Ok(())
+    }
+}
+```
+
+**Session Crash Recovery**
+- Wrap session tasks in panic handlers
+- Save session state before risky operations
+- Implement `/recover` command to restore crashed sessions
+- Log crash details for debugging
+
+**Database Failure Handling**
+- Queue session state updates if database unavailable
+- Retry with exponential backoff
+- Graceful degradation (continue without persistence)
+- Warn user about unsaved state
+
+### 2. Resource Limits & Throttling
+
+**API Rate Limiting**
+```rust
+struct ApiRateLimiter {
+    tokens: Arc<Mutex<usize>>,
+    max_concurrent: usize,
+    semaphore: Arc<Semaphore>,
+}
+
+impl MultiSessionCoordinator {
+    async fn send_message_with_rate_limit(
+        &self,
+        session_id: &str,
+        message: &str
+    ) -> Result<()> {
+        // Acquire permit before making API call
+        let _permit = self.rate_limiter.semaphore.acquire().await?;
+        
+        // Make API call
+        let session = self.sessions.get(session_id).unwrap();
+        session.chat_session.send_message(message).await?;
+        
+        // Permit automatically released on drop
+        Ok(())
+    }
+}
+```
+
+**Memory Management**
+- Limit output buffer size per session (e.g., 10MB)
+- Evict oldest buffered output when limit reached
+- Lazy load conversation history (only active session fully loaded)
+- Implement session hibernation for inactive sessions
+
+**Session Limits**
+```rust
+impl MultiSessionCoordinator {
+    async fn create_session(&mut self, ...) -> Result<String> {
+        if self.sessions.len() >= self.config.max_active_sessions {
+            // Offer to close oldest inactive session
+            if let Some(oldest) = self.find_oldest_inactive_session() {
+                eprintln!("Max sessions reached. Close '{}' to continue? (y/n)", oldest);
+                // Handle user response
+            } else {
+                bail!("Maximum active sessions ({}) reached", self.config.max_active_sessions);
+            }
+        }
+        // ... create session
+    }
+}
+```
+
+### 3. Tool Execution in Background Sessions
+
+**Tool Permission Handling**
+```rust
+enum ToolExecutionMode {
+    Foreground,  // Can prompt user
+    Background,  // Must use cached permissions or fail
+}
+
+impl ChatSession {
+    async fn execute_tool(&mut self, tool: &Tool, mode: ToolExecutionMode) -> Result<ToolResult> {
+        match mode {
+            ToolExecutionMode::Foreground => {
+                // Normal execution with prompts
+                self.execute_tool_with_prompts(tool).await
+            }
+            ToolExecutionMode::Background => {
+                // Check cached permissions
+                if !self.has_cached_permission(tool) {
+                    // Pause session, mark as needing permission
+                    return Err(ToolError::NeedsUserPermission(tool.name.clone()));
+                }
+                // Execute without prompts
+                self.execute_tool_silent(tool).await
+            }
+        }
+    }
+}
+```
+
+**Tool Conflicts**
+- Detect file conflicts between sessions
+- Lock files during tool execution
+- Queue conflicting operations
+- Warn user about potential conflicts
+
+**Long-Running Tools**
+- Allow session switching during tool execution
+- Show tool progress in session indicator
+- Implement tool cancellation on session close
+- Timeout for background tool execution
+
+### 4. Output Buffering & Replay
+
+**Buffer Management**
+```rust
+struct OutputBuffer {
+    events: VecDeque<OutputEvent>,
+    max_size_bytes: usize,
+    current_size_bytes: usize,
+}
+
+enum OutputEvent {
+    Text(String),
+    StyledText(String, Style),
+    ToolStart(String),
+    ToolEnd(String, ToolResult),
+    Error(String),
+}
+
+impl OutputBuffer {
+    fn push(&mut self, event: OutputEvent) -> Result<()> {
+        let event_size = event.size_bytes();
+        
+        // Evict old events if needed
+        while self.current_size_bytes + event_size > self.max_size_bytes {
+            if let Some(old_event) = self.events.pop_front() {
+                self.current_size_bytes -= old_event.size_bytes();
+            } else {
+                break;
+            }
+        }
+        
+        self.events.push_back(event);
+        self.current_size_bytes += event_size;
+        Ok(())
+    }
+    
+    fn replay(&self, output: &mut impl Write) -> Result<()> {
+        if !self.events.is_empty() {
+            writeln!(output, "\n--- Buffered output from background session ---")?;
+            for event in &self.events {
+                event.write_to(output)?;
+            }
+            writeln!(output, "--- End buffered output ---\n")?;
+        }
+        Ok(())
+    }
+}
+```
+
+**Overflow Handling**
+- Truncate with "... (output truncated) ..." message
+- Offer to save full output to file
+- Configurable buffer size per session
+
+### 5. Telemetry & Observability
+
+**Session Metrics**
+```rust
+struct SessionMetrics {
+    session_id: String,
+    created_at: Instant,
+    switch_count: u32,
+    message_count: u32,
+    tool_execution_count: u32,
+    time_in_foreground: Duration,
+    time_in_background: Duration,
+    errors: Vec<String>,
+}
+
+impl MultiSessionCoordinator {
+    async fn send_session_telemetry(&self, os: &Os) {
+        for (id, session) in &self.sessions {
+            os.telemetry.send_session_metrics(SessionMetricsEvent {
+                conversation_id: id.clone(),
+                session_name: session.display.name.clone(),
+                session_type: format!("{:?}", session.display.session_type),
+                switch_count: session.metrics.switch_count,
+                message_count: session.metrics.message_count,
+                foreground_time_ms: session.metrics.time_in_foreground.as_millis() as i64,
+                background_time_ms: session.metrics.time_in_background.as_millis() as i64,
+            }).await.ok();
+        }
+    }
+}
+```
+
+**Monitoring**
+- Track session creation/close rate
+- Monitor background session queue depth
+- Measure session switch latency
+- Alert on high error rates
+
+### 6. User Experience Details
+
+**Session Switch Feedback**
+```rust
+impl MultiSessionCoordinator {
+    async fn switch_to_session(&mut self, name: &str) -> Result<()> {
+        // Show spinner during switch
+        let spinner = Spinner::new(Spinners::Dots, "Switching sessions...".into());
+        
+        // Pause current session
+        self.pause_current_session().await?;
+        
+        // Flush buffered output
+        let target_id = self.find_session_id_by_name(name)?;
+        let target = self.sessions.get(&target_id).unwrap();
+        
+        if !target.output_buffer.is_empty() {
+            spinner.stop();
+            target.output_buffer.replay(&mut std::io::stderr())?;
+        }
+        
+        // Resume target session
+        self.resume_session(&target_id).await?;
+        
+        spinner.stop();
+        eprintln!("✓ Switched to session: {}", name);
+        
+        Ok(())
+    }
+}
+```
+
+**Progress Indicators**
+- Show "Processing..." next to session name in indicator
+- Spinner for active API calls
+- Progress bar for long-running tools
+- Estimated time remaining for background tasks
+
+**Keyboard Shortcuts**
+- `Ctrl+N` - New session
+- `Ctrl+Tab` - Next session
+- `Ctrl+Shift+Tab` - Previous session
+- `Ctrl+W` - Close current session
+- `Ctrl+1-9` - Switch to session by number
+
+### 7. Migration & Upgrade Path
+
+**Existing Conversation Migration**
+```rust
+impl MultiSessionCoordinator {
+    async fn migrate_existing_conversations(&mut self, os: &Os) -> Result<()> {
+        // Find conversations without session metadata
+        let conversations = os.database.query(
+            "SELECT conversation_id FROM conversations 
+             WHERE session_name IS NULL 
+             ORDER BY created_at DESC 
+             LIMIT 1",
+            []
+        ).await?;
+        
+        for row in conversations {
+            let conversation_id: String = row.get(0)?;
+            
+            // Load conversation
+            let conversation = ConversationState::load(os, &conversation_id).await?;
+            
+            // Generate session name from history
+            let name = self.generate_session_name(&conversation);
+            
+            // Update database
+            os.database.execute(
+                "UPDATE conversations SET 
+                 session_name = ?,
+                 session_type = 'Development',
+                 session_status = 'Completed'
+                 WHERE conversation_id = ?",
+                params![name, conversation_id]
+            ).await?;
+        }
+        
+        Ok(())
+    }
+}
+```
+
+**Version Compatibility**
+- Detect old session format in database
+- Auto-migrate on first run with new version
+- Backup database before migration
+- Rollback capability if migration fails
+
+**Feature Flag Rollback**
+- Clean shutdown of all sessions
+- Save state before disabling feature
+- Restore single-session mode
+- Preserve conversation history
+
+### 8. Security & Isolation
+
+**Session Isolation**
+```rust
+impl ManagedSession {
+    fn can_access_file(&self, path: &Path) -> bool {
+        // Check if file is in session's workspace
+        if let Some(session_dir) = self.get_session_directory() {
+            if path.starts_with(&session_dir) {
+                return true;
+            }
+        }
+        
+        // Check if file is in shared workspace
+        if path.starts_with(&self.workspace_root) {
+            // Log cross-session file access
+            warn!("Session '{}' accessing shared file: {:?}", self.display.name, path);
+            return true;
+        }
+        
+        false
+    }
+}
+```
+
+**Tool Permissions**
+- Per-session tool trust settings
+- Inherit global trust settings by default
+- Option to isolate session permissions
+- Audit log for sensitive operations
+
+**Data Isolation**
+- Separate `@session/` directories per conversation_id
+- No cross-session data access without explicit permission
+- Clear session data on close (optional)
+
+### 9. Concurrency & Race Conditions
+
+**State Synchronization**
+```rust
+impl MultiSessionCoordinator {
+    // Use Arc<Mutex<>> for shared state
+    sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
+    
+    async fn update_session_state_safe(&self, session_id: &str, new_state: SessionState) -> Result<()> {
+        let mut sessions = self.sessions.lock().await;
+        
+        if let Some(session) = sessions.get_mut(session_id) {
+            // Validate state transition
+            if !session.state.can_transition_to(&new_state) {
+                bail!("Invalid state transition: {:?} -> {:?}", session.state, new_state);
+            }
+            
+            session.state = new_state;
+            
+            // Notify observers
+            self.state_change_tx.send(SessionStateChange {
+                session_id: session_id.to_string(),
+                new_state,
+            }).await?;
+        }
+        
+        Ok(())
+    }
+}
+```
+
+**File Conflict Prevention**
+```rust
+struct FileAccessCoordinator {
+    locked_files: Arc<Mutex<HashMap<PathBuf, String>>>, // path -> session_id
+}
+
+impl FileAccessCoordinator {
+    async fn acquire_file_lock(&self, path: &Path, session_id: &str) -> Result<FileLock> {
+        let mut locks = self.locked_files.lock().await;
+        
+        if let Some(owner) = locks.get(path) {
+            if owner != session_id {
+                bail!("File {:?} is locked by session '{}'", path, owner);
+            }
+        }
+        
+        locks.insert(path.to_path_buf(), session_id.to_string());
+        
+        Ok(FileLock {
+            path: path.to_path_buf(),
+            coordinator: self.clone(),
+        })
+    }
+}
+```
+
+**Deadlock Prevention**
+- Always acquire locks in consistent order
+- Use timeout for lock acquisition
+- Detect and break deadlocks
+- Log lock contention for debugging
+
+### 10. Terminal State Management
+
+**State Preservation**
+```rust
+struct TerminalState {
+    cursor_position: (u16, u16),
+    style: Style,
+    raw_mode: bool,
+    alternate_screen: bool,
+}
+
+impl ChatSession {
+    async fn save_terminal_state(&self) -> Result<TerminalState> {
+        Ok(TerminalState {
+            cursor_position: cursor::position()?,
+            style: Style::default(), // Current style
+            raw_mode: terminal::is_raw_mode_enabled()?,
+            alternate_screen: false, // Track if we're in alternate screen
+        })
+    }
+    
+    async fn restore_terminal_state(&self, state: &TerminalState) -> Result<()> {
+        execute!(
+            std::io::stderr(),
+            cursor::MoveTo(state.cursor_position.0, state.cursor_position.1),
+            style::SetStyle(state.style)
+        )?;
+        
+        if state.raw_mode {
+            terminal::enable_raw_mode()?;
+        } else {
+            terminal::disable_raw_mode()?;
+        }
+        
+        Ok(())
+    }
+}
+```
+
+**Clean Transitions**
+- Save terminal state before switching
+- Restore state after switching
+- Clear screen sections cleanly
+- Handle terminal resize during switch
+
+### 11. Additional Commands
+
+**Session Management**
+- `/sessions --all` - Show all sessions including completed
+- `/sessions --waiting` - Show only sessions waiting for input
+- `/kill <name>` - Force close unresponsive session
+- `/retry` - Retry failed session operation
+- `/logs <name>` - View session logs
+- `/export <name>` - Export session history
+
+**Debugging**
+- `/debug sessions` - Show detailed session state
+- `/debug coordinator` - Show coordinator state
+- `/debug locks` - Show file locks
+- `/debug buffers` - Show buffer usage
+
+### 12. Configuration Validation
+
+**Startup Checks**
+```rust
+impl MultiSessionCoordinator {
+    async fn validate_configuration(&self) -> Result<()> {
+        // Check resource limits
+        if self.config.max_active_sessions < 1 {
+            bail!("max_active_sessions must be at least 1");
+        }
+        
+        if self.config.max_active_sessions > 50 {
+            warn!("max_active_sessions > 50 may cause performance issues");
+        }
+        
+        // Check buffer sizes
+        if self.config.output_buffer_size_mb > 100 {
+            warn!("Large output buffers may consume significant memory");
+        }
+        
+        // Check database connectivity
+        self.test_database_connection().await?;
+        
+        Ok(())
+    }
+}
+```
+
+### 13. Graceful Degradation
+
+**Fallback Behaviors**
+- If ratatui fails: Use simple text indicator
+- If database fails: Continue without persistence
+- If rate limit hit: Queue requests
+- If memory limit reached: Hibernate oldest sessions
+
+**User Notifications**
+```rust
+impl MultiSessionCoordinator {
+    fn notify_degraded_mode(&self, reason: &str) {
+        eprintln!(
+            "⚠️  Multi-session running in degraded mode: {}\n\
+             Some features may be unavailable.",
+            reason
+        );
+    }
+}
+```

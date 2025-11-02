@@ -80,12 +80,41 @@ pub enum CreateCommand {
     },
     /// List saved assistants
     ListAssistants,
+    /// Edit an existing assistant
+    EditAssistant {
+        /// ID of the assistant to edit
+        id: String,
+    },
     /// Delete an assistant
     DeleteAssistant {
         /// ID of the assistant to delete
         id: String,
     },
+    /// Export an assistant to a file
+    ExportAssistant {
+        /// ID of the assistant
+        id: String,
+        /// Output file path
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    /// Export all assistants to a directory
+    ExportAssistants {
+        /// Output directory
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    /// Import an assistant from a file
+    ImportAssistant {
+        /// Input file path
+        path: PathBuf,
+        /// Conflict strategy: skip, overwrite, or rename
+        #[arg(short, long, default_value = "rename")]
+        strategy: String,
+    },
 }
+
+use std::path::PathBuf;
 
 /// Assistant creation modes
 #[derive(Debug, Subcommand, PartialEq)]
@@ -208,11 +237,68 @@ impl CreateArgs {
 
                 Ok(ExitCode::SUCCESS)
             },
+            CreateCommand::EditAssistant { id } => {
+                use crate::cli::creation::prompt_system::{
+                    AssistantEditor,
+                    load_template,
+                    save_template,
+                };
+
+                let template = load_template(&id)?;
+
+                let mut ui = TerminalUIImpl::new();
+                let editor = AssistantEditor::new(&mut ui, template);
+                let updated = editor.edit()?;
+
+                save_template(&updated)?;
+
+                println!("\n✓ Updated assistant: {}", updated.name);
+                println!("  Saved to: ~/.q-skills/{}.json", updated.id);
+
+                Ok(ExitCode::SUCCESS)
+            },
             CreateCommand::DeleteAssistant { id } => {
                 use crate::cli::creation::prompt_system::delete_template;
 
                 delete_template(&id)?;
                 println!("✓ Deleted assistant: {}", id);
+
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ExportAssistant { id, output } => {
+                use crate::cli::creation::prompt_system::export_assistant;
+
+                let path = export_assistant(&id, &output)?;
+                println!("✓ Exported: {}", id);
+                println!("  To: {}", path.display());
+
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ExportAssistants { output } => {
+                use crate::cli::creation::prompt_system::export_all_assistants;
+
+                let paths = export_all_assistants(&output)?;
+                println!("✓ Exported {} assistants to {}", paths.len(), output.display());
+                for path in paths {
+                    println!("  - {}", path.file_name().unwrap().to_string_lossy());
+                }
+
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ImportAssistant { path, strategy } => {
+                use crate::cli::creation::prompt_system::{
+                    ConflictStrategy,
+                    import_assistant,
+                };
+
+                let conflict_strategy = match strategy.as_str() {
+                    "skip" => ConflictStrategy::Skip,
+                    "overwrite" => ConflictStrategy::Overwrite,
+                    _ => ConflictStrategy::Rename,
+                };
+
+                let id = import_assistant(&path, conflict_strategy)?;
+                println!("✓ Imported as: {}", id);
 
                 Ok(ExitCode::SUCCESS)
             },

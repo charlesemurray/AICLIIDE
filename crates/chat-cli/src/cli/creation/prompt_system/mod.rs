@@ -4,7 +4,9 @@ use eyre::Result;
 
 pub mod command_builder;
 pub mod creation_builder;
+pub mod edit;
 pub mod examples;
+pub mod export_import;
 pub mod interactive;
 pub mod persistence;
 pub mod prompt_builder;
@@ -51,6 +53,14 @@ pub use creation_builder::{
     IssueSeverity,
     ValidationIssue,
     ValidationResult,
+};
+pub use edit::AssistantEditor;
+pub use export_import::{
+    ConflictStrategy,
+    export_all_assistants,
+    export_assistant,
+    import_all_assistants,
+    import_assistant,
 };
 pub use interactive::InteractivePromptBuilder;
 pub use persistence::{

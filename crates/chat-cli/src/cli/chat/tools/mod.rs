@@ -108,6 +108,7 @@ pub enum Tool {
     Todo(TodoList),
     Delegate(Delegate),
     Skill(skill_tool::SkillTool),
+    Workflow(workflow_tool::WorkflowTool),
     SkillNew(skill::SkillTool),
     WorkflowNew(workflow::WorkflowTool),
 }
@@ -131,6 +132,7 @@ impl Tool {
             Tool::Todo(_) => "todo_list",
             Tool::Delegate(_) => "delegate",
             Tool::Skill(skill_tool) => &skill_tool.skill_name,
+            Tool::Workflow(workflow_tool) => &workflow_tool.workflow.name,
             Tool::SkillNew(skill) => &skill.name,
             Tool::WorkflowNew(workflow) => &workflow.name,
         }
@@ -152,6 +154,7 @@ impl Tool {
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
+            Tool::Workflow(_) => PermissionEvalResult::Allow, // Workflows have their own security
             Tool::SkillNew(skill) => skill.eval_perm(os, agent),
             Tool::WorkflowNew(workflow) => workflow.eval_perm(os, agent),
         }
@@ -183,6 +186,13 @@ impl Tool {
                     .await
                     .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
                 skill_tool.invoke(&registry, stdout).await
+            },
+            Tool::Workflow(workflow_tool) => {
+                let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
+                    .await
+                    .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
+                let executor = crate::cli::workflow::WorkflowExecutor::new(registry);
+                workflow_tool.invoke(&executor, stdout).await
             },
             Tool::SkillNew(_skill) => {
                 // Minimal implementation - not yet functional
@@ -218,6 +228,10 @@ impl Tool {
                 Tool::Delegate(delegate) => delegate.queue_description(&mut buf),
                 Tool::Skill(skill_tool) => {
                     writeln!(&mut buf, "Executing skill: {}", skill_tool.skill_name)?;
+                    Ok(())
+                },
+                Tool::Workflow(workflow_tool) => {
+                    writeln!(&mut buf, "Executing workflow: {}", workflow_tool.workflow.name)?;
                     Ok(())
                 },
                 Tool::SkillNew(skill) => {
@@ -256,6 +270,15 @@ impl Tool {
                         output,
                         style::Print("Executing skill: "),
                         style::Print(&skill_tool.skill_name),
+                        style::Print("\n")
+                    )?;
+                    Ok(())
+                },
+                Tool::Workflow(workflow_tool) => {
+                    queue!(
+                        output,
+                        style::Print("Executing workflow: "),
+                        style::Print(&workflow_tool.workflow.name),
                         style::Print("\n")
                     )?;
                     Ok(())
@@ -300,7 +323,8 @@ impl Tool {
             Tool::Thinking(think) => think.validate(os).await,
             Tool::Todo(todo) => todo.validate(os).await,
             Tool::Delegate(_) => Ok(()),
-            Tool::Skill(_) => Ok(()), // Skills are validated by the registry
+            Tool::Skill(_) => Ok(()),    // Skills are validated by the registry
+            Tool::Workflow(_) => Ok(()), // Workflows are validated by the registry
             Tool::SkillNew(skill) => skill.validate(),
             Tool::WorkflowNew(workflow) => workflow.validate(),
         }
@@ -786,5 +810,58 @@ mod tests {
         let workflow = workflow::WorkflowTool::new("my-workflow".to_string(), "Test workflow".to_string());
         let tool = Tool::WorkflowNew(workflow);
         assert_eq!(tool.display_name(), "my-workflow");
+    }
+
+    #[tokio::test]
+    async fn test_workflow_tool_in_enum() {
+        use crate::cli::workflow::Workflow;
+        use crate::cli::workflow::types::{
+            StepType,
+            WorkflowStep,
+        };
+
+        let workflow = Workflow {
+            name: "test-workflow".to_string(),
+            description: "Test".to_string(),
+            version: "1.0.0".to_string(),
+            steps: vec![],
+            inputs: vec![],
+        };
+
+        let tool = Tool::Workflow(workflow_tool::WorkflowTool::new(workflow, serde_json::json!({})));
+        assert_eq!(tool.display_name(), "test-workflow");
+    }
+
+    #[tokio::test]
+    async fn test_workflow_tool_invocation_through_enum() {
+        use crate::cli::workflow::Workflow;
+        use crate::cli::workflow::types::{
+            StepType,
+            WorkflowStep,
+        };
+
+        let os = Os::new().await.unwrap();
+        let agents = crate::cli::agent::Agents::default();
+
+        let workflow = Workflow {
+            name: "test-workflow".to_string(),
+            description: "Test".to_string(),
+            version: "1.0.0".to_string(),
+            steps: vec![WorkflowStep {
+                id: "step1".to_string(),
+                step_type: StepType::Skill {
+                    name: "calculator".to_string(),
+                    inputs: serde_json::json!({"a": 5.0, "b": 3.0, "op": "add"}),
+                },
+            }],
+            inputs: vec![],
+        };
+
+        let tool = Tool::Workflow(workflow_tool::WorkflowTool::new(workflow, serde_json::json!({})));
+        let mut output = Vec::new();
+        let mut line_tracker = std::collections::HashMap::new();
+
+        let result = tool.invoke(&os, &mut output, &mut line_tracker, &agents).await;
+        assert!(result.is_ok());
     }
 }

@@ -1,6 +1,10 @@
 //! Workflow tool implementation
 
 use eyre::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::agent::{
     Agent,
@@ -11,6 +15,13 @@ use crate::os::Os;
 #[derive(Debug, Clone)]
 pub struct WorkflowTool {
     pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowDefinition {
+    pub name: String,
+    pub version: String,
     pub description: String,
 }
 
@@ -78,5 +89,19 @@ mod tests {
 
         let result = workflow.eval_perm(&os, &agent);
         assert_eq!(result, PermissionEvalResult::Allow);
+    }
+
+    #[test]
+    fn test_workflow_definition_deserialize() {
+        let json = r#"{
+            "name": "test-workflow",
+            "version": "1.0.0",
+            "description": "A test workflow"
+        }"#;
+
+        let definition: WorkflowDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(definition.name, "test-workflow");
+        assert_eq!(definition.version, "1.0.0");
+        assert_eq!(definition.description, "A test workflow");
     }
 }

@@ -15,7 +15,7 @@ impl IdMapper {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn get_or_create(&mut self, string_id: String) -> usize {
         if let Some(&numeric_id) = self.string_to_usize.get(&string_id) {
             return numeric_id;
@@ -47,7 +47,7 @@ impl IdMapper {
     pub fn len(&self) -> usize {
         self.string_to_usize.len()
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.string_to_usize.is_empty()
     }
