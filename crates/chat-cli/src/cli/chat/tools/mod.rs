@@ -148,7 +148,7 @@ impl Tool {
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
-            Tool::SkillNew(_) => PermissionEvalResult::Allow, // Permission eval not yet implemented
+            Tool::SkillNew(skill) => skill.eval_perm(os, agent),
         }
     }
 

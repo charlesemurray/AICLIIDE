@@ -2,6 +2,12 @@
 
 use eyre::Result;
 
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
+use crate::os::Os;
+
 #[derive(Debug, Clone)]
 pub struct SkillTool {
     pub name: String,
@@ -18,6 +24,10 @@ impl SkillTool {
             return Err(eyre::eyre!("Skill name cannot be empty"));
         }
         Ok(())
+    }
+
+    pub fn eval_perm(&self, _os: &Os, _agent: &Agent) -> PermissionEvalResult {
+        PermissionEvalResult::Allow
     }
 }
 
@@ -52,5 +62,21 @@ mod tests {
         let result = skill.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("empty"));
+    }
+
+    #[tokio::test]
+    async fn test_skill_tool_eval_perm() {
+        use crate::cli::agent::{
+            Agent,
+            PermissionEvalResult,
+        };
+        use crate::os::Os;
+
+        let skill = SkillTool::new("test-skill".to_string(), "Test".to_string());
+        let os = Os::new().await.unwrap();
+        let agent = Agent::default();
+
+        let result = skill.eval_perm(&os, &agent);
+        assert_eq!(result, PermissionEvalResult::Allow);
     }
 }
