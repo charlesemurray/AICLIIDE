@@ -152,7 +152,7 @@ impl Tool {
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
             Tool::SkillNew(skill) => skill.eval_perm(os, agent),
-            Tool::WorkflowNew(_) => PermissionEvalResult::Allow,
+            Tool::WorkflowNew(workflow) => workflow.eval_perm(os, agent),
         }
     }
 
