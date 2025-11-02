@@ -37,6 +37,10 @@ impl WorkflowRegistry {
         self.workflows.get(name)
     }
 
+    pub fn get_workflow(&self, name: &str) -> Option<&WorkflowDefinition> {
+        self.get(name)
+    }
+
     pub fn len(&self) -> usize {
         self.workflows.len()
     }
@@ -85,5 +89,29 @@ mod tests {
 
         assert_eq!(registry.len(), 1);
         assert!(registry.get("test-workflow").is_some());
+    }
+
+    #[test]
+    fn test_get_workflow_exists() {
+        let mut registry = WorkflowRegistry::new();
+        let workflow = WorkflowDefinition {
+            name: "test-workflow".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Test".to_string(),
+            steps: vec![],
+            context: None,
+        };
+        registry.workflows.insert("test-workflow".to_string(), workflow);
+
+        let result = registry.get_workflow("test-workflow");
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().name, "test-workflow");
+    }
+
+    #[test]
+    fn test_get_workflow_not_found() {
+        let registry = WorkflowRegistry::new();
+        let result = registry.get_workflow("nonexistent");
+        assert!(result.is_none());
     }
 }

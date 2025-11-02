@@ -118,8 +118,7 @@ impl LongTermMemory {
     ) -> Result<Vec<MemoryNote>> {
         let candidates = if let Some(filter) = metadata_filter {
             let filter_ids = self.filter_by_metadata(filter)?;
-            let filter_strings: Vec<String> = filter_ids.iter().map(|s| s.to_string()).collect();
-            self.hnsw.search(query_embedding, k * 2, Some(&filter_strings))?
+            self.hnsw.search(query_embedding, k * 2, Some(&filter_ids))?
         } else {
             self.hnsw.search(query_embedding, k, None)?
         };
