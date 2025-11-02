@@ -21,6 +21,7 @@ mod parser;
 mod prompt;
 mod prompt_parser;
 pub mod server_messenger;
+pub mod skill_registry;
 use crate::cli::chat::checkpoint::CHECKPOINT_MESSAGE_MAX_LENGTH;
 use crate::constants::ui_text;
 #[cfg(unix)]
@@ -1919,6 +1920,29 @@ impl ChatSession {
 
         let show_tool_use_confirmation_dialog = !skip_printing_tools && self.pending_tool_index.is_some();
 
+        // Show auto-approve status if active
+        if show_tool_use_confirmation_dialog {
+            if let Some(remaining) = self.auto_approve_remaining {
+                if remaining > 0 {
+                    execute!(
+                        self.stderr,
+                        StyledText::success_fg(),
+                        style::Print("🤖 Auto-approve active ("),
+                        style::Print(remaining.to_string()),
+                        style::Print(" remaining)\n"),
+                        StyledText::reset(),
+                    )?;
+                }
+            } else if self.batch_mode_active {
+                execute!(
+                    self.stderr,
+                    StyledText::success_fg(),
+                    style::Print("🔄 Batch mode active (type 'stop' to pause)\n"),
+                    StyledText::reset(),
+                )?;
+            }
+        }
+
         // Check for auto-approve modes
         if show_tool_use_confirmation_dialog {
             // Auto-approve if we have remaining count
@@ -1928,8 +1952,8 @@ impl ChatSession {
                     execute!(
                         self.stderr,
                         StyledText::success_fg(),
-                        style::Print("Auto-approving tool ("),
-                        style::Print((remaining - 1).to_string()),
+                        style::Print("✓ Auto-approved ("),
+                        style::Print(remaining.to_string()),
                         style::Print(" remaining)\n"),
                         StyledText::reset(),
                     )?;
@@ -1937,6 +1961,15 @@ impl ChatSession {
                         self.tool_uses[index].accepted = true;
                         return Ok(ChatState::ExecuteTools);
                     }
+                } else {
+                    // Auto-approve count exhausted
+                    execute!(
+                        self.stderr,
+                        StyledText::warning_fg(),
+                        style::Print("⚠ Auto-approve limit reached. Switching to manual approval.\n"),
+                        StyledText::reset(),
+                    )?;
+                    self.auto_approve_remaining = None;
                 }
             }
 
@@ -1945,7 +1978,7 @@ impl ChatSession {
                 execute!(
                     self.stderr,
                     StyledText::success_fg(),
-                    style::Print("Auto-approving tool (batch mode - type 'stop' to pause)\n"),
+                    style::Print("✓ Auto-approved (batch mode - type 'stop' to pause)\n"),
                     StyledText::reset(),
                 )?;
                 if let Some(index) = self.pending_tool_index {
@@ -1964,7 +1997,7 @@ impl ChatSession {
                 StyledText::secondary_fg(),
                 style::Print("' to trust (always allow) this tool for the session"),
                 if self.auto_approve_remaining.is_none() && !self.batch_mode_active {
-                    style::Print(", 'auto N' to auto-approve next N tools, 'batch' for batch mode")
+                    style::Print(". Type 'auto N' to auto-approve next N tools, 'batch' for batch mode")
                 } else {
                     style::Print("")
                 },
@@ -1987,6 +2020,8 @@ impl ChatSession {
                 },
                 if self.batch_mode_active {
                     style::Print("/stop")
+                } else if self.auto_approve_remaining.is_none() {
+                    style::Print("/auto N/batch")
                 } else {
                     style::Print("")
                 },

@@ -1,17 +1,17 @@
 //! Cortex Memory System - Advanced memory for AI agents
 
 pub mod error;
+pub mod hnsw_wrapper;
 pub mod id_mapper;
 pub mod memory_note;
-pub mod hnsw_wrapper;
 
 pub use error::{
     CortexError,
     Result,
 };
+pub use hnsw_wrapper::HnswWrapper;
 pub use id_mapper::IdMapper;
 pub use memory_note::MemoryNote;
-pub use hnsw_wrapper::HnswWrapper;
 
 #[cfg(test)]
 mod tests {

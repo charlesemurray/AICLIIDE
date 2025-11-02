@@ -4,6 +4,7 @@ use crate::util::env_var::{
     is_log_stdout_enabled,
 };
 mod agent;
+mod assistant;
 pub mod chat;
 pub mod creation;
 pub mod custom_commands;
@@ -103,6 +104,8 @@ impl OutputFormat {
 pub enum RootSubcommand {
     /// Manage agents
     Agent(AgentArgs),
+    /// Manage AI assistants
+    Assistant(assistant::AssistantArgs),
     /// AI assistant in your terminal
     Chat(ChatArgs),
     /// Create skills, commands, and agents
@@ -175,6 +178,7 @@ impl RootSubcommand {
 
         match self {
             Self::Agent(args) => args.execute(os).await,
+            Self::Assistant(args) => args.execute().await,
             Self::Chat(args) => args.execute(os).await,
             Self::Create(args) => args.execute(os).await,
             Self::Diagnostic(args) => args.execute(os).await,
@@ -214,6 +218,7 @@ impl Display for RootSubcommand {
             Self::Skills(_) => "skills",
             Self::Version { .. } => "version",
             Self::Mcp(_) => "mcp",
+            Self::Assistant(_) => "assistant",
         };
 
         write!(f, "{name}")

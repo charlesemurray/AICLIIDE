@@ -1,22 +1,35 @@
 //! Assistant management commands
 
-use clap::{Args, Subcommand};
-use eyre::Result;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use crate::cli::creation::{
-    TerminalUIImpl,
-    prompt_system::*,
+use clap::{
+    Args,
+    Subcommand,
+};
+use eyre::Result;
+
+use crate::cli::creation::TerminalUIImpl;
+use crate::cli::creation::prompt_system::{
+    AssistantEditor,
+    ConflictStrategy,
+    InteractivePromptBuilder,
+    delete_template,
+    export_all_assistants,
+    export_assistant,
+    import_assistant,
+    list_templates,
+    load_template,
+    save_template,
 };
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, PartialEq)]
 pub struct AssistantArgs {
     #[command(subcommand)]
     pub command: AssistantCommand,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, PartialEq)]
 pub enum AssistantCommand {
     /// Create a new assistant
     Create {
@@ -59,7 +72,7 @@ pub enum AssistantCommand {
     },
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, PartialEq)]
 pub enum CreateMode {
     /// Use a pre-built template
     Template,
@@ -88,7 +101,7 @@ impl AssistantArgs {
                 println!("  Saved to: {}", path.display());
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::List => {
                 let templates = list_templates()?;
 
@@ -101,12 +114,15 @@ impl AssistantArgs {
                 for id in templates {
                     if let Ok(template) = load_template(&id) {
                         println!("  {} - {}", id, template.name);
-                        println!("    Category: {:?}, Difficulty: {:?}", template.category, template.difficulty);
+                        println!(
+                            "    Category: {:?}, Difficulty: {:?}",
+                            template.category, template.difficulty
+                        );
                     }
                 }
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::Edit { id } => {
                 let template = load_template(&id)?;
 
@@ -120,20 +136,20 @@ impl AssistantArgs {
                 println!("  Saved to: ~/.q-skills/{}.json", updated.id);
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::Delete { id } => {
                 delete_template(&id)?;
                 println!("✓ Deleted assistant: {}", id);
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::Export { id, output } => {
                 let path = export_assistant(&id, &output)?;
                 println!("✓ Exported: {}", id);
                 println!("  To: {}", path.display());
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::ExportAll { output } => {
                 let paths = export_all_assistants(&output)?;
                 println!("✓ Exported {} assistants to {}", paths.len(), output.display());
@@ -142,7 +158,7 @@ impl AssistantArgs {
                 }
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
             AssistantCommand::Import { path, strategy } => {
                 let conflict_strategy = match strategy.as_str() {
                     "skip" => ConflictStrategy::Skip,
@@ -154,7 +170,7 @@ impl AssistantArgs {
                 println!("✓ Imported as: {}", id);
 
                 Ok(ExitCode::SUCCESS)
-            }
+            },
         }
     }
 }

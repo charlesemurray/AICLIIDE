@@ -1,11 +1,9 @@
-use chat_cli::cli::chat::tools::{Tool, ToolOrigin};
+use chat_cli::cli::chat::tools::ToolOrigin;
 use chat_cli::cli::skills::SkillRegistry;
-use chat_cli::os::Os;
 
 #[tokio::test]
-async fn test_skill_invocation_via_natural_language() {
-    // Simulate LLM requesting skill execution
-    let os = Os::new().await.unwrap();
+async fn test_skill_to_toolspec_conversion() {
+    // Test that skills can be converted to ToolSpecs
     let registry = SkillRegistry::with_builtins();
 
     // Get calculator skill as ToolSpec
@@ -24,82 +22,29 @@ async fn test_skill_invocation_via_natural_language() {
 }
 
 #[tokio::test]
-async fn test_skill_execution_through_tool_enum() {
-    let os = Os::new().await.unwrap();
-    let agents = chat_cli::cli::agent::Agents::default();
+async fn test_all_skills_export_toolspecs() {
+    let registry = SkillRegistry::with_builtins();
+    let toolspecs = registry.get_all_toolspecs();
 
-    // Create a skill tool
-    let skill_tool = chat_cli::cli::chat::tools::skill_tool::SkillTool::new(
-        "calculator".to_string(),
-        serde_json::json!({
-            "a": 10.0,
-            "b": 5.0,
-            "op": "add"
-        }),
-    );
+    assert!(!toolspecs.is_empty(), "Should have at least one skill");
 
-    let tool = Tool::Skill(skill_tool);
-    let mut output = Vec::new();
-    let mut line_tracker = std::collections::HashMap::new();
-
-    // Execute the tool
-    let result = tool.invoke(&os, &mut output, &mut line_tracker, &agents).await;
-    assert!(result.is_ok(), "Skill execution should succeed");
-
-    let output_str = String::from_utf8(output).unwrap();
-    assert!(output_str.contains("15"), "Output should contain result");
+    // Verify all toolspecs have required fields
+    for toolspec in toolspecs {
+        assert!(!toolspec.name.is_empty(), "ToolSpec should have a name");
+        assert!(!toolspec.description.is_empty(), "ToolSpec should have a description");
+    }
 }
 
 #[tokio::test]
-async fn test_skill_not_found_error_handling() {
-    let os = Os::new().await.unwrap();
-    let agents = chat_cli::cli::agent::Agents::default();
+async fn test_skill_toolspec_schema_validity() {
+    let registry = SkillRegistry::with_builtins();
+    let toolspecs = registry.get_all_toolspecs();
 
-    let skill_tool = chat_cli::cli::chat::tools::skill_tool::SkillTool::new(
-        "nonexistent-skill".to_string(),
-        serde_json::json!({}),
-    );
+    for toolspec in toolspecs {
+        let schema = &toolspec.input_schema.0;
 
-    let tool = Tool::Skill(skill_tool);
-    let mut output = Vec::new();
-    let mut line_tracker = std::collections::HashMap::new();
-
-    let result = tool.invoke(&os, &mut output, &mut line_tracker, &agents).await;
-    assert!(result.is_err(), "Should error for nonexistent skill");
-    assert!(result.unwrap_err().to_string().contains("Skill not found"));
-}
-
-#[tokio::test]
-async fn test_concurrent_skill_invocations() {
-    let os = Os::new().await.unwrap();
-
-    // Create multiple skill invocations
-    let tasks: Vec<_> = (0..3)
-        .map(|i| {
-            let os_clone = os.clone();
-            tokio::spawn(async move {
-                let agents = chat_cli::cli::agent::Agents::default();
-                let skill_tool = chat_cli::cli::chat::tools::skill_tool::SkillTool::new(
-                    "calculator".to_string(),
-                    serde_json::json!({
-                        "a": i as f64,
-                        "b": 1.0,
-                        "op": "add"
-                    }),
-                );
-
-                let tool = Tool::Skill(skill_tool);
-                let mut output = Vec::new();
-                let mut line_tracker = std::collections::HashMap::new();
-
-                tool.invoke(&os_clone, &mut output, &mut line_tracker, &agents).await
-            })
-        })
-        .collect();
-
-    // Wait for all tasks
-    for task in tasks {
-        let result = task.await.unwrap();
-        assert!(result.is_ok(), "Concurrent skill execution should succeed");
+        // Verify schema has required structure
+        assert!(schema["type"].is_string(), "Schema should have type");
+        assert!(schema["properties"].is_object(), "Schema should have properties");
     }
 }

@@ -8,7 +8,7 @@ mod context;
 mod enhanced_prompts;
 mod errors;
 mod flows;
-mod prompt_system;
+pub mod prompt_system;
 mod template_loader;
 mod templates;
 mod types;

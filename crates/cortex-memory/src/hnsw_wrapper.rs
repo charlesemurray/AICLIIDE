@@ -1,5 +1,14 @@
-use crate::{CortexError, IdMapper, Result};
-use hnswlib::{HnswDistanceFunction, HnswIndex, HnswIndexInitConfig};
+use hnswlib::{
+    HnswDistanceFunction,
+    HnswIndex,
+    HnswIndexInitConfig,
+};
+
+use crate::{
+    CortexError,
+    IdMapper,
+    Result,
+};
 
 pub struct HnswWrapper {
     index: HnswIndex,
@@ -60,12 +69,7 @@ impl HnswWrapper {
         }
     }
 
-    pub fn search(
-        &self,
-        query: &[f32],
-        k: usize,
-        allowed_ids: Option<&[String]>,
-    ) -> Result<Vec<(String, f32)>> {
+    pub fn search(&self, query: &[f32], k: usize, allowed_ids: Option<&[String]>) -> Result<Vec<(String, f32)>> {
         if query.len() != self.dimensionality {
             return Err(CortexError::InvalidInput(format!(
                 "Expected {} dimensions, got {}",
@@ -75,9 +79,7 @@ impl HnswWrapper {
         }
 
         let numeric_allowed: Vec<usize> = if let Some(ids) = allowed_ids {
-            ids.iter()
-                .filter_map(|s| self.id_mapper.get_numeric(s))
-                .collect()
+            ids.iter().filter_map(|s| self.id_mapper.get_numeric(s)).collect()
         } else {
             vec![]
         };
@@ -113,12 +115,8 @@ mod tests {
     fn test_hnsw_wrapper_search() {
         let mut wrapper = HnswWrapper::new(3, 100).unwrap();
 
-        wrapper
-            .add("doc1".to_string(), &[1.0, 2.0, 3.0])
-            .unwrap();
-        wrapper
-            .add("doc2".to_string(), &[1.1, 2.1, 3.1])
-            .unwrap();
+        wrapper.add("doc1".to_string(), &[1.0, 2.0, 3.0]).unwrap();
+        wrapper.add("doc2".to_string(), &[1.1, 2.1, 3.1]).unwrap();
 
         let results = wrapper.search(&[1.0, 2.0, 3.0], 2, None).unwrap();
 
@@ -130,9 +128,7 @@ mod tests {
     fn test_hnsw_wrapper_delete() {
         let mut wrapper = HnswWrapper::new(3, 100).unwrap();
 
-        wrapper
-            .add("doc1".to_string(), &[1.0, 2.0, 3.0])
-            .unwrap();
+        wrapper.add("doc1".to_string(), &[1.0, 2.0, 3.0]).unwrap();
         assert!(wrapper.delete("doc1").unwrap());
         assert_eq!(wrapper.get("doc1").unwrap(), None);
     }
@@ -141,15 +137,9 @@ mod tests {
     fn test_hnsw_wrapper_filtered_search() {
         let mut wrapper = HnswWrapper::new(3, 100).unwrap();
 
-        wrapper
-            .add("doc1".to_string(), &[1.0, 2.0, 3.0])
-            .unwrap();
-        wrapper
-            .add("doc2".to_string(), &[1.1, 2.1, 3.1])
-            .unwrap();
-        wrapper
-            .add("doc3".to_string(), &[5.0, 6.0, 7.0])
-            .unwrap();
+        wrapper.add("doc1".to_string(), &[1.0, 2.0, 3.0]).unwrap();
+        wrapper.add("doc2".to_string(), &[1.1, 2.1, 3.1]).unwrap();
+        wrapper.add("doc3".to_string(), &[5.0, 6.0, 7.0]).unwrap();
 
         let allowed = vec!["doc1".to_string(), "doc3".to_string()];
         let results = wrapper.search(&[1.0, 2.0, 3.0], 3, Some(&allowed)).unwrap();
