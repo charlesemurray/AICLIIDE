@@ -61,6 +61,10 @@ impl MemoryManager {
     pub fn stm_capacity(&self) -> usize {
         self.stm_capacity
     }
+
+    pub fn get_ltm(&self) -> &LongTermMemory {
+        &self.ltm
+    }
 }
 
 #[cfg(test)]
