@@ -43,4 +43,12 @@ impl ConversationMode {
         // Default to interactive
         ConversationMode::Interactive
     }
+
+    pub fn to_analytics_mode(&self) -> crate::analytics::ConversationMode {
+        match self {
+            ConversationMode::Interactive => crate::analytics::ConversationMode::Planning,
+            ConversationMode::ExecutePlan => crate::analytics::ConversationMode::Implementation,
+            ConversationMode::Review => crate::analytics::ConversationMode::Review,
+        }
+    }
 }

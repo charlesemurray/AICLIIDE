@@ -4,6 +4,9 @@ pub mod manager;
 pub mod metadata;
 pub mod repository;
 
+#[cfg(test)]
+mod integration_tests;
+
 pub use error::SessionError;
 pub use io::{
     load_metadata,
