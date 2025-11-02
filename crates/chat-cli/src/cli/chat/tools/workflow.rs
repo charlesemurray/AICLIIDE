@@ -19,10 +19,18 @@ pub struct WorkflowTool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowStep {
+    pub name: String,
+    pub tool: String,
+    pub parameters: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowDefinition {
     pub name: String,
     pub version: String,
     pub description: String,
+    pub steps: Vec<WorkflowStep>,
 }
 
 impl WorkflowTool {
@@ -103,5 +111,26 @@ mod tests {
         assert_eq!(definition.name, "test-workflow");
         assert_eq!(definition.version, "1.0.0");
         assert_eq!(definition.description, "A test workflow");
+    }
+
+    #[test]
+    fn test_workflow_definition_with_steps() {
+        let json = r#"{
+            "name": "build-workflow",
+            "version": "1.0.0",
+            "description": "A build workflow",
+            "steps": [
+                {
+                    "name": "compile",
+                    "tool": "execute_bash",
+                    "parameters": {"command": "cargo build"}
+                }
+            ]
+        }"#;
+
+        let definition: WorkflowDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(definition.steps.len(), 1);
+        assert_eq!(definition.steps[0].name, "compile");
+        assert_eq!(definition.steps[0].tool, "execute_bash");
     }
 }
