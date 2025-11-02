@@ -1,0 +1,31 @@
+{
+  "templates": [
+    {
+      "id": "skill_basic",
+      "name": "Basic Command Skill",
+      "description": "A simple skill that executes a command",
+      "category": "skill",
+      "file": "skill_basic.json",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "description": "Name of the skill"
+        },
+        {
+          "name": "description", 
+          "type": "string",
+          "required": false,
+          "description": "Description of what the skill does"
+        },
+        {
+          "name": "command",
+          "type": "string", 
+          "required": true,
+          "description": "Command to execute"
+        }
+      ]
+    }
+  ]
+}

@@ -10,12 +10,15 @@ mod assistant;
 mod flows;
 mod context;
 mod templates;
+mod template_loader;
 mod prompt_system;
 
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod ui_integration_tests;
+#[cfg(test)]
+mod cli_integration_tests;
 
 pub use types::*;
 pub use errors::CreationError;
@@ -122,47 +125,27 @@ pub enum AgentMode {
 
 impl CreateArgs {
     pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
+        use crate::cli::creation::flows::InteractiveCreationFlow;
+        use crate::cli::creation::TerminalUIImpl;
+        
+        let ui = TerminalUIImpl::new();
+        let mut flow = InteractiveCreationFlow::new(ui).await?;
+        
         match self.command {
-            CreateCommand::Skill { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    SkillMode::Quick => CreationMode::Quick,
-                    SkillMode::Guided => CreationMode::Guided,
-                    SkillMode::Expert => CreationMode::Expert,
-                    SkillMode::Template { source: _ } => CreationMode::Template,
-                    SkillMode::Preview => CreationMode::Preview,
-                    SkillMode::Edit => CreationMode::Guided, // Edit as guided
-                    SkillMode::Force => CreationMode::Guided, // Force as guided
-                }).unwrap_or(CreationMode::Guided); // Default to guided
-
-                let flow = SkillCreationFlow::new(name, creation_mode)?;
-                CreationAssistant::new(flow).run().await
+            CreateCommand::Skill { name: _, mode: _ } => {
+                let result = flow.run(CreationType::Skill).await?;
+                println!("Created skill:\n{}", result);
+                Ok(ExitCode::SUCCESS)
             },
-            CreateCommand::Command { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    CommandMode::Quick => CreationMode::Quick,
-                    CommandMode::Guided => CreationMode::Guided,
-                    CommandMode::Template { source: _ } => CreationMode::Template,
-                    CommandMode::Preview => CreationMode::Preview,
-                    CommandMode::Edit => CreationMode::Guided,
-                    CommandMode::Force => CreationMode::Guided,
-                }).unwrap_or(CreationMode::Guided);
-
-                let flow = CommandCreationFlow::new(name, creation_mode)?;
-                CreationAssistant::new(flow).run().await
+            CreateCommand::Command { name: _, mode: _ } => {
+                let result = flow.run(CreationType::CustomCommand).await?;
+                println!("Created command:\n{}", result);
+                Ok(ExitCode::SUCCESS)
             },
-            CreateCommand::Agent { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    AgentMode::Quick => CreationMode::Quick,
-                    AgentMode::Guided => CreationMode::Guided,
-                    AgentMode::Expert => CreationMode::Expert,
-                    AgentMode::Template { source: _ } => CreationMode::Template,
-                    AgentMode::Preview => CreationMode::Preview,
-                    AgentMode::Edit => CreationMode::Guided,
-                    AgentMode::Force => CreationMode::Guided,
-                }).unwrap_or(CreationMode::Guided);
-
-                let flow = AgentCreationFlow::new(name, creation_mode)?;
-                CreationAssistant::new(flow).run().await
+            CreateCommand::Agent { name: _, mode: _ } => {
+                let result = flow.run(CreationType::Agent).await?;
+                println!("Created agent:\n{}", result);
+                Ok(ExitCode::SUCCESS)
             },
         }
     }

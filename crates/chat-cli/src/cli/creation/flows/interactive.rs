@@ -1,16 +1,19 @@
 use eyre::Result;
 use crate::cli::creation::{CreationType, TerminalUI, SemanticColor};
-use crate::cli::creation::prompt_system::{PromptSystem, TemplateInfo};
+use crate::cli::creation::template_loader::SimpleTemplateLoader;
+use std::collections::HashMap;
 
 pub struct InteractiveCreationFlow<T: TerminalUI> {
     ui: T,
-    prompt_system: PromptSystem,
+    template_loader: SimpleTemplateLoader,
 }
 
 impl<T: TerminalUI> InteractiveCreationFlow<T> {
     pub async fn new(ui: T) -> Result<Self> {
-        let prompt_system = PromptSystem::new().await?;
-        Ok(Self { ui, prompt_system })
+        Ok(Self { 
+            ui, 
+            template_loader: SimpleTemplateLoader::new(),
+        })
     }
 
     pub async fn run(&mut self, creation_type: CreationType) -> Result<String> {
@@ -24,23 +27,16 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
     async fn create_skill(&mut self) -> Result<String> {
         self.ui.show_message("🎯 Creating a new skill...\n", SemanticColor::Info);
         
-        // Get available templates
-        let templates = self.prompt_system.list_templates().await?;
-        let template = self.select_template(&templates, "skill creation")?;
-        
-        // Get basic info
         let name = self.ui.prompt_required("Skill name")?;
         let description = self.ui.prompt_optional("Description", None)?;
+        let command = self.ui.prompt_required("Command to execute")?;
         
-        // Get template and render with parameters
-        let template_obj = self.prompt_system.get_template(&template.id).await?;
-        let mut params = std::collections::HashMap::new();
+        let mut params = HashMap::new();
         params.insert("name".to_string(), name.clone());
-        if let Some(desc) = description {
-            params.insert("description".to_string(), desc);
-        }
+        params.insert("description".to_string(), description.unwrap_or_default());
+        params.insert("command".to_string(), command);
         
-        let rendered = self.prompt_system.render_template(&template_obj, &params).await?;
+        let rendered = self.template_loader.render_template("skill_basic", &params)?;
         
         self.ui.show_message(&format!("✅ Created skill: {}\n", name), SemanticColor::Success);
         Ok(rendered)
@@ -49,18 +45,18 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
     async fn create_command(&mut self) -> Result<String> {
         self.ui.show_message("⚡ Creating a new command...\n", SemanticColor::Info);
         
-        let templates = self.prompt_system.list_templates().await?;
-        let template = self.select_template(&templates, "command creation")?;
-        
         let name = self.ui.prompt_required("Command name")?;
+        let description = self.ui.prompt_optional("Description", None)?;
         let command = self.ui.prompt_required("Command to execute")?;
+        let args = self.ui.prompt_optional("Arguments (JSON array)", Some("[]"))?;
         
-        let template_obj = self.prompt_system.get_template(&template.id).await?;
-        let mut params = std::collections::HashMap::new();
+        let mut params = HashMap::new();
         params.insert("name".to_string(), name.clone());
+        params.insert("description".to_string(), description.unwrap_or_default());
         params.insert("command".to_string(), command);
+        params.insert("args".to_string(), args.unwrap_or_else(|| "[]".to_string()));
         
-        let rendered = self.prompt_system.render_template(&template_obj, &params).await?;
+        let rendered = self.template_loader.render_template("command_basic", &params)?;
         
         self.ui.show_message(&format!("✅ Created command: {}\n", name), SemanticColor::Success);
         Ok(rendered)
@@ -69,45 +65,31 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
     async fn create_agent(&mut self) -> Result<String> {
         self.ui.show_message("🤖 Creating a new agent...\n", SemanticColor::Info);
         
-        let templates = self.prompt_system.list_templates().await?;
-        let template = self.select_template(&templates, "agent creation")?;
-        
         let name = self.ui.prompt_required("Agent name")?;
+        let description = self.ui.prompt_optional("Description", None)?;
         let role = self.ui.prompt_required("Agent role")?;
+        let capabilities = self.ui.prompt_optional("Capabilities (comma-separated)", None)?;
         
-        let template_obj = self.prompt_system.get_template(&template.id).await?;
-        let mut params = std::collections::HashMap::new();
+        let mut params = HashMap::new();
         params.insert("name".to_string(), name.clone());
+        params.insert("description".to_string(), description.unwrap_or_default());
         params.insert("role".to_string(), role);
         
-        let rendered = self.prompt_system.render_template(&template_obj, &params).await?;
+        // Format capabilities as JSON array
+        let caps = if let Some(caps_str) = capabilities {
+            caps_str.split(',')
+                .map(|s| format!("\"{}\"", s.trim()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        } else {
+            String::new()
+        };
+        params.insert("capabilities".to_string(), caps);
+        
+        let rendered = self.template_loader.render_template("agent_basic", &params)?;
         
         self.ui.show_message(&format!("✅ Created agent: {}\n", name), SemanticColor::Success);
         Ok(rendered)
-    }
-
-    fn select_template(&mut self, templates: &[TemplateInfo], use_case: &str) -> Result<TemplateInfo> {
-        if templates.is_empty() {
-            return Err(eyre::eyre!("No templates available"));
-        }
-
-        if templates.len() == 1 {
-            // Auto-select if only one template
-            return Ok(templates[0].clone());
-        }
-
-        // Show template options
-        self.ui.show_message("Available templates:\n", SemanticColor::Info);
-        let options: Vec<(&str, &str)> = templates.iter()
-            .map(|t| (t.name.as_str(), t.description.as_str()))
-            .collect();
-
-        let selected = self.ui.select_option("Select template", &options)?;
-        
-        templates.iter()
-            .find(|t| t.name == selected)
-            .cloned()
-            .ok_or_else(|| eyre::eyre!("Invalid template selection"))
     }
 }
 
@@ -127,11 +109,49 @@ mod tests {
     async fn test_skill_creation_flow() {
         let ui = MockTerminalUI::new(vec![
             "test_skill".to_string(),
-            "".to_string(), // Empty description
+            "A test skill".to_string(),
+            "echo hello".to_string(),
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
         
         let result = flow.run(CreationType::Skill).await;
         assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("test_skill"));
+        assert!(output.contains("echo hello"));
+    }
+
+    #[tokio::test]
+    async fn test_command_creation_flow() {
+        let ui = MockTerminalUI::new(vec![
+            "test_command".to_string(),
+            "A test command".to_string(),
+            "ls -la".to_string(),
+            "[\"--color\"]".to_string(),
+        ]);
+        let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
+        
+        let result = flow.run(CreationType::CustomCommand).await;
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("test_command"));
+        assert!(output.contains("ls -la"));
+    }
+
+    #[tokio::test]
+    async fn test_agent_creation_flow() {
+        let ui = MockTerminalUI::new(vec![
+            "test_agent".to_string(),
+            "A test agent".to_string(),
+            "assistant".to_string(),
+            "help, analyze, suggest".to_string(),
+        ]);
+        let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
+        
+        let result = flow.run(CreationType::Agent).await;
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("test_agent"));
+        assert!(output.contains("assistant"));
     }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "{{name}}",
+  "description": "{{description}}",
+  "type": "command",
+  "command": "{{command}}",
+  "args": [],
+  "timeout": 30,
+  "working_directory": ".",
+  "environment": {}
+}
