@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
     use super::super::interactive::*;
-    use crate::cli::creation::{CreationType, tests::MockTerminalUI};
+    use crate::cli::creation::CreationType;
+    use crate::cli::creation::tests::MockTerminalUI;
 
     #[tokio::test]
     async fn test_interactive_flow_initialization() {
@@ -17,7 +18,7 @@ mod tests {
             "".to_string(), // Empty description
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-        
+
         let result = flow.run(CreationType::Skill).await;
         assert!(result.is_ok());
         let output = result.unwrap();
@@ -26,24 +27,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_command_creation_complete_flow() {
-        let ui = MockTerminalUI::new(vec![
-            "my_command".to_string(),
-            "ls -la".to_string(),
-        ]);
+        let ui = MockTerminalUI::new(vec!["my_command".to_string(), "ls -la".to_string()]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-        
+
         let result = flow.run(CreationType::CustomCommand).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_agent_creation_complete_flow() {
-        let ui = MockTerminalUI::new(vec![
-            "my_agent".to_string(),
-            "helpful assistant".to_string(),
-        ]);
+        let ui = MockTerminalUI::new(vec!["my_agent".to_string(), "helpful assistant".to_string()]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-        
+
         let result = flow.run(CreationType::Agent).await;
         assert!(result.is_ok());
     }
@@ -55,7 +50,7 @@ mod tests {
             "".to_string(), // Empty description
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-        
+
         let result = flow.run(CreationType::Skill).await;
         assert!(result.is_ok());
     }
@@ -64,7 +59,7 @@ mod tests {
     async fn test_error_handling_invalid_input() {
         let ui = MockTerminalUI::new(vec![]); // No inputs provided
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-        
+
         let result = flow.run(CreationType::Skill).await;
         // Should handle missing input gracefully
         assert!(result.is_err() || result.is_ok());
@@ -73,12 +68,9 @@ mod tests {
     #[tokio::test]
     async fn test_all_creation_types() {
         for creation_type in [CreationType::Skill, CreationType::CustomCommand, CreationType::Agent] {
-            let ui = MockTerminalUI::new(vec![
-                "test_name".to_string(),
-                "test_value".to_string(),
-            ]);
+            let ui = MockTerminalUI::new(vec!["test_name".to_string(), "test_value".to_string()]);
             let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
-            
+
             let result = flow.run(creation_type.clone()).await;
             assert!(result.is_ok(), "Failed for creation type: {:?}", creation_type);
         }

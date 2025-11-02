@@ -1,9 +1,17 @@
 #[cfg(test)]
 mod cli_commands_tests {
-    use crate::cli::skills::{SkillRegistry, SkillError};
-    use clap::{Subcommand, Parser};
-    use serde_json::json;
     use std::process::ExitCode;
+
+    use clap::{
+        Parser,
+        Subcommand,
+    };
+    use serde_json::json;
+
+    use crate::cli::skills::{
+        SkillError,
+        SkillRegistry,
+    };
 
     #[derive(Debug, PartialEq, Parser)]
     pub struct SkillsArgs {
@@ -44,7 +52,7 @@ mod cli_commands_tests {
             match self.command {
                 SkillsCommand::List { detailed } => {
                     let skills = registry.list();
-                    
+
                     if detailed {
                         for skill in skills {
                             println!("{}: {}", skill.name(), skill.description());
@@ -55,7 +63,7 @@ mod cli_commands_tests {
                             println!("{}", skill.name());
                         }
                     }
-                    
+
                     Ok(ExitCode::SUCCESS)
                 },
                 SkillsCommand::Run { skill_name, params } => {
@@ -64,10 +72,10 @@ mod cli_commands_tests {
                             .map_err(|e| SkillError::InvalidInput(format!("Invalid JSON: {}", e)))?,
                         None => json!({}),
                     };
-                    
+
                     let result = registry.execute_skill(&skill_name, params).await?;
                     println!("{}", result.output);
-                    
+
                     Ok(ExitCode::SUCCESS)
                 },
                 SkillsCommand::Info { skill_name } => {
@@ -76,7 +84,7 @@ mod cli_commands_tests {
                             println!("Name: {}", skill.name());
                             println!("Description: {}", skill.description());
                             println!("Interactive: {}", skill.supports_interactive());
-                            
+
                             let ui = skill.render_ui().await?;
                             if !ui.elements.is_empty() {
                                 println!("UI Elements: {}", ui.elements.len());
@@ -86,7 +94,7 @@ mod cli_commands_tests {
                             return Err(SkillError::NotFound);
                         },
                     }
-                    
+
                     Ok(ExitCode::SUCCESS)
                 },
                 SkillsCommand::Install { source: _source } => {
@@ -104,7 +112,7 @@ mod cli_commands_tests {
         let args = SkillsArgs {
             command: SkillsCommand::List { detailed: false },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::SUCCESS);
@@ -116,7 +124,7 @@ mod cli_commands_tests {
         let args = SkillsArgs {
             command: SkillsCommand::List { detailed: true },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::SUCCESS);
@@ -131,7 +139,7 @@ mod cli_commands_tests {
                 params: Some(r#"{"op": "add", "a": 2, "b": 3}"#.to_string()),
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::SUCCESS);
@@ -146,7 +154,7 @@ mod cli_commands_tests {
                 params: None,
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         // Should fail because calculator requires parameters
         assert!(result.is_err());
@@ -161,10 +169,10 @@ mod cli_commands_tests {
                 params: Some("invalid json".to_string()),
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             SkillError::InvalidInput(msg) => assert!(msg.contains("Invalid JSON")),
             _ => panic!("Expected InvalidInput error for invalid JSON"),
@@ -180,10 +188,10 @@ mod cli_commands_tests {
                 params: None,
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             SkillError::NotFound => {}, // Expected
             _ => panic!("Expected NotFound error"),
@@ -198,7 +206,7 @@ mod cli_commands_tests {
                 skill_name: "calculator".to_string(),
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::SUCCESS);
@@ -212,10 +220,10 @@ mod cli_commands_tests {
                 skill_name: "nonexistent".to_string(),
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             SkillError::NotFound => {}, // Expected
             _ => panic!("Expected NotFound error"),
@@ -230,7 +238,7 @@ mod cli_commands_tests {
                 source: "test_skill.json".to_string(),
             },
         };
-        
+
         let result = args.execute(&mut registry).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::SUCCESS);
@@ -239,37 +247,36 @@ mod cli_commands_tests {
     #[test]
     fn test_skills_args_parsing() {
         use clap::Parser;
-        
+
         // Test list command
         let args = SkillsArgs::try_parse_from(&["skills", "list"]).unwrap();
         assert_eq!(args.command, SkillsCommand::List { detailed: false });
-        
+
         // Test list detailed command
         let args = SkillsArgs::try_parse_from(&["skills", "list", "--detailed"]).unwrap();
         assert_eq!(args.command, SkillsCommand::List { detailed: true });
-        
+
         // Test run command
         let args = SkillsArgs::try_parse_from(&["skills", "run", "calculator"]).unwrap();
         assert_eq!(args.command, SkillsCommand::Run {
             skill_name: "calculator".to_string(),
             params: None,
         });
-        
+
         // Test run command with params
-        let args = SkillsArgs::try_parse_from(&[
-            "skills", "run", "calculator", "--params", r#"{"op": "add"}"#
-        ]).unwrap();
+        let args =
+            SkillsArgs::try_parse_from(&["skills", "run", "calculator", "--params", r#"{"op": "add"}"#]).unwrap();
         assert_eq!(args.command, SkillsCommand::Run {
             skill_name: "calculator".to_string(),
             params: Some(r#"{"op": "add"}"#.to_string()),
         });
-        
+
         // Test info command
         let args = SkillsArgs::try_parse_from(&["skills", "info", "calculator"]).unwrap();
         assert_eq!(args.command, SkillsCommand::Info {
             skill_name: "calculator".to_string(),
         });
-        
+
         // Test install command
         let args = SkillsArgs::try_parse_from(&["skills", "install", "skill.json"]).unwrap();
         assert_eq!(args.command, SkillsCommand::Install {

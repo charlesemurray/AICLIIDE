@@ -1,6 +1,11 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, ResourceUsage};
-use crate::cli::skills::platform::generic::GenericSandbox;
 use async_trait::async_trait;
+
+use crate::cli::skills::platform::generic::GenericSandbox;
+use crate::cli::skills::security::{
+    PlatformSandbox,
+    ResourceUsage,
+    SecurityResult,
+};
 
 pub struct MacOSSandbox {
     generic: GenericSandbox,
@@ -22,16 +27,16 @@ impl PlatformSandbox for MacOSSandbox {
         // - macOS sandbox profiles
         // - launchd for process management
         // - BSD jail-like restrictions
-        
+
         // For now, fall back to generic implementation
         self.generic.execute_with_timeout(timeout_secs).await
     }
-    
+
     fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage> {
         // TODO: Use macOS-specific system calls for monitoring
         self.generic.monitor_resources(pid)
     }
-    
+
     fn terminate_process(&self, pid: u32) -> SecurityResult<()> {
         // TODO: Use macOS-specific process termination
         self.generic.terminate_process(pid)

@@ -1,6 +1,10 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SkillType {
@@ -18,7 +22,7 @@ pub enum SkillType {
 
 impl FromStr for SkillType {
     type Err = String;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "code_inline" => Ok(SkillType::CodeInline),
@@ -97,7 +101,7 @@ impl JsonSkill {
     pub fn from_json(value: serde_json::Value) -> Result<Self, serde_json::Error> {
         serde_json::from_value(value)
     }
-    
+
     pub async fn execute(&self, params: HashMap<String, String>) -> Result<String, String> {
         match self.skill_type {
             SkillType::Command => self.execute_command(params).await,
@@ -107,95 +111,100 @@ impl JsonSkill {
             SkillType::PromptInline => self.execute_prompt_inline(params).await,
         }
     }
-    
+
     async fn execute_command(&self, _params: HashMap<String, String>) -> Result<String, String> {
         let command = self.command.as_ref().ok_or("No command specified")?;
         let empty_args = vec![];
         let args = self.args.as_ref().unwrap_or(&empty_args);
-        
+
         let output = tokio::process::Command::new(command)
             .args(args)
             .output()
             .await
             .map_err(|e| format!("Failed to execute command: {}", e))?;
-            
+
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
             Err(String::from_utf8_lossy(&output.stderr).to_string())
         }
     }
-    
+
     async fn execute_code_inline(&self, _params: HashMap<String, String>) -> Result<String, String> {
         let command = self.command.as_ref().ok_or("No command specified")?;
         let empty_args = vec![];
         let args = self.args.as_ref().unwrap_or(&empty_args);
-        
+
         let output = tokio::process::Command::new(command)
             .args(args)
             .output()
             .await
             .map_err(|e| format!("Failed to execute command: {}", e))?;
-            
+
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
             Err(String::from_utf8_lossy(&output.stderr).to_string())
         }
     }
-    
+
     async fn execute_code_session(&self, params: HashMap<String, String>) -> Result<String, String> {
         let command = self.command.as_ref().ok_or("No command specified")?;
         let input = params.get("input").unwrap_or(&String::new()).clone();
-        
+
         let mut child = tokio::process::Command::new(command)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
             .map_err(|e| format!("Failed to start session: {}", e))?;
-            
+
         if let Some(stdin) = child.stdin.as_mut() {
             use tokio::io::AsyncWriteExt;
-            stdin.write_all(input.as_bytes()).await
+            stdin
+                .write_all(input.as_bytes())
+                .await
                 .map_err(|e| format!("Failed to write to session: {}", e))?;
-            stdin.write_all(b"\n").await
+            stdin
+                .write_all(b"\n")
+                .await
                 .map_err(|e| format!("Failed to write newline: {}", e))?;
         }
-        
-        let output = child.wait_with_output().await
+
+        let output = child
+            .wait_with_output()
+            .await
             .map_err(|e| format!("Session execution failed: {}", e))?;
-            
+
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
             Err(String::from_utf8_lossy(&output.stderr).to_string())
         }
     }
-    
+
     async fn execute_conversation(&self, params: HashMap<String, String>) -> Result<String, String> {
         let template = self.prompt_template.as_ref().ok_or("No prompt template specified")?;
         let input = params.get("input").unwrap_or(&String::new()).clone();
-        
+
         // Simple template substitution
         let prompt = template.replace("{input}", &input);
-        
+
         // For now, return the formatted prompt (in real implementation, this would call AI)
         Ok(format!("AI Response to: {}", prompt))
     }
-    
+
     async fn execute_prompt_inline(&self, params: HashMap<String, String>) -> Result<String, String> {
-        let prompt = self.prompt_template.as_ref()
-            .ok_or("No prompt specified")?;
-            
+        let prompt = self.prompt_template.as_ref().ok_or("No prompt specified")?;
+
         let mut result = prompt.to_string();
-        
+
         // Replace parameters in the prompt
         for (key, value) in params {
             let placeholder = format!("{{{}}}", key);
             result = result.replace(&placeholder, &value);
         }
-        
+
         Ok(result)
     }
 }

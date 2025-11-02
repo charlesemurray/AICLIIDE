@@ -5,16 +5,16 @@ use eyre::Result;
 /// Shared trait for all creation builders
 pub trait CreationBuilder {
     type Output;
-    
+
     /// Set the name (required for all creations)
     fn with_name(self, name: String) -> Self;
-    
+
     /// Set the description (optional but recommended)
     fn with_description(self, description: String) -> Self;
-    
+
     /// Validate the current configuration
     fn validate(&self) -> Result<ValidationResult>;
-    
+
     /// Build the final result
     fn build(self) -> Result<Self::Output>;
 }
@@ -49,11 +49,11 @@ impl ValidationResult {
             score: 1.0,
         }
     }
-    
+
     pub fn invalid(issues: Vec<ValidationIssue>) -> Self {
         let error_count = issues.iter().filter(|i| i.severity == IssueSeverity::Error).count();
         let is_valid = error_count == 0;
-        
+
         Self {
             is_valid,
             issues,

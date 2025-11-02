@@ -2025,7 +2025,7 @@ impl ChatSession {
                         // Natural syntax: "1 + 2"
                         let op = match args[1] {
                             "+" => "add",
-                            "-" => "subtract", 
+                            "-" => "subtract",
                             "*" => "multiply",
                             "/" => "divide",
                             _ => args[1],
@@ -2035,14 +2035,16 @@ impl ChatSession {
                         // Command syntax: "add 1 2"
                         (args[0], args[1], args[2])
                     };
-                    
+
                     serde_json::json!({
                         "op": op,
                         "a": a.parse::<f64>().unwrap_or(0.0),
                         "b": b.parse::<f64>().unwrap_or(0.0)
                     })
                 } else {
-                    return Some(Err(eyre::eyre!("Calculator requires 3 arguments. Use: '@calculator 1 + 2' or '@calculator add 1 2'")));
+                    return Some(Err(eyre::eyre!(
+                        "Calculator requires 3 arguments. Use: '@calculator 1 + 2' or '@calculator add 1 2'"
+                    )));
                 }
             },
             _ => serde_json::json!({}),
@@ -2079,9 +2081,11 @@ impl ChatSession {
                         style::Print("\n\n"),
                     )?;
                     self.stderr.flush()?;
-                    
+
                     // Continue with normal chat flow
-                    return Ok(ChatState::PromptUser { skip_printing_tools: false });
+                    return Ok(ChatState::PromptUser {
+                        skip_printing_tools: false,
+                    });
                 },
                 Err(err) => {
                     // Display error and continue conversation
@@ -2094,8 +2098,10 @@ impl ChatSession {
                         style::Print("\n\n"),
                     )?;
                     self.stderr.flush()?;
-                    
-                    return Ok(ChatState::PromptUser { skip_printing_tools: false });
+
+                    return Ok(ChatState::PromptUser {
+                        skip_printing_tools: false,
+                    });
                 },
             }
         }

@@ -1,13 +1,14 @@
-use eyre::Result;
 use std::collections::HashMap;
 
-pub mod types;
-pub mod template_manager;
-pub mod storage;
-pub mod creation_builder;
-pub mod prompt_builder;
+use eyre::Result;
+
 pub mod command_builder;
+pub mod creation_builder;
 pub mod examples;
+pub mod prompt_builder;
+pub mod storage;
+pub mod template_manager;
+pub mod types;
 
 #[cfg(test)]
 mod tests;
@@ -30,11 +31,22 @@ mod error_tests;
 #[cfg(test)]
 mod builder_tests;
 
-pub use types::*;
-pub use template_manager::{TemplateManager, DefaultTemplateManager};
-pub use creation_builder::{CreationBuilder, ValidationResult, ValidationIssue, IssueSeverity};
+pub use command_builder::{
+    CommandBuilder,
+    CommandConfig,
+};
+pub use creation_builder::{
+    CreationBuilder,
+    IssueSeverity,
+    ValidationIssue,
+    ValidationResult,
+};
 pub use prompt_builder::PromptBuilder;
-pub use command_builder::{CommandBuilder, CommandConfig};
+pub use template_manager::{
+    DefaultTemplateManager,
+    TemplateManager,
+};
+pub use types::*;
 
 /// Main entry point for the prompt building system
 pub struct PromptSystem {
@@ -66,7 +78,7 @@ impl PromptSystem {
 
     pub async fn suggest_templates_for_use_case(&self, use_case: &str) -> Result<Vec<TemplateInfo>> {
         let all_templates = self.list_templates().await?;
-        
+
         // Simple keyword matching for now
         let keywords = use_case.to_lowercase();
         let mut scored_templates: Vec<(TemplateInfo, f64)> = all_templates
@@ -79,24 +91,32 @@ impl PromptSystem {
 
         // Sort by relevance score
         scored_templates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         // Return top 3 suggestions
-        Ok(scored_templates.into_iter().take(3).map(|(template, _)| template).collect())
+        Ok(scored_templates
+            .into_iter()
+            .take(3)
+            .map(|(template, _)| template)
+            .collect())
     }
 
     pub fn get_template_parameters(&self, template: &PromptTemplate) -> Vec<ParameterInfo> {
-        template.parameters.iter().map(|param| ParameterInfo {
-            name: param.name.clone(),
-            param_type: param.param_type.clone(),
-            description: param.description.clone(),
-            default_value: param.default_value.clone(),
-            required: param.required,
-        }).collect()
+        template
+            .parameters
+            .iter()
+            .map(|param| ParameterInfo {
+                name: param.name.clone(),
+                param_type: param.param_type.clone(),
+                description: param.description.clone(),
+                default_value: param.default_value.clone(),
+                required: param.required,
+            })
+            .collect()
     }
 
     fn calculate_relevance_score(&self, template: &TemplateInfo, keywords: &str) -> f64 {
         let mut score = 0.0;
-        
+
         // Check name and description
         if template.name.to_lowercase().contains(keywords) {
             score += 2.0;
@@ -104,11 +124,11 @@ impl PromptSystem {
         if template.description.to_lowercase().contains(keywords) {
             score += 1.0;
         }
-        
+
         // Boost score based on quality and usage
         score += template.estimated_quality * 0.2;
         score += (template.usage_stats.success_rate * 0.5);
-        
+
         score
     }
 }

@@ -1,7 +1,8 @@
 //! Example usage of the prompt builder system
 
-use super::*;
 use eyre::Result;
+
+use super::*;
 
 /// Example: Creating a code review assistant
 pub fn create_code_review_assistant() -> Result<PromptTemplate> {
@@ -37,7 +38,10 @@ pub fn create_documentation_assistant() -> Result<PromptTemplate> {
     PromptBuilder::new()
         .with_name("Technical Writer".to_string())
         .with_description("Specialized in creating clear, comprehensive technical documentation".to_string())
-        .with_role("You are an experienced technical writer who excels at making complex topics accessible and well-organized".to_string())
+        .with_role(
+            "You are an experienced technical writer who excels at making complex topics accessible and well-organized"
+                .to_string(),
+        )
         .add_capability("API documentation creation".to_string())
         .add_capability("user guide development".to_string())
         .add_capability("tutorial writing".to_string())
@@ -81,7 +85,10 @@ pub fn create_beginner_assistant() -> Result<PromptTemplate> {
     PromptBuilder::new()
         .with_name("Friendly Tutor".to_string())
         .with_description("Patient and encouraging assistant for beginners".to_string())
-        .with_role("You are a patient and encouraging tutor who specializes in helping beginners learn programming concepts".to_string())
+        .with_role(
+            "You are a patient and encouraging tutor who specializes in helping beginners learn programming concepts"
+                .to_string(),
+        )
         .add_capability("explaining complex concepts simply".to_string())
         .add_capability("providing step-by-step guidance".to_string())
         .add_constraint("use simple, non-technical language when possible".to_string())

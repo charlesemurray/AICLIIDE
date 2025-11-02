@@ -1,11 +1,21 @@
 //! Context intelligence for smart defaults and project-aware suggestions
 
-use crate::cli::creation::{
-    CreationType, CreationDefaults, ProjectType, ValidationResult, SkillType, CommandType
-};
-use eyre::Result;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{
+    Path,
+    PathBuf,
+};
+
+use eyre::Result;
+
+use crate::cli::creation::{
+    CommandType,
+    CreationDefaults,
+    CreationType,
+    ProjectType,
+    SkillType,
+    ValidationResult,
+};
 
 /// Context analyzer that provides smart defaults and suggestions
 #[derive(Debug)]
@@ -41,15 +51,15 @@ impl CreationContext {
                 defaults.skill_type = self.suggest_skill_type();
                 defaults.command = self.suggest_skill_command();
                 defaults.description = self.generate_skill_description();
-            }
+            },
             CreationType::CustomCommand => {
                 defaults.command_type = self.suggest_command_type();
                 defaults.description = self.generate_command_description();
-            }
+            },
             CreationType::Agent => {
                 defaults.mcp_servers = self.suggest_mcp_servers();
                 defaults.description = self.generate_agent_description();
-            }
+            },
         }
 
         defaults
@@ -58,10 +68,7 @@ impl CreationContext {
     pub fn validate_name(&self, name: &str, creation_type: &CreationType) -> ValidationResult {
         // Check if name is valid format
         if name.is_empty() {
-            return ValidationResult::invalid(
-                "Name cannot be empty",
-                "my-skill"
-            );
+            return ValidationResult::invalid("Name cannot be empty", "my-skill");
         }
 
         if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
@@ -71,11 +78,8 @@ impl CreationContext {
                 .chars()
                 .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
                 .collect();
-            
-            return ValidationResult::invalid(
-                &format!("Invalid characters in name '{}'", name),
-                &suggestion
-            );
+
+            return ValidationResult::invalid(&format!("Invalid characters in name '{}'", name), &suggestion);
         }
 
         // Check if name already exists
@@ -88,7 +92,7 @@ impl CreationContext {
         if exists {
             return ValidationResult::invalid(
                 &format!("{} '{}' already exists", self.format_type(creation_type), name),
-                &format!("Use 'force' mode or try '{}-2'", name)
+                &format!("Use 'force' mode or try '{}-2'", name),
             );
         }
 
@@ -105,8 +109,9 @@ impl CreationContext {
             .into_iter()
             .filter(|existing| {
                 // Simple similarity check
-                existing.contains(name) || name.contains(existing.as_str()) ||
-                self.levenshtein_distance(name, existing) <= 2
+                existing.contains(name)
+                    || name.contains(existing.as_str())
+                    || self.levenshtein_distance(name, existing) <= 2
             })
             .cloned()
             .collect()
@@ -114,34 +119,33 @@ impl CreationContext {
 
     fn analyze_project_type(&mut self) {
         // Check for Python project
-        if self.file_exists("requirements.txt") || 
-           self.file_exists("pyproject.toml") ||
-           self.file_exists("setup.py") ||
-           self.has_files_with_extension("py") {
+        if self.file_exists("requirements.txt")
+            || self.file_exists("pyproject.toml")
+            || self.file_exists("setup.py")
+            || self.has_files_with_extension("py")
+        {
             self.project_type = Some(ProjectType::Python);
             return;
         }
 
         // Check for JavaScript/Node project
-        if self.file_exists("package.json") ||
-           self.file_exists("yarn.lock") ||
-           self.has_files_with_extension("js") ||
-           self.has_files_with_extension("ts") {
+        if self.file_exists("package.json")
+            || self.file_exists("yarn.lock")
+            || self.has_files_with_extension("js")
+            || self.has_files_with_extension("ts")
+        {
             self.project_type = Some(ProjectType::JavaScript);
             return;
         }
 
         // Check for Rust project
-        if self.file_exists("Cargo.toml") ||
-           self.has_files_with_extension("rs") {
+        if self.file_exists("Cargo.toml") || self.has_files_with_extension("rs") {
             self.project_type = Some(ProjectType::Rust);
             return;
         }
 
         // Check for Go project
-        if self.file_exists("go.mod") ||
-           self.file_exists("go.sum") ||
-           self.has_files_with_extension("go") {
+        if self.file_exists("go.mod") || self.file_exists("go.sum") || self.has_files_with_extension("go") {
             self.project_type = Some(ProjectType::Go);
             return;
         }
@@ -184,7 +188,7 @@ impl CreationContext {
                 } else {
                     None
                 }
-            }
+            },
         }
     }
 
@@ -196,14 +200,14 @@ impl CreationContext {
                 } else {
                     Some("python script.py".to_string())
                 }
-            }
+            },
             Some(ProjectType::JavaScript) => {
                 if self.file_exists("index.js") {
                     Some("node index.js".to_string())
                 } else {
                     Some("npm start".to_string())
                 }
-            }
+            },
             Some(ProjectType::Rust) => Some("cargo run".to_string()),
             Some(ProjectType::Go) => Some("go run main.go".to_string()),
             _ => None,
@@ -226,8 +230,8 @@ impl CreationContext {
         match self.project_type {
             Some(ProjectType::Python | ProjectType::JavaScript | ProjectType::Rust | ProjectType::Go) => {
                 servers.push("filesystem".to_string());
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         // Look at existing agents for common patterns
@@ -279,7 +283,7 @@ impl CreationContext {
 
     fn load_json_files(&self, dir: &Path) -> Result<Vec<String>> {
         let mut names = Vec::new();
-        
+
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 if let Some(ext) = entry.path().extension() {
@@ -293,7 +297,7 @@ impl CreationContext {
                 }
             }
         }
-        
+
         Ok(names)
     }
 
@@ -321,11 +325,8 @@ impl CreationContext {
             for (j, c2) in s2.chars().enumerate() {
                 let cost = if c1 == c2 { 0 } else { 1 };
                 matrix[i + 1][j + 1] = std::cmp::min(
-                    std::cmp::min(
-                        matrix[i][j + 1] + 1,
-                        matrix[i + 1][j] + 1
-                    ),
-                    matrix[i][j] + cost
+                    std::cmp::min(matrix[i][j + 1] + 1, matrix[i + 1][j] + 1),
+                    matrix[i][j] + cost,
                 );
             }
         }
@@ -336,8 +337,9 @@ impl CreationContext {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_python_project_detection() {
@@ -385,7 +387,7 @@ mod tests {
     #[test]
     fn test_existing_artifact_detection() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create skills directory with existing skill
         let skills_dir = temp_dir.path().join(".q-skills");
         fs::create_dir_all(&skills_dir).unwrap();
@@ -404,7 +406,7 @@ mod tests {
     fn test_similar_name_suggestions() {
         let temp_dir = TempDir::new().unwrap();
         let mut context = CreationContext::new(temp_dir.path()).unwrap();
-        
+
         context.existing_skills = vec![
             "python-script".to_string(),
             "javascript-runner".to_string(),
@@ -413,7 +415,7 @@ mod tests {
 
         let suggestions = context.suggest_similar_names("python");
         assert!(suggestions.contains(&"python-script".to_string()));
-        
+
         let suggestions = context.suggest_similar_names("script");
         assert!(suggestions.contains(&"python-script".to_string()));
     }

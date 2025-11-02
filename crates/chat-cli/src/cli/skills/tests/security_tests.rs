@@ -1,10 +1,15 @@
 #[cfg(test)]
 mod security_tests {
-    use crate::cli::skills::{SkillRegistry};
-    use serde_json::json;
     use std::fs;
+    use std::time::{
+        Duration,
+        Instant,
+    };
+
+    use serde_json::json;
     use tempfile::TempDir;
-    use std::time::{Duration, Instant};
+
+    use crate::cli::skills::SkillRegistry;
 
     // Tests for Phase 1: Security & Resilience
 
@@ -18,23 +23,30 @@ mod security_tests {
 
         // Create a skill with resource limits
         let resource_limited_skill = skills_dir.join("resource-limited.json");
-        fs::write(&resource_limited_skill, json!({
-            "name": "resource-test",
-            "description": "Test resource limits",
-            "version": "1.0.0",
-            "type": "code_inline",
-            "command": "sleep",
-            "args": ["2"],
-            "security": {
-                "resource_limits": {
-                    "max_memory_mb": 50,
-                    "max_execution_time": 1
+        fs::write(
+            &resource_limited_skill,
+            json!({
+                "name": "resource-test",
+                "description": "Test resource limits",
+                "version": "1.0.0",
+                "type": "code_inline",
+                "command": "sleep",
+                "args": ["2"],
+                "security": {
+                    "resource_limits": {
+                        "max_memory_mb": 50,
+                        "max_execution_time": 1
+                    }
                 }
-            }
-        }).to_string()).unwrap();
+            })
+            .to_string(),
+        )
+        .unwrap();
 
         let registry = SkillRegistry::with_workspace_skills(&workspace_dir).await.unwrap();
-        let skill = registry.get("resource-test").expect("Resource test skill should be loaded");
+        let skill = registry
+            .get("resource-test")
+            .expect("Resource test skill should be loaded");
 
         // Execution should be terminated due to timeout
         let start = Instant::now();
@@ -43,17 +55,17 @@ mod security_tests {
 
         // Should timeout within reasonable bounds (1s + overhead)
         assert!(duration < Duration::from_secs(3), "Skill should timeout within limits");
-        
+
         // Should return an error due to timeout
         assert!(result.is_err(), "Long-running skill should timeout and return error");
     }
 
     // Removed placeholder tests that don't actually test functionality:
     // - test_sandbox_file_access_restrictions (not implemented)
-    // - test_retry_logic_on_failures (not implemented) 
+    // - test_retry_logic_on_failures (not implemented)
     // - test_circuit_breaker_pattern (not implemented)
     // - test_permission_validation (not implemented)
-    
+
     // These will be re-added when the actual functionality is implemented
 
     #[tokio::test]
@@ -66,24 +78,31 @@ mod security_tests {
 
         // Create a prompt skill that should sanitize input
         let sanitization_skill = skills_dir.join("sanitization-test.json");
-        fs::write(&sanitization_skill, json!({
-            "name": "sanitization-test",
-            "description": "Test input sanitization",
-            "version": "1.0.0",
-            "type": "prompt_inline",
-            "prompt": "Hello {name}!",
-            "parameters": [
-                {
-                    "name": "name",
-                    "type": "string",
-                    "pattern": "^[a-zA-Z0-9 ]+$",
-                    "required": true
-                }
-            ]
-        }).to_string()).unwrap();
+        fs::write(
+            &sanitization_skill,
+            json!({
+                "name": "sanitization-test",
+                "description": "Test input sanitization",
+                "version": "1.0.0",
+                "type": "prompt_inline",
+                "prompt": "Hello {name}!",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9 ]+$",
+                        "required": true
+                    }
+                ]
+            })
+            .to_string(),
+        )
+        .unwrap();
 
         let registry = SkillRegistry::with_workspace_skills(&workspace_dir).await.unwrap();
-        let skill = registry.get("sanitization-test").expect("Sanitization test skill should be loaded");
+        let skill = registry
+            .get("sanitization-test")
+            .expect("Sanitization test skill should be loaded");
 
         // Test with malicious input
         let malicious_params = json!({
@@ -91,14 +110,14 @@ mod security_tests {
         });
 
         let result = skill.execute(malicious_params).await;
-        
+
         // TODO: Once input sanitization is implemented, this should be rejected or sanitized
         match result {
             Ok(output) => {
                 println!("Sanitization test output: {}", output.output);
                 // Should not contain the malicious command
                 assert!(!output.output.contains("rm -rf"));
-            }
+            },
             Err(e) => println!("Sanitization correctly rejected malicious input: {}", e),
         }
     }
@@ -134,7 +153,7 @@ mod security_tests {
         // Invalid security configuration - negative values should be rejected
         let invalid_config = json!({
             "name": "insecure-skill",
-            "description": "Insecure skill", 
+            "description": "Insecure skill",
             "version": "1.0.0",
             "type": "code_inline",
             "command": "echo"

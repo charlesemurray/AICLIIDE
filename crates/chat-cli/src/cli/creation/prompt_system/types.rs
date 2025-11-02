@@ -1,7 +1,14 @@
-use eyre::Result;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
+
+use chrono::{
+    DateTime,
+    Utc,
+};
+use eyre::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromptTemplate {
@@ -9,20 +16,20 @@ pub struct PromptTemplate {
     pub name: String,
     pub description: String,
     pub version: u32,
-    
+
     pub category: TemplateCategory,
     pub difficulty: DifficultyLevel,
     pub tags: Vec<String>,
-    
+
     pub role: String,
     pub capabilities: Vec<String>,
     pub constraints: Vec<String>,
     pub context: Option<String>,
-    
+
     pub parameters: Vec<TemplateParameter>,
     pub examples: Vec<ExampleConversation>,
     pub quality_indicators: Vec<String>,
-    
+
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub usage_stats: UsageStats,
@@ -111,19 +118,19 @@ pub struct TemplateInfo {
 pub enum TemplateError {
     #[error("Template not found: {id}")]
     NotFound { id: String },
-    
+
     #[error("Template validation failed: {reason}")]
     ValidationFailed { reason: String },
-    
+
     #[error("Template rendering failed: {reason}")]
     RenderingFailed { reason: String },
-    
+
     #[error("Security violation: {violation}")]
     SecurityViolation { violation: String },
-    
+
     #[error("System error: {source}")]
-    SystemError { 
+    SystemError {
         #[from]
-        source: eyre::Error
+        source: eyre::Error,
     },
 }

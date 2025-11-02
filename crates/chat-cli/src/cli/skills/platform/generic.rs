@@ -1,7 +1,16 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, SecurityError, ResourceUsage};
 use async_trait::async_trait;
+use sysinfo::{
+    Pid,
+    System,
+};
 use tokio::time::Duration;
-use sysinfo::{System, Pid};
+
+use crate::cli::skills::security::{
+    PlatformSandbox,
+    ResourceUsage,
+    SecurityError,
+    SecurityResult,
+};
 
 pub struct GenericSandbox;
 
@@ -18,11 +27,11 @@ impl PlatformSandbox for GenericSandbox {
         tokio::time::sleep(Duration::from_millis(100)).await;
         Ok(())
     }
-    
+
     fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage> {
         let mut system = System::new_all();
         system.refresh_all();
-        
+
         if let Some(process) = system.process(Pid::from(pid as usize)) {
             Ok(ResourceUsage {
                 cpu_percent: process.cpu_usage(),
@@ -30,28 +39,25 @@ impl PlatformSandbox for GenericSandbox {
                 disk_io_mb: 0, // Not available in generic implementation
             })
         } else {
-            Err(SecurityError::SandboxViolation(
-                format!("Process {} not found", pid)
-            ))
+            Err(SecurityError::SandboxViolation(format!("Process {} not found", pid)))
         }
     }
-    
+
     fn terminate_process(&self, pid: u32) -> SecurityResult<()> {
         let mut system = System::new_all();
         system.refresh_all();
-        
+
         if let Some(process) = system.process(Pid::from(pid as usize)) {
             if process.kill() {
                 Ok(())
             } else {
-                Err(SecurityError::SandboxViolation(
-                    format!("Failed to terminate process {}", pid)
-                ))
+                Err(SecurityError::SandboxViolation(format!(
+                    "Failed to terminate process {}",
+                    pid
+                )))
             }
         } else {
-            Err(SecurityError::SandboxViolation(
-                format!("Process {} not found", pid)
-            ))
+            Err(SecurityError::SandboxViolation(format!("Process {} not found", pid)))
         }
     }
 }

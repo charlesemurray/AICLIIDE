@@ -1,5 +1,9 @@
 use crossterm::style::Color;
-use crate::theme::{StatusColors, UiColors};
+
+use crate::theme::{
+    StatusColors,
+    UiColors,
+};
 
 /// Formatter for command output with semantic colors
 #[derive(Debug)]
@@ -66,10 +70,7 @@ impl<'a> CommandOutputFormatter<'a> {
 
     /// Format a list item with bullet
     pub fn list_item(&self, message: impl Into<String>) -> String {
-        format!("  {} {}", 
-            self.secondary("•"),
-            self.primary(message.into())
-        )
+        format!("  {} {}", self.secondary("•"), self.primary(message.into()))
     }
 
     /// Format a header with emphasis
@@ -86,26 +87,17 @@ impl<'a> CommandOutputFormatter<'a> {
 
     /// Format a status indicator with checkmark
     pub fn status_ok(&self, message: impl Into<String>) -> String {
-        format!("{} {}", 
-            self.success("✓"),
-            self.primary(message.into())
-        )
+        format!("{} {}", self.success("✓"), self.primary(message.into()))
     }
 
     /// Format a status indicator with X
     pub fn status_error(&self, message: impl Into<String>) -> String {
-        format!("{} {}", 
-            self.error("✗"),
-            self.primary(message.into())
-        )
+        format!("{} {}", self.error("✗"), self.primary(message.into()))
     }
 
     /// Format a status indicator with warning
     pub fn status_warning(&self, message: impl Into<String>) -> String {
-        format!("{} {}", 
-            self.warning("⚠"),
-            self.primary(message.into())
-        )
+        format!("{} {}", self.warning("⚠"), self.primary(message.into()))
     }
 }
 
@@ -118,7 +110,10 @@ pub fn formatter() -> CommandOutputFormatter<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::{StatusColors, UiColors};
+    use crate::theme::{
+        StatusColors,
+        UiColors,
+    };
 
     fn create_test_formatter() -> CommandOutputFormatter<'static> {
         // Use default colors for testing
@@ -135,7 +130,7 @@ mod tests {
             emphasis: Color::Magenta,
             command_highlight: Color::Green,
         };
-        
+
         CommandOutputFormatter::new(&STATUS, &UI)
     }
 
@@ -222,15 +217,15 @@ mod tests {
     #[test]
     fn test_status_indicators() {
         let formatter = create_test_formatter();
-        
+
         let ok = formatter.status_ok("Task completed");
         assert!(ok.contains("✓"));
         assert!(ok.contains("Task completed"));
-        
+
         let error = formatter.status_error("Task failed");
         assert!(error.contains("✗"));
         assert!(error.contains("Task failed"));
-        
+
         let warning = formatter.status_warning("Task has issues");
         assert!(warning.contains("⚠"));
         assert!(warning.contains("Task has issues"));
@@ -246,11 +241,11 @@ mod tests {
     #[test]
     fn test_multiple_formatting_calls() {
         let formatter = create_test_formatter();
-        
+
         let header = formatter.header("Test Results");
         let success = formatter.status_ok("All tests passed");
         let info = formatter.info("Run completed in 2.3s");
-        
+
         assert!(header.contains("Test Results"));
         assert!(success.contains("✓"));
         assert!(success.contains("All tests passed"));

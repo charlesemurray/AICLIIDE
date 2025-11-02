@@ -1,39 +1,45 @@
 //! Unified Creation Assistant
-//! 
-//! Provides consistent, terminal-native creation experiences for Skills, Custom Commands, and Agents.
-//! Follows Cisco-style CLI patterns, Rust best practices, and senior engineering standards.
+//!
+//! Provides consistent, terminal-native creation experiences for Skills, Custom Commands, and
+//! Agents. Follows Cisco-style CLI patterns, Rust best practices, and senior engineering standards.
 
-mod types;
-mod errors;
-mod ui;
 mod assistant;
-mod flows;
 mod context;
-mod templates;
-mod template_loader;
 mod enhanced_prompts;
+mod errors;
+mod flows;
 mod prompt_system;
+mod template_loader;
+mod templates;
+mod types;
+mod ui;
 
+#[cfg(test)]
+mod cli_integration_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod ui_integration_tests;
-#[cfg(test)]
-mod cli_integration_tests;
 
-pub use types::*;
+use std::process::ExitCode;
+
+pub use assistant::CreationAssistant;
+use clap::{
+    Args,
+    CommandFactory,
+    Parser,
+    Subcommand,
+};
+pub use context::CreationContext;
 pub use errors::CreationError;
-pub use ui::TerminalUIImpl;
+use eyre::Result;
+pub use flows::*;
+pub use templates::TemplateManager;
+pub use types::*;
 #[cfg(test)]
 pub use ui::MockTerminalUI;
-pub use assistant::CreationAssistant;
-pub use flows::*;
-pub use context::CreationContext;
-pub use templates::TemplateManager;
+pub use ui::TerminalUIImpl;
 
-use clap::{Args, Subcommand, Parser, CommandFactory};
-use eyre::Result;
-use std::process::ExitCode;
 use crate::os::Os;
 
 /// Creation command arguments following Cisco-style CLI patterns
@@ -126,12 +132,12 @@ pub enum AgentMode {
 
 impl CreateArgs {
     pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
-        use crate::cli::creation::flows::InteractiveCreationFlow;
         use crate::cli::creation::TerminalUIImpl;
-        
+        use crate::cli::creation::flows::InteractiveCreationFlow;
+
         let ui = TerminalUIImpl::new();
         let mut flow = InteractiveCreationFlow::new(ui).await?;
-        
+
         match self.command {
             CreateCommand::Skill { name: _, mode: _ } => {
                 let result = flow.run(CreationType::Skill).await?;
@@ -156,42 +162,48 @@ impl CreateArgs {
         // Test version that doesn't require Os parameter
         match self.command {
             CreateCommand::Skill { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    SkillMode::Quick => CreationMode::Quick,
-                    SkillMode::Guided => CreationMode::Guided,
-                    SkillMode::Expert => CreationMode::Expert,
-                    SkillMode::Template { source: _ } => CreationMode::Template,
-                    SkillMode::Preview => CreationMode::Preview,
-                    SkillMode::Edit => CreationMode::Guided,
-                    SkillMode::Force => CreationMode::Guided,
-                }).unwrap_or(CreationMode::Guided);
+                let creation_mode = mode
+                    .map(|m| match m {
+                        SkillMode::Quick => CreationMode::Quick,
+                        SkillMode::Guided => CreationMode::Guided,
+                        SkillMode::Expert => CreationMode::Expert,
+                        SkillMode::Template { source: _ } => CreationMode::Template,
+                        SkillMode::Preview => CreationMode::Preview,
+                        SkillMode::Edit => CreationMode::Guided,
+                        SkillMode::Force => CreationMode::Guided,
+                    })
+                    .unwrap_or(CreationMode::Guided);
 
                 let flow = SkillCreationFlow::new(name, creation_mode)?;
                 CreationAssistant::new(flow).run().await
             },
             CreateCommand::Command { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    CommandMode::Quick => CreationMode::Quick,
-                    CommandMode::Guided => CreationMode::Guided,
-                    CommandMode::Template { source: _ } => CreationMode::Template,
-                    CommandMode::Preview => CreationMode::Preview,
-                    CommandMode::Edit => CreationMode::Guided,
-                    CommandMode::Force => CreationMode::Guided,
-                }).unwrap_or(CreationMode::Guided);
+                let creation_mode = mode
+                    .map(|m| match m {
+                        CommandMode::Quick => CreationMode::Quick,
+                        CommandMode::Guided => CreationMode::Guided,
+                        CommandMode::Template { source: _ } => CreationMode::Template,
+                        CommandMode::Preview => CreationMode::Preview,
+                        CommandMode::Edit => CreationMode::Guided,
+                        CommandMode::Force => CreationMode::Guided,
+                    })
+                    .unwrap_or(CreationMode::Guided);
 
                 let flow = CommandCreationFlow::new(name, creation_mode)?;
                 CreationAssistant::new(flow).run().await
             },
             CreateCommand::Agent { name, mode } => {
-                let creation_mode = mode.map(|m| match m {
-                    AgentMode::Quick => CreationMode::Quick,
-                    AgentMode::Guided => CreationMode::Guided,
-                    AgentMode::Expert => CreationMode::Expert,
-                    AgentMode::Template { source: _ } => CreationMode::Template,
-                    AgentMode::Preview => CreationMode::Preview,
-                    AgentMode::Edit => CreationMode::Guided,
-                    AgentMode::Force => CreationMode::Guided,
-                }).unwrap_or(CreationMode::Guided);
+                let creation_mode = mode
+                    .map(|m| match m {
+                        AgentMode::Quick => CreationMode::Quick,
+                        AgentMode::Guided => CreationMode::Guided,
+                        AgentMode::Expert => CreationMode::Expert,
+                        AgentMode::Template { source: _ } => CreationMode::Template,
+                        AgentMode::Preview => CreationMode::Preview,
+                        AgentMode::Edit => CreationMode::Guided,
+                        AgentMode::Force => CreationMode::Guided,
+                    })
+                    .unwrap_or(CreationMode::Guided);
 
                 let flow = AgentCreationFlow::new(name, creation_mode)?;
                 CreationAssistant::new(flow).run().await

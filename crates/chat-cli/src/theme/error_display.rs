@@ -1,4 +1,5 @@
 use std::fmt;
+
 use crate::theme::formatter;
 
 /// Enhanced error display with colored output and suggestions
@@ -59,7 +60,7 @@ impl ErrorDisplay {
         // Error header with type indicator
         let type_indicator = match self.error_type {
             ErrorType::Auth => "AUTH",
-            ErrorType::Network => "NETWORK", 
+            ErrorType::Network => "NETWORK",
             ErrorType::FileSystem => "FILE",
             ErrorType::Input => "INPUT",
             ErrorType::System => "SYSTEM",
@@ -91,32 +92,29 @@ impl ErrorDisplay {
 
     /// Create an auth error with common suggestions
     pub fn auth_error(message: impl Into<String>) -> Self {
-        Self::new(ErrorType::Auth, message)
-            .with_suggestions(vec![
-                "Run 'q login' to authenticate".to_string(),
-                "Check your internet connection".to_string(),
-                "Verify your AWS credentials".to_string(),
-            ])
+        Self::new(ErrorType::Auth, message).with_suggestions(vec![
+            "Run 'q login' to authenticate".to_string(),
+            "Check your internet connection".to_string(),
+            "Verify your AWS credentials".to_string(),
+        ])
     }
 
     /// Create a network error with common suggestions
     pub fn network_error(message: impl Into<String>) -> Self {
-        Self::new(ErrorType::Network, message)
-            .with_suggestions(vec![
-                "Check your internet connection".to_string(),
-                "Try again in a few moments".to_string(),
-                "Verify the service is available".to_string(),
-            ])
+        Self::new(ErrorType::Network, message).with_suggestions(vec![
+            "Check your internet connection".to_string(),
+            "Try again in a few moments".to_string(),
+            "Verify the service is available".to_string(),
+        ])
     }
 
     /// Create a file system error with common suggestions
     pub fn file_error(message: impl Into<String>, path: Option<&str>) -> Self {
-        let mut error = Self::new(ErrorType::FileSystem, message)
-            .with_suggestions(vec![
-                "Check if the file exists".to_string(),
-                "Verify file permissions".to_string(),
-                "Ensure the directory is accessible".to_string(),
-            ]);
+        let mut error = Self::new(ErrorType::FileSystem, message).with_suggestions(vec![
+            "Check if the file exists".to_string(),
+            "Verify file permissions".to_string(),
+            "Ensure the directory is accessible".to_string(),
+        ]);
 
         if let Some(path) = path {
             error = error.with_context(format!("Path: {}", path));
@@ -127,22 +125,20 @@ impl ErrorDisplay {
 
     /// Create an input error with suggestions
     pub fn input_error(message: impl Into<String>) -> Self {
-        Self::new(ErrorType::Input, message)
-            .with_suggestions(vec![
-                "Check the command syntax".to_string(),
-                "Use --help for usage information".to_string(),
-                "Verify all required parameters are provided".to_string(),
-            ])
+        Self::new(ErrorType::Input, message).with_suggestions(vec![
+            "Check the command syntax".to_string(),
+            "Use --help for usage information".to_string(),
+            "Verify all required parameters are provided".to_string(),
+        ])
     }
 
     /// Create a tool error with suggestions
     pub fn tool_error(message: impl Into<String>, tool_name: Option<&str>) -> Self {
-        let mut error = Self::new(ErrorType::Tool, message)
-            .with_suggestions(vec![
-                "Check tool permissions".to_string(),
-                "Verify tool dependencies are installed".to_string(),
-                "Try running the tool manually".to_string(),
-            ]);
+        let mut error = Self::new(ErrorType::Tool, message).with_suggestions(vec![
+            "Check tool permissions".to_string(),
+            "Verify tool dependencies are installed".to_string(),
+            "Try running the tool manually".to_string(),
+        ]);
 
         if let Some(tool_name) = tool_name {
             error = error.with_context(format!("Tool: {}", tool_name));
@@ -204,7 +200,7 @@ mod tests {
         let error = ErrorDisplay::new(ErrorType::Network, "Connection timeout")
             .with_suggestion("Check internet connection")
             .with_suggestion("Try again later");
-        
+
         assert_eq!(error.suggestions.len(), 2);
         assert_eq!(error.suggestions[0], "Check internet connection");
         assert_eq!(error.suggestions[1], "Try again later");
@@ -212,9 +208,9 @@ mod tests {
 
     #[test]
     fn test_error_display_with_context() {
-        let error = ErrorDisplay::new(ErrorType::FileSystem, "File not found")
-            .with_context("Path: /nonexistent/file.txt");
-        
+        let error =
+            ErrorDisplay::new(ErrorType::FileSystem, "File not found").with_context("Path: /nonexistent/file.txt");
+
         assert_eq!(error.context, Some("Path: /nonexistent/file.txt".to_string()));
     }
 
@@ -278,7 +274,7 @@ mod tests {
         let error = ErrorDisplay::new(ErrorType::Input, "Invalid input")
             .with_suggestion("Try this")
             .with_suggestion("Or this");
-        
+
         let formatted = error.format_colored();
         assert!(formatted.contains("INPUT"));
         assert!(formatted.contains("Invalid input"));
@@ -289,9 +285,8 @@ mod tests {
 
     #[test]
     fn test_format_colored_with_context() {
-        let error = ErrorDisplay::new(ErrorType::FileSystem, "Access denied")
-            .with_context("File: /secure/file.txt");
-        
+        let error = ErrorDisplay::new(ErrorType::FileSystem, "Access denied").with_context("File: /secure/file.txt");
+
         let formatted = error.format_colored();
         assert!(formatted.contains("FILE"));
         assert!(formatted.contains("Access denied"));

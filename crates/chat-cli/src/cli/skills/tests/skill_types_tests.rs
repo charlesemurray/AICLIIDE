@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod skill_types_tests {
-    use crate::cli::skills::types::{JsonSkill, SkillType};
     use serde_json::json;
+
+    use crate::cli::skills::types::{
+        JsonSkill,
+        SkillType,
+    };
 
     #[test]
     fn test_code_inline_skill_deserialization() {
@@ -36,7 +40,7 @@ mod skill_types_tests {
                     "required": true
                 },
                 {
-                    "name": "place", 
+                    "name": "place",
                     "type": "string",
                     "required": true
                 }
@@ -46,7 +50,10 @@ mod skill_types_tests {
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert_eq!(skill.name, "greeting-skill");
         assert_eq!(skill.skill_type, SkillType::PromptInline);
-        assert_eq!(skill.prompt_template, Some("Hello {name}, welcome to {place}!".to_string()));
+        assert_eq!(
+            skill.prompt_template,
+            Some("Hello {name}, welcome to {place}!".to_string())
+        );
         assert!(skill.parameters.is_some());
         assert_eq!(skill.parameters.as_ref().unwrap().len(), 2);
     }

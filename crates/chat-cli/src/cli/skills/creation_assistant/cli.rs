@@ -1,6 +1,10 @@
+use std::io::{
+    self,
+    Write,
+};
+
 use super::*;
 use crate::cli::skills::types::SkillType;
-use std::io::{self, Write};
 
 pub struct SkillCreationCLI {
     assistant: SkillCreationAssistant,
@@ -15,42 +19,42 @@ impl SkillCreationCLI {
 
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", self.assistant.start_discovery());
-        
+
         // Discovery phase
         let user_input = self.get_user_input()?;
         println!("{}", self.assistant.handle_discovery_response(&user_input));
-        
+
         // Configuration phase
         let user_input = self.get_user_input()?;
         println!("{}", self.assistant.handle_configuration_response(&user_input));
-        
+
         // Testing phase (if applicable)
         if matches!(self.assistant.session().state(), CreationState::Testing) {
             loop {
                 let user_input = self.get_user_input()?;
                 let response = self.assistant.handle_testing_response(&user_input);
                 println!("{}", response);
-                
+
                 if matches!(self.assistant.session().state(), CreationState::Completion) {
                     break;
                 }
             }
         }
-        
+
         // Save the skill
         let skills_dir = std::env::current_dir()?.join(".q-skills");
         self.assistant.save_skill(&skills_dir)?;
-        
+
         Ok(())
     }
 
     fn get_user_input(&self) -> Result<String, std::io::Error> {
         print!("> ");
         io::stdout().flush()?;
-        
+
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
-        
+
         Ok(input.trim().to_string())
     }
 }

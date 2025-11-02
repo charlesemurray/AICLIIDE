@@ -1,6 +1,13 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use chrono::{DateTime, Utc};
+
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -98,7 +105,7 @@ impl SecurityLogger {
             alert_threshold: RiskLevel::High,
         }
     }
-    
+
     pub async fn log_security_event(&self, event: SecurityEvent) -> Result<(), std::io::Error> {
         // Log to file
         let mut file = OpenOptions::new()
@@ -106,16 +113,16 @@ impl SecurityLogger {
             .append(true)
             .open(&self.log_file_path)
             .await?;
-            
+
         let event_json = serde_json::to_string(&event)?;
         file.write_all(format!("{}\n", event_json).as_bytes()).await?;
         file.flush().await?;
-        
+
         // Console logging for high-risk events
         if event.risk_level >= self.alert_threshold {
             eprintln!("🚨 SECURITY ALERT: {:?} - {}", event.event_type, event.details);
         }
-        
+
         // Structured logging for debugging
         tracing::info!(
             event_type = ?event.event_type,
@@ -124,21 +131,21 @@ impl SecurityLogger {
             action_taken = ?event.action_taken,
             "Security event logged"
         );
-        
+
         Ok(())
     }
-    
+
     pub async fn log_execution_trace(&self, trace: ExecutionTrace) -> Result<(), std::io::Error> {
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.trace_file_path)
             .await?;
-            
+
         let trace_json = serde_json::to_string(&trace)?;
         file.write_all(format!("{}\n", trace_json).as_bytes()).await?;
         file.flush().await?;
-        
+
         // Log summary to console
         println!(
             "📊 Execution trace: {} - Duration: {}ms, Memory: {}MB, Violations: {}",
@@ -147,10 +154,10 @@ impl SecurityLogger {
             trace.resource_usage.peak_memory_mb,
             trace.security_violations.len()
         );
-        
+
         Ok(())
     }
-    
+
     pub fn create_security_event(
         &self,
         event_type: SecurityEventType,
@@ -159,7 +166,7 @@ impl SecurityLogger {
     ) -> SecurityEvent {
         let risk_level = self.assess_risk_level(&event_type, &details);
         let action_taken = self.determine_action(&event_type, &risk_level);
-        
+
         SecurityEvent {
             timestamp: Utc::now(),
             event_id: uuid::Uuid::new_v4().to_string(),
@@ -172,7 +179,7 @@ impl SecurityLogger {
             action_taken,
         }
     }
-    
+
     fn assess_risk_level(&self, event_type: &SecurityEventType, _details: &serde_json::Value) -> RiskLevel {
         match event_type {
             SecurityEventType::PrivilegeEscalationAttempt => RiskLevel::Critical,
@@ -190,7 +197,7 @@ impl SecurityLogger {
             SecurityEventType::OutputValidationFailed => RiskLevel::Medium,
         }
     }
-    
+
     fn determine_action(&self, event_type: &SecurityEventType, risk_level: &RiskLevel) -> SecurityAction {
         match (event_type, risk_level) {
             (SecurityEventType::PrivilegeEscalationAttempt, _) => SecurityAction::Blocked,
@@ -227,47 +234,47 @@ impl SecurityMetrics {
             resource_limit_violations: 0,
         }
     }
-    
+
     pub fn record_execution(&mut self, trace: &ExecutionTrace) {
         self.total_executions += 1;
-        
+
         if !trace.security_violations.is_empty() {
             self.security_violations += trace.security_violations.len() as u64;
         }
-        
+
         // Update average execution time
         let current_avg = self.average_execution_time_ms;
         let new_time = trace.resource_usage.execution_duration_ms as f64;
-        self.average_execution_time_ms = 
+        self.average_execution_time_ms =
             (current_avg * (self.total_executions - 1) as f64 + new_time) / self.total_executions as f64;
     }
-    
+
     pub fn record_security_event(&mut self, event: &SecurityEvent) {
         match event.action_taken {
             SecurityAction::Blocked | SecurityAction::Terminated => {
                 self.blocked_executions += 1;
-            }
-            _ => {}
+            },
+            _ => {},
         }
-        
+
         if event.risk_level >= RiskLevel::High {
             self.high_risk_events += 1;
         }
-        
+
         if matches!(event.event_type, SecurityEventType::ResourceLimitExceeded) {
             self.resource_limit_violations += 1;
         }
     }
-    
+
     pub fn security_score(&self) -> f64 {
         if self.total_executions == 0 {
             return 100.0;
         }
-        
+
         let violation_rate = self.security_violations as f64 / self.total_executions as f64;
         let block_rate = self.blocked_executions as f64 / self.total_executions as f64;
         let high_risk_rate = self.high_risk_events as f64 / self.total_executions as f64;
-        
+
         // Higher scores are better (fewer violations)
         let score = 100.0 - (violation_rate * 50.0 + block_rate * 30.0 + high_risk_rate * 20.0);
         score.max(0.0).min(100.0)
@@ -276,30 +283,31 @@ impl SecurityMetrics {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
-    
+
+    use super::*;
+
     #[tokio::test]
     async fn test_security_logging() {
         let temp_dir = TempDir::new().unwrap();
         let logger = SecurityLogger::new(temp_dir.path().to_path_buf());
-        
+
         let event = logger.create_security_event(
             SecurityEventType::SecurityViolationBlocked,
             "test-skill".to_string(),
             serde_json::json!({"violation": "command injection attempt"}),
         );
-        
+
         assert!(logger.log_security_event(event).await.is_ok());
-        
+
         // Verify log file was created
         assert!(temp_dir.path().join("security_events.jsonl").exists());
     }
-    
+
     #[test]
     fn test_security_metrics() {
         let mut metrics = SecurityMetrics::new();
-        
+
         let trace = ExecutionTrace {
             execution_id: "test".to_string(),
             skill_name: "test-skill".to_string(),
@@ -319,11 +327,11 @@ mod tests {
             exit_code: Some(0),
             security_violations: vec![],
         };
-        
+
         metrics.record_execution(&trace);
         assert_eq!(metrics.total_executions, 1);
         assert_eq!(metrics.average_execution_time_ms, 1000.0);
-        
+
         let initial_score = metrics.security_score();
         assert_eq!(initial_score, 100.0); // Perfect score with no violations
     }

@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::cli::creation::{CreateArgs, CreateCommand};
+    use crate::cli::creation::{
+        CreateArgs,
+        CreateCommand,
+    };
 
     #[tokio::test]
     async fn test_create_skill_command_integration() {
@@ -44,10 +47,10 @@ mod tests {
         // Test that the CLI structure is properly set up
         use clap::CommandFactory;
         let cmd = CreateArgs::command();
-        
+
         assert_eq!(cmd.get_name(), "create");
         assert!(cmd.is_subcommand_required_set());
-        
+
         // Verify subcommands exist
         let subcommands: Vec<_> = cmd.get_subcommands().map(|s| s.get_name()).collect();
         assert!(subcommands.contains(&"skill"));

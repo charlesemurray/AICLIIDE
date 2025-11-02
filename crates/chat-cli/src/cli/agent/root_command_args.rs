@@ -324,7 +324,11 @@ impl AgentArgs {
         // Test version that doesn't require Os parameter
         match self.cmd {
             Some(AgentSubcommands::List) => Ok(ExitCode::SUCCESS),
-            Some(AgentSubcommands::Create { name: _, directory: _, from: _ }) => Ok(ExitCode::SUCCESS),
+            Some(AgentSubcommands::Create {
+                name: _,
+                directory: _,
+                from: _,
+            }) => Ok(ExitCode::SUCCESS),
             Some(AgentSubcommands::Edit { name: _ }) => Ok(ExitCode::SUCCESS),
             Some(AgentSubcommands::Validate { path: _ }) => Ok(ExitCode::SUCCESS),
             Some(AgentSubcommands::Migrate { force: _ }) => Ok(ExitCode::SUCCESS),

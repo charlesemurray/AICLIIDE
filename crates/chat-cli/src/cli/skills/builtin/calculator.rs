@@ -1,6 +1,14 @@
-use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, Result};
 use async_trait::async_trait;
 use serde_json::Value;
+
+use crate::cli::skills::{
+    Result,
+    Skill,
+    SkillError,
+    SkillResult,
+    SkillUI,
+    UIElement,
+};
 
 pub struct Calculator;
 
@@ -25,16 +33,16 @@ impl Skill for Calculator {
     }
 
     async fn execute(&self, params: Value) -> Result<SkillResult> {
-        let a = params["a"].as_f64().ok_or_else(|| {
-            SkillError::InvalidInput("Missing or invalid parameter 'a'".to_string())
-        })?;
-        
-        let b = params["b"].as_f64().ok_or_else(|| {
-            SkillError::InvalidInput("Missing or invalid parameter 'b'".to_string())
-        })?;
-        
+        let a = params["a"]
+            .as_f64()
+            .ok_or_else(|| SkillError::InvalidInput("Missing or invalid parameter 'a'".to_string()))?;
+
+        let b = params["b"]
+            .as_f64()
+            .ok_or_else(|| SkillError::InvalidInput("Missing or invalid parameter 'b'".to_string()))?;
+
         let operation = params["op"].as_str().unwrap_or("add");
-        
+
         let result = match operation {
             "add" => a + b,
             "subtract" => a - b,
@@ -47,7 +55,7 @@ impl Skill for Calculator {
             },
             _ => return Err(SkillError::InvalidInput(format!("Unknown operation: {}", operation))),
         };
-        
+
         Ok(SkillResult {
             output: result.to_string(),
             ui_updates: None,

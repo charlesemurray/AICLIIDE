@@ -1,12 +1,18 @@
+use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    Mutex,
+    OnceLock,
+};
+
 use clap::Subcommand;
+
 use crate::cli::chat::{
     ChatError,
     ChatSession,
     ChatState,
 };
 use crate::os::Os;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
 
 static SESSIONS: OnceLock<Arc<Mutex<HashMap<String, String>>>> = OnceLock::new();
 
@@ -62,11 +68,7 @@ impl SessionsSubcommand {
         }
     }
 
-    pub async fn execute(
-        &self,
-        _chat_session: &mut ChatSession,
-        _os: &Os,
-    ) -> Result<ChatState, ChatError> {
+    pub async fn execute(&self, _chat_session: &mut ChatSession, _os: &Os) -> Result<ChatState, ChatError> {
         match self {
             SessionsSubcommand::List => {
                 let sessions = get_sessions().lock().unwrap();
@@ -79,16 +81,20 @@ impl SessionsSubcommand {
                         println!("  • {} ({})", name, session_type);
                     }
                 }
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             SessionsSubcommand::Create { name, session_type } => {
                 let mut sessions = get_sessions().lock().unwrap();
                 sessions.insert(name.clone(), session_type.clone());
                 println!("🔧 Creating {} development session: {}", session_type, name);
                 println!("✓ Session created successfully");
                 println!("Use '/switch {}' to enter the session", name);
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             SessionsSubcommand::Close { name } => {
                 let mut sessions = get_sessions().lock().unwrap();
                 if sessions.remove(name).is_some() {
@@ -97,8 +103,10 @@ impl SessionsSubcommand {
                 } else {
                     println!("❌ Session '{}' not found", name);
                 }
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             SessionsSubcommand::DevSessions => {
                 let sessions = get_sessions().lock().unwrap();
                 println!("🔧 Active Development Sessions:");
@@ -110,8 +118,10 @@ impl SessionsSubcommand {
                         println!("  • {} ({})", name, session_type);
                     }
                 }
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             SessionsSubcommand::Cleanup { completed, older_than } => {
                 let mut cleaned = 0;
                 if *completed {
@@ -123,13 +133,17 @@ impl SessionsSubcommand {
                     cleaned += 1;
                 }
                 println!("✓ Cleaned up {} sessions", cleaned);
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
             SessionsSubcommand::Recover { name } => {
                 println!("🔄 Recovering session: {}", name);
                 println!("✓ Session recovered successfully");
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
-            }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
         }
     }
 }

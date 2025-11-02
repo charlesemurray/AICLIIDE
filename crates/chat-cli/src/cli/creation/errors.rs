@@ -1,28 +1,27 @@
 //! Error types for creation system with actionable messages
 
-use thiserror::Error;
 use std::path::PathBuf;
+
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CreationError {
-    #[error("Invalid {creation_type} name '{name}'\nTry: {suggestion}\nValid names: alphanumeric, hyphens, underscores")]
+    #[error(
+        "Invalid {creation_type} name '{name}'\nTry: {suggestion}\nValid names: alphanumeric, hyphens, underscores"
+    )]
     InvalidName {
         creation_type: String,
         name: String,
         suggestion: String,
     },
 
-    #[error("{creation_type} '{name}' already exists\nUse: q create {creation_type} {name} force\nOr: q create {creation_type} {name} edit")]
-    AlreadyExists {
-        creation_type: String,
-        name: String,
-    },
+    #[error(
+        "{creation_type} '{name}' already exists\nUse: q create {creation_type} {name} force\nOr: q create {creation_type} {name} edit"
+    )]
+    AlreadyExists { creation_type: String, name: String },
 
     #[error("Template '{template}' not found\nAvailable templates: {available}")]
-    TemplateNotFound {
-        template: String,
-        available: String,
-    },
+    TemplateNotFound { template: String, available: String },
 
     #[error("Invalid command: {command}\nReason: {reason}\nSuggestion: {suggestion}")]
     InvalidCommand {
@@ -32,21 +31,13 @@ pub enum CreationError {
     },
 
     #[error("Missing required field: {field}\nExample: {example}")]
-    MissingRequiredField {
-        field: String,
-        example: String,
-    },
+    MissingRequiredField { field: String, example: String },
 
     #[error("Invalid skill type '{skill_type}'\nValid types: code_inline, code_session, conversation, prompt_inline")]
-    InvalidSkillType {
-        skill_type: String,
-    },
+    InvalidSkillType { skill_type: String },
 
     #[error("Security validation failed: {reason}\nSuggestion: {suggestion}")]
-    SecurityValidationFailed {
-        reason: String,
-        suggestion: String,
-    },
+    SecurityValidationFailed { reason: String, suggestion: String },
 
     #[error("MCP server '{server}' not available\nInstall: {install_command}\nOr use: {alternatives}")]
     McpServerNotAvailable {
@@ -63,10 +54,7 @@ pub enum CreationError {
     },
 
     #[error("Creation interrupted\nResume with: q create resume\nOr start over: q create {creation_type} {name}")]
-    CreationInterrupted {
-        creation_type: String,
-        name: String,
-    },
+    CreationInterrupted { creation_type: String, name: String },
 
     #[error("Validation failed: {field} = '{value}'\nReason: {reason}\nTry: {suggestion}")]
     ValidationFailed {

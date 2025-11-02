@@ -1,9 +1,14 @@
-use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+use async_trait::async_trait;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::time::timeout;
 
 pub mod builtin;
+pub mod creation_assistant;
 pub mod platform;
 pub mod registry;
 pub mod security;
@@ -13,7 +18,6 @@ pub mod security_tools;
 pub mod tests;
 pub mod types;
 pub mod validation;
-pub mod creation_assistant;
 
 #[cfg(test)]
 mod unit_tests;

@@ -1,11 +1,18 @@
 //! Security testing for skills system
 //! Tests trust levels, permissions, resource limits, and attack prevention
 
-use crate::cli::skills::security::{
-    SecurityContext, TrustLevel, SecurityError, ResourceLimits, 
-    PermissionSet, FilePermissions, NetworkPermissions, ProcessPermissions
-};
 use std::path::PathBuf;
+
+use crate::cli::skills::security::{
+    FilePermissions,
+    NetworkPermissions,
+    PermissionSet,
+    ProcessPermissions,
+    ResourceLimits,
+    SecurityContext,
+    SecurityError,
+    TrustLevel,
+};
 
 #[cfg(test)]
 mod security_tests {
@@ -37,19 +44,37 @@ mod security_tests {
         let system_trusted = SecurityContext::for_trust_level(TrustLevel::SystemTrusted);
 
         // File permissions should escalate
-        assert!(matches!(untrusted.permissions.file_access, FilePermissions::ReadOnlyTemp));
-        assert!(matches!(user_verified.permissions.file_access, FilePermissions::WorkspaceOnly));
+        assert!(matches!(
+            untrusted.permissions.file_access,
+            FilePermissions::ReadOnlyTemp
+        ));
+        assert!(matches!(
+            user_verified.permissions.file_access,
+            FilePermissions::WorkspaceOnly
+        ));
         assert!(matches!(system_trusted.permissions.file_access, FilePermissions::Full));
 
         // Network permissions should escalate
         assert!(matches!(untrusted.permissions.network_access, NetworkPermissions::None));
-        assert!(matches!(user_verified.permissions.network_access, NetworkPermissions::HttpsOnly));
-        assert!(matches!(system_trusted.permissions.network_access, NetworkPermissions::Full));
+        assert!(matches!(
+            user_verified.permissions.network_access,
+            NetworkPermissions::HttpsOnly
+        ));
+        assert!(matches!(
+            system_trusted.permissions.network_access,
+            NetworkPermissions::Full
+        ));
 
         // Process permissions should escalate
         assert!(matches!(untrusted.permissions.process_spawn, ProcessPermissions::None));
-        assert!(matches!(user_verified.permissions.process_spawn, ProcessPermissions::Limited));
-        assert!(matches!(system_trusted.permissions.process_spawn, ProcessPermissions::Full));
+        assert!(matches!(
+            user_verified.permissions.process_spawn,
+            ProcessPermissions::Limited
+        ));
+        assert!(matches!(
+            system_trusted.permissions.process_spawn,
+            ProcessPermissions::Full
+        ));
     }
 
     #[test]
@@ -66,7 +91,7 @@ mod security_tests {
         let untrusted_mem = untrusted.resource_limits.max_memory_mb.unwrap_or(0);
         let user_mem = user_verified.resource_limits.max_memory_mb.unwrap_or(0);
         let system_mem = system_trusted.resource_limits.max_memory_mb.unwrap_or(0);
-        
+
         assert!(untrusted_mem < user_mem);
         assert!(user_mem < system_mem);
     }
@@ -78,7 +103,7 @@ mod security_tests {
 
         // Untrusted should have network disabled
         assert!(!untrusted.sandbox_config.enable_network);
-        
+
         // System trusted should have network enabled
         assert!(system_trusted.sandbox_config.enable_network);
 
@@ -100,7 +125,7 @@ mod security_tests {
         for path in dangerous_paths {
             let result = validate_file_path(path);
             assert!(result.is_err(), "Path should be rejected: {}", path);
-            
+
             if let Err(SecurityError::InputValidationFailed(msg)) = result {
                 assert!(msg.contains("path traversal") || msg.contains("absolute path"));
             }
@@ -110,11 +135,7 @@ mod security_tests {
     #[test]
     fn test_safe_paths_allowed() {
         // Test safe relative paths
-        let safe_paths = vec![
-            "data.txt",
-            "subdir/file.json",
-            "output/results.csv",
-        ];
+        let safe_paths = vec!["data.txt", "subdir/file.json", "output/results.csv"];
 
         for path in safe_paths {
             let result = validate_file_path(path);
@@ -160,15 +181,16 @@ mod security_tests {
 fn validate_file_path(path: &str) -> Result<PathBuf, SecurityError> {
     // Check for directory traversal
     if path.contains("..") || path.starts_with('/') || path.starts_with('~') {
-        return Err(SecurityError::InputValidationFailed(
-            format!("Dangerous path detected: {} (contains path traversal or absolute path)", path)
-        ));
+        return Err(SecurityError::InputValidationFailed(format!(
+            "Dangerous path detected: {} (contains path traversal or absolute path)",
+            path
+        )));
     }
 
     // Check for null bytes
     if path.contains('\0') {
         return Err(SecurityError::InputValidationFailed(
-            "Path contains null bytes".to_string()
+            "Path contains null bytes".to_string(),
         ));
     }
 
@@ -178,15 +200,15 @@ fn validate_file_path(path: &str) -> Result<PathBuf, SecurityError> {
 fn validate_command(command: &str) -> Result<(), SecurityError> {
     // Check for command injection patterns
     let dangerous_patterns = vec![
-        ";", "&&", "||", "|", "`", "$(", "${", 
-        "wget", "curl", "nc", "netcat", "rm -rf"
+        ";", "&&", "||", "|", "`", "$(", "${", "wget", "curl", "nc", "netcat", "rm -rf",
     ];
 
     for pattern in dangerous_patterns {
         if command.contains(pattern) {
-            return Err(SecurityError::InputValidationFailed(
-                format!("Command contains dangerous pattern: {}", pattern)
-            ));
+            return Err(SecurityError::InputValidationFailed(format!(
+                "Command contains dangerous pattern: {}",
+                pattern
+            )));
         }
     }
 

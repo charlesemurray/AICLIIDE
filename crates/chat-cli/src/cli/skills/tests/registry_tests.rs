@@ -1,9 +1,18 @@
 #[cfg(test)]
 mod registry_tests {
-    use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement, SkillRegistry};
+    use std::fs;
+
     use serde_json::json;
     use tempfile::TempDir;
-    use std::fs;
+
+    use crate::cli::skills::{
+        Skill,
+        SkillError,
+        SkillRegistry,
+        SkillResult,
+        SkillUI,
+        UIElement,
+    };
 
     struct MockSkill {
         name: String,
@@ -63,7 +72,7 @@ mod registry_tests {
     fn test_skill_registration() {
         let mut registry = SkillRegistry::new();
         let skill = MockSkill::new("test", "Test skill");
-        
+
         registry.register_override(Box::new(skill)).unwrap();
         assert_eq!(registry.list().len(), 1);
         assert!(registry.get("test").is_some());
@@ -88,8 +97,9 @@ mod registry_tests {
 
         fs::write(
             skills_dir.join("test-skill.json"),
-            serde_json::to_string_pretty(&skill_json).unwrap()
-        ).unwrap();
+            serde_json::to_string_pretty(&skill_json).unwrap(),
+        )
+        .unwrap();
 
         let registry = SkillRegistry::with_workspace_skills(temp_dir.path()).await.unwrap();
         assert!(registry.get("test-skill").is_some());

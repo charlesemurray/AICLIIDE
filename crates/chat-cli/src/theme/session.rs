@@ -94,14 +94,11 @@ impl SessionDisplay {
     /// Format session message with colored prefix using crossterm
     pub fn format_message(&self, message: impl Into<String>, colors: &SessionColors) -> String {
         use crossterm::style::Stylize;
-        
+
         let prefix = format!("{}:", self.session_type.prefix());
         let color = self.session_type.color(colors);
-        
-        format!("{} {}", 
-            prefix.with(color),
-            message.into()
-        )
+
+        format!("{} {}", prefix.with(color), message.into())
     }
 
     /// Format session list entry
@@ -111,8 +108,9 @@ impl SessionDisplay {
             SessionStatus::Paused => " (paused)",
             SessionStatus::Completed => " (completed)",
         };
-        
-        format!("{} {} ({} messages){}",
+
+        format!(
+            "{} {} ({} messages){}",
             self.session_type.prefix(),
             self.name,
             self.message_count,
@@ -123,23 +121,22 @@ impl SessionDisplay {
     /// Get colored session list entry using crossterm
     pub fn colored_list_entry(&self, colors: &SessionColors) -> String {
         use crossterm::style::Stylize;
-        
+
         let entry = self.format_list_entry();
         let color = self.session_type.color(colors);
-        
+
         match self.status {
             SessionStatus::Active => entry.with(color).to_string(),
-            SessionStatus::Paused | SessionStatus::Completed => {
-                entry.with(color).dim().to_string()
-            }
+            SessionStatus::Paused | SessionStatus::Completed => entry.with(color).dim().to_string(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crossterm::style::Color;
+
+    use super::*;
 
     #[test]
     fn test_session_type_colors() {
@@ -172,7 +169,7 @@ mod tests {
         let session = SessionDisplay::new(SessionType::Planning, "feature-roadmap")
             .with_message_count(5)
             .with_status(SessionStatus::Paused);
-        
+
         assert_eq!(session.message_count, 5);
         assert_eq!(session.status, SessionStatus::Paused);
     }
@@ -182,7 +179,7 @@ mod tests {
         let session = SessionDisplay::new(SessionType::Development, "calculator")
             .with_message_count(3)
             .with_status(SessionStatus::Active);
-        
+
         let entry = session.format_list_entry();
         assert_eq!(entry, "dev calculator (3 messages)");
     }
@@ -192,14 +189,14 @@ mod tests {
         let paused_session = SessionDisplay::new(SessionType::Planning, "migration")
             .with_message_count(2)
             .with_status(SessionStatus::Paused);
-        
+
         let entry = paused_session.format_list_entry();
         assert_eq!(entry, "plan migration (2 messages) (paused)");
 
         let completed_session = SessionDisplay::new(SessionType::Debug, "bug-fix")
             .with_message_count(10)
             .with_status(SessionStatus::Completed);
-        
+
         let entry = completed_session.format_list_entry();
         assert_eq!(entry, "debug bug-fix (10 messages) (completed)");
     }
@@ -217,7 +214,7 @@ mod tests {
         for session_type in types {
             let session = SessionDisplay::new(session_type, "test");
             let message = session.format_message("test message", &colors);
-            
+
             // Each session type should have a unique prefix
             assert!(message.contains(&format!("{}:", session_type.prefix())));
         }

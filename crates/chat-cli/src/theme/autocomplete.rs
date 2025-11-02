@@ -1,5 +1,9 @@
 use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Autocomplete configuration for commands
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -30,19 +34,14 @@ pub enum OptionConfig {
 #[serde(tag = "type")]
 pub enum OptionType {
     #[serde(rename = "flag")]
-    Flag {
-        description: String,
-    },
+    Flag { description: String },
     #[serde(rename = "string")]
     String {
         suggestions: Option<Vec<String>>,
         description: Option<String>,
     },
     #[serde(rename = "dynamic")]
-    Dynamic {
-        source: String,
-        description: String,
-    },
+    Dynamic { source: String, description: String },
 }
 
 /// Dynamic completion source configuration
@@ -89,7 +88,7 @@ impl AutocompleteEngine {
         }
 
         let command = parts[0].trim_start_matches('/');
-        
+
         if let Some(config) = self.configs.get(command).cloned() {
             if parts.len() == 1 {
                 // Complete subcommands
@@ -163,7 +162,11 @@ impl AutocompleteEngine {
         }
     }
 
-    fn get_option_value_completions(&mut self, config: &AutocompleteConfig, parts: &[&str]) -> Vec<CompletionSuggestion> {
+    fn get_option_value_completions(
+        &mut self,
+        config: &AutocompleteConfig,
+        parts: &[&str],
+    ) -> Vec<CompletionSuggestion> {
         if parts.len() < 3 {
             return Vec::new();
         }
@@ -175,21 +178,17 @@ impl AutocompleteEngine {
             if let OptionConfig::Complex(options) = &sub_config.options {
                 if let Some(opt_type) = options.get(option) {
                     match opt_type {
-                        OptionType::String { suggestions, .. } => {
-                            suggestions.as_ref().map_or(Vec::new(), |suggs| {
-                                suggs
-                                    .iter()
-                                    .map(|s| CompletionSuggestion {
-                                        text: s.clone(),
-                                        description: None,
-                                        category: None,
-                                    })
-                                    .collect()
-                            })
-                        },
-                        OptionType::Dynamic { source, .. } => {
-                            self.get_dynamic_completions(config, source)
-                        },
+                        OptionType::String { suggestions, .. } => suggestions.as_ref().map_or(Vec::new(), |suggs| {
+                            suggs
+                                .iter()
+                                .map(|s| CompletionSuggestion {
+                                    text: s.clone(),
+                                    description: None,
+                                    category: None,
+                                })
+                                .collect()
+                        }),
+                        OptionType::Dynamic { source, .. } => self.get_dynamic_completions(config, source),
                         OptionType::Flag { .. } => Vec::new(),
                     }
                 } else {
@@ -209,7 +208,7 @@ impl AutocompleteEngine {
                 // Check cache first
                 let cache_key = format!("{}:{}", source_name, source.command);
                 let now = std::time::Instant::now();
-                
+
                 if let Some((cached_results, timestamp)) = self.cache.get(&cache_key) {
                     if now.duration_since(*timestamp).as_secs() < source.cache_duration {
                         return cached_results
@@ -224,11 +223,7 @@ impl AutocompleteEngine {
                 }
 
                 // Execute command and cache results
-                if let Ok(output) = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(&source.command)
-                    .output()
-                {
+                if let Ok(output) = std::process::Command::new("sh").arg("-c").arg(&source.command).output() {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let results: Vec<String> = match source.parser.as_str() {
                         "lines" => stdout.lines().map(|s| s.trim().to_string()).collect(),
@@ -274,7 +269,7 @@ mod tests {
     fn create_test_config() -> AutocompleteConfig {
         let mut subcommands = HashMap::new();
         let mut options = HashMap::new();
-        
+
         options.insert("--message".to_string(), OptionType::String {
             suggestions: Some(vec!["Initial commit".to_string(), "Fix bug".to_string()]),
             description: Some("Commit message".to_string()),
@@ -388,7 +383,7 @@ mod tests {
     fn test_register_command() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
         assert_eq!(engine.configs.len(), 1);
         assert!(engine.configs.contains_key("git"));
@@ -398,9 +393,9 @@ mod tests {
     fn test_get_root_completions() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("");
         assert_eq!(completions.len(), 1);
         assert_eq!(completions[0].text, "/git");
@@ -410,15 +405,15 @@ mod tests {
     fn test_get_subcommand_completions() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("/git");
         assert_eq!(completions.len(), 2);
-        
+
         let commit_completion = completions.iter().find(|c| c.text == "commit").unwrap();
         assert_eq!(commit_completion.description, Some("Commit changes".to_string()));
-        
+
         let status_completion = completions.iter().find(|c| c.text == "status").unwrap();
         assert_eq!(status_completion.description, Some("Show status".to_string()));
     }
@@ -427,9 +422,9 @@ mod tests {
     fn test_get_option_completions_simple() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("/git status");
         assert_eq!(completions.len(), 2);
         assert!(completions.iter().any(|c| c.text == "--short"));
@@ -440,15 +435,15 @@ mod tests {
     fn test_get_option_completions_complex() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("/git commit");
         assert_eq!(completions.len(), 2);
-        
+
         let message_completion = completions.iter().find(|c| c.text == "--message").unwrap();
         assert!(message_completion.description.is_some());
-        
+
         let all_completion = completions.iter().find(|c| c.text == "--all").unwrap();
         assert_eq!(all_completion.description, Some("Stage all changes".to_string()));
     }
@@ -457,9 +452,9 @@ mod tests {
     fn test_get_option_value_completions() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("/git commit --message");
         assert_eq!(completions.len(), 2);
         assert!(completions.iter().any(|c| c.text == "Initial commit"));
@@ -469,14 +464,18 @@ mod tests {
     #[test]
     fn test_cleanup_cache() {
         let mut engine = AutocompleteEngine::new();
-        
+
         // Add some cache entries
         let now = std::time::Instant::now();
-        engine.cache.insert("test1".to_string(), (vec!["value1".to_string()], now));
-        engine.cache.insert("test2".to_string(), (vec!["value2".to_string()], now));
-        
+        engine
+            .cache
+            .insert("test1".to_string(), (vec!["value1".to_string()], now));
+        engine
+            .cache
+            .insert("test2".to_string(), (vec!["value2".to_string()], now));
+
         assert_eq!(engine.cache.len(), 2);
-        
+
         engine.cleanup_cache();
         // Should still have entries since they're recent
         assert_eq!(engine.cache.len(), 2);
@@ -493,9 +492,9 @@ mod tests {
     fn test_empty_subcommand() {
         let mut engine = AutocompleteEngine::new();
         let config = create_test_config();
-        
+
         engine.register_command("git".to_string(), config);
-        
+
         let completions = engine.get_completions("/git nonexistent");
         assert_eq!(completions.len(), 0);
     }

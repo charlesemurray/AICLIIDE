@@ -1,6 +1,12 @@
-use super::types::{CustomCommand, CommandHandler, CommandExecution, CommandError};
 use std::collections::HashMap;
 use std::process::Command;
+
+use super::types::{
+    CommandError,
+    CommandExecution,
+    CommandHandler,
+    CustomCommand,
+};
 
 pub struct CommandExecutor;
 
@@ -11,15 +17,9 @@ impl CommandExecutor {
 
         // Execute based on handler type
         match &command.handler {
-            CommandHandler::Script { command: cmd, args } => {
-                Self::execute_script(cmd, args, &execution.arguments)
-            }
-            CommandHandler::Alias { target } => {
-                Self::execute_alias(target, &execution.arguments)
-            }
-            CommandHandler::Builtin { function_name } => {
-                Self::execute_builtin(function_name, &execution.arguments)
-            }
+            CommandHandler::Script { command: cmd, args } => Self::execute_script(cmd, args, &execution.arguments),
+            CommandHandler::Alias { target } => Self::execute_alias(target, &execution.arguments),
+            CommandHandler::Builtin { function_name } => Self::execute_builtin(function_name, &execution.arguments),
         }
     }
 
@@ -42,11 +42,11 @@ impl CommandExecutor {
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
-            Err(CommandError::ExecutionFailed(
-                format!("Script failed with exit code {}: {}", 
-                    output.status.code().unwrap_or(-1),
-                    String::from_utf8_lossy(&output.stderr))
-            ))
+            Err(CommandError::ExecutionFailed(format!(
+                "Script failed with exit code {}: {}",
+                output.status.code().unwrap_or(-1),
+                String::from_utf8_lossy(&output.stderr)
+            )))
         }
     }
 
@@ -54,7 +54,7 @@ impl CommandExecutor {
         // For aliases, we'll need to integrate with the existing command system
         // For now, execute as a shell command
         let mut full_command = target.to_string();
-        
+
         // Append parameters as arguments
         for (key, value) in params {
             full_command.push_str(&format!(" --{} {}", key, value));
@@ -69,11 +69,11 @@ impl CommandExecutor {
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
         } else {
-            Err(CommandError::ExecutionFailed(
-                format!("Alias failed with exit code {}: {}", 
-                    output.status.code().unwrap_or(-1),
-                    String::from_utf8_lossy(&output.stderr))
-            ))
+            Err(CommandError::ExecutionFailed(format!(
+                "Alias failed with exit code {}: {}",
+                output.status.code().unwrap_or(-1),
+                String::from_utf8_lossy(&output.stderr)
+            )))
         }
     }
 
@@ -83,27 +83,22 @@ impl CommandExecutor {
             "save_context" => Ok("Context saved successfully".to_string()),
             "clear_context" => Ok("Context cleared successfully".to_string()),
             "show_stats" => Ok("Session stats: 42 messages, 1337 tokens".to_string()),
-            _ => Err(CommandError::ExecutionFailed(
-                format!("Unknown builtin function: {}", function_name)
-            ))
+            _ => Err(CommandError::ExecutionFailed(format!(
+                "Unknown builtin function: {}",
+                function_name
+            ))),
         }
     }
 
     pub fn validate_script_safety(script: &str) -> Result<(), CommandError> {
-        let dangerous_patterns = [
-            "rm -rf",
-            "sudo rm",
-            "format",
-            "mkfs",
-            "dd if=",
-            "> /dev/",
-        ];
+        let dangerous_patterns = ["rm -rf", "sudo rm", "format", "mkfs", "dd if=", "> /dev/"];
 
         for pattern in &dangerous_patterns {
             if script.contains(pattern) {
-                return Err(CommandError::ExecutionFailed(
-                    format!("Script contains potentially dangerous command: {}", pattern)
-                ));
+                return Err(CommandError::ExecutionFailed(format!(
+                    "Script contains potentially dangerous command: {}",
+                    pattern
+                )));
             }
         }
 

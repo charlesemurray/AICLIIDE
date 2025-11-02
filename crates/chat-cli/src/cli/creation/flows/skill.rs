@@ -1,12 +1,26 @@
 //! Skill creation flow - medium complexity
 
-use crate::cli::creation::{
-    CreationFlow, CreationConfig, CreationArtifact, CreationType, CreationPhase, PhaseResult,
-    CreationMode, SkillType, SecurityLevel, TerminalUI, CreationContext
-};
-use eyre::Result;
-use serde::{Serialize, Deserialize};
 use std::path::Path;
+
+use eyre::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::cli::creation::{
+    CreationArtifact,
+    CreationConfig,
+    CreationContext,
+    CreationFlow,
+    CreationMode,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    SecurityLevel,
+    SkillType,
+    TerminalUI,
+};
 
 // Tests moved to separate test files
 
@@ -110,7 +124,7 @@ impl SkillCreationFlow {
 
     pub fn new_with_dir(name: String, mode: CreationMode, dir: &Path) -> Result<Self> {
         let context = CreationContext::new(dir)?;
-        
+
         // Validate name upfront
         let validation = context.validate_name(&name, &CreationType::Skill);
         if !validation.is_valid {
@@ -137,14 +151,19 @@ impl SkillCreationFlow {
             config.description = defaults.description;
         }
 
-        Ok(Self { config, mode, context, ui: None })
+        Ok(Self {
+            config,
+            mode,
+            context,
+            ui: None,
+        })
     }
 
     pub fn with_ui(mut self, ui: Box<dyn TerminalUI>) -> Self {
         self.ui = Some(ui);
         self
     }
-    
+
     // Stub methods for tests
     pub fn collect_input_single_pass(&mut self) -> Result<SkillConfig> {
         if let Some(ui) = &mut self.ui {
@@ -162,13 +181,13 @@ impl SkillCreationFlow {
                     config.command = ui.prompt_required("Command")?;
                     config.skill_type = SkillType::CodeInline;
                     // Description stays empty for quick mode
-                }
+                },
                 CreationMode::Guided => {
                     // Guided mode: command, description, security
                     config.command = ui.prompt_required("Command")?;
                     config.description = ui.prompt_required("Description")?;
                     config.skill_type = SkillType::CodeInline;
-                    
+
                     let enable_security = ui.confirm("Enable security?")?;
                     if enable_security {
                         config.security.enabled = true;
@@ -180,7 +199,7 @@ impl SkillCreationFlow {
                             _ => SecurityLevel::Medium,
                         };
                     }
-                }
+                },
                 CreationMode::Expert => {
                     // Expert mode: skill type, command/prompt, description, security
                     let skill_type_input = ui.prompt_required("Skill type")?;
@@ -191,10 +210,10 @@ impl SkillCreationFlow {
                         "prompt_inline" => SkillType::PromptInline,
                         _ => SkillType::CodeInline,
                     };
-                    
+
                     config.command = ui.prompt_required("System prompt")?;
                     config.description = ui.prompt_required("Description")?;
-                    
+
                     let enable_security = ui.confirm("Enable security?")?;
                     if enable_security {
                         config.security.enabled = true;
@@ -205,14 +224,14 @@ impl SkillCreationFlow {
                             "high" => SecurityLevel::High,
                             _ => SecurityLevel::Medium,
                         };
-                        
+
                         let resource_limit_input = ui.prompt_required("Resource limit")?;
                         config.security.resource_limit = resource_limit_input.parse().unwrap_or(1000);
                     }
-                }
+                },
                 CreationMode::Template | CreationMode::Preview | CreationMode::Batch => {
                     return Err(eyre::eyre!("Unsupported creation mode for skills"));
-                }
+                },
             }
 
             Ok(config)
@@ -223,15 +242,15 @@ impl SkillCreationFlow {
                 description: "Test skill".to_string(),
                 skill_type: SkillType::CodeInline,
                 command: "echo test".to_string(),
-                security: SecurityConfig { 
-                    enabled: false, 
-                    level: SecurityLevel::Low, 
-                    resource_limit: 100 
+                security: SecurityConfig {
+                    enabled: false,
+                    level: SecurityLevel::Low,
+                    resource_limit: 100,
                 },
             })
         }
     }
-    
+
     pub fn run_single_pass(&mut self) -> Result<SkillConfig> {
         self.collect_input_single_pass()
     }
@@ -239,7 +258,7 @@ impl SkillCreationFlow {
     fn execute_discovery(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
         ui.show_message(
             &format!("Creating skill '{}'", self.config.name),
-            crate::cli::creation::SemanticColor::Info
+            crate::cli::creation::SemanticColor::Info,
         );
 
         // For Quick mode, use defaults without prompting
@@ -259,10 +278,7 @@ impl SkillCreationFlow {
             ("session", "Interactive interpreter (Python, Node, etc.)"),
         ];
 
-        let selected_type = ui.select_option(
-            "What type of skill do you want to create?",
-            skill_type_options
-        )?;
+        let selected_type = ui.select_option("What type of skill do you want to create?", skill_type_options)?;
 
         // Set skill type based on selection
         self.config.skill_type = match selected_type.as_str() {
@@ -277,31 +293,37 @@ impl SkillCreationFlow {
         match selected_type.as_str() {
             "command" => {
                 self.config.command = ui.prompt_required("Command to execute")?;
-                
+
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
-                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Executes: {}", self.config.command)))? {
+                    if let Some(desc) =
+                        ui.prompt_optional("Description", Some(&format!("Executes: {}", self.config.command)))?
+                    {
                         self.config.description = desc;
                     }
                 }
-            }
+            },
             "assistant" => {
                 self.config.command = ui.prompt_required("System prompt (e.g., 'You are a helpful code reviewer')")?;
-                
+
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
-                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("AI assistant: {}", self.config.name)))? {
+                    if let Some(desc) =
+                        ui.prompt_optional("Description", Some(&format!("AI assistant: {}", self.config.name)))?
+                    {
                         self.config.description = desc;
                     }
                 }
-            }
+            },
             "template" => {
                 self.config.command = ui.prompt_required("Template text (use {{variable}} for parameters)")?;
-                
+
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
-                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Text generator: {}", self.config.name)))? {
+                    if let Some(desc) =
+                        ui.prompt_optional("Description", Some(&format!("Text generator: {}", self.config.name)))?
+                    {
                         self.config.description = desc;
                     }
                 }
-            }
+            },
             "session" => {
                 let interpreter_options = &[
                     ("python3", "Python interpreter"),
@@ -310,20 +332,20 @@ impl SkillCreationFlow {
                     ("ruby", "Ruby interpreter"),
                 ];
 
-                let interpreter = ui.select_option(
-                    "Which interpreter should this session use?",
-                    interpreter_options
-                )?;
+                let interpreter =
+                    ui.select_option("Which interpreter should this session use?", interpreter_options)?;
 
                 self.config.command = interpreter.clone();
-                
+
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
-                    if let Some(desc) = ui.prompt_optional("Description", Some(&format!("Interactive {} session", interpreter)))? {
+                    if let Some(desc) =
+                        ui.prompt_optional("Description", Some(&format!("Interactive {} session", interpreter)))?
+                    {
                         self.config.description = desc;
                     }
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
 
         // STEP 3: Expert mode additional configuration
@@ -339,13 +361,19 @@ impl SkillCreationFlow {
             CreationMode::Expert => {
                 let enable_security = ui.confirm("Enable security restrictions")?;
                 self.config.security.enabled = enable_security;
-                
+
                 if enable_security {
                     ui.show_message("Security levels:", crate::cli::creation::SemanticColor::Info);
                     ui.show_message("  low: Basic restrictions", crate::cli::creation::SemanticColor::Debug);
-                    ui.show_message("  medium: Standard restrictions (recommended)", crate::cli::creation::SemanticColor::Debug);
-                    ui.show_message("  high: Strict restrictions", crate::cli::creation::SemanticColor::Debug);
-                    
+                    ui.show_message(
+                        "  medium: Standard restrictions (recommended)",
+                        crate::cli::creation::SemanticColor::Debug,
+                    );
+                    ui.show_message(
+                        "  high: Strict restrictions",
+                        crate::cli::creation::SemanticColor::Debug,
+                    );
+
                     let level_input = ui.prompt_optional("Security level", Some("medium"))?;
                     match level_input.as_deref() {
                         Some("low") => self.config.security.level = SecurityLevel::Low,
@@ -353,27 +381,27 @@ impl SkillCreationFlow {
                         _ => self.config.security.level = SecurityLevel::Medium,
                     }
                 }
-            }
+            },
             CreationMode::Guided => {
                 let enable_security = ui.confirm("Enable security (recommended)")?;
                 self.config.security.enabled = enable_security;
                 if enable_security {
                     self.config.security.level = SecurityLevel::Medium;
                 }
-            }
+            },
             _ => {
                 // Quick mode uses defaults
                 self.config.security.enabled = true;
                 self.config.security.level = SecurityLevel::Medium;
-            }
+            },
         }
         Ok(PhaseResult::Continue)
     }
 }
 
 impl CreationFlow for SkillCreationFlow {
-    type Config = SkillConfig;
     type Artifact = SkillArtifact;
+    type Config = SkillConfig;
 
     fn creation_type(&self) -> CreationType {
         CreationType::Skill
@@ -384,27 +412,30 @@ impl CreationFlow for SkillCreationFlow {
             CreationPhase::Discovery => {
                 let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 self.execute_discovery(&mut ui)
-            }
+            },
             CreationPhase::BasicConfig => {
                 if self.config.description.is_empty() {
                     self.config.description = format!("Skill: {}", self.config.name);
                 }
                 Ok(PhaseResult::Continue)
-            }
+            },
             CreationPhase::Security => {
                 let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 self.execute_security(&mut ui)
-            }
+            },
             CreationPhase::Testing => {
                 self.config.validate()?;
                 let mut ui = crate::cli::creation::TerminalUIImpl::new();
-                ui.show_message("Skill configuration validated", crate::cli::creation::SemanticColor::Success);
+                ui.show_message(
+                    "Skill configuration validated",
+                    crate::cli::creation::SemanticColor::Success,
+                );
                 Ok(PhaseResult::Continue)
-            }
+            },
             CreationPhase::Completion => {
                 self.config.apply_defaults();
                 Ok(PhaseResult::Complete)
-            }
+            },
             _ => Ok(PhaseResult::Continue),
         }
     }

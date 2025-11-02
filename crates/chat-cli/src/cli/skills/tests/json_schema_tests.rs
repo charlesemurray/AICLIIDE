@@ -1,7 +1,12 @@
 #[cfg(test)]
 mod json_schema_tests {
-    use crate::cli::skills::types::{JsonSkill, SkillType, Parameter};
     use serde_json::json;
+
+    use crate::cli::skills::types::{
+        JsonSkill,
+        Parameter,
+        SkillType,
+    };
 
     // Core Fields Tests
     #[test]
@@ -31,7 +36,10 @@ mod json_schema_tests {
 
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert_eq!(skill.name, "full-skill");
-        assert_eq!(skill.description, Some("Complete skill with all core fields".to_string()));
+        assert_eq!(
+            skill.description,
+            Some("Complete skill with all core fields".to_string())
+        );
         assert_eq!(skill.skill_type, SkillType::CodeInline);
         assert_eq!(skill.timeout, Some(60));
         assert_eq!(skill.command, Some("echo".to_string()));
@@ -103,7 +111,10 @@ mod json_schema_tests {
 
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert_eq!(skill.command, Some("echo".to_string()));
-        assert_eq!(skill.args, Some(vec!["Hello".to_string(), "World".to_string(), "--flag".to_string()]));
+        assert_eq!(
+            skill.args,
+            Some(vec!["Hello".to_string(), "World".to_string(), "--flag".to_string()])
+        );
     }
 
     #[test]
@@ -155,7 +166,10 @@ mod json_schema_tests {
         });
 
         let result = serde_json::from_value::<JsonSkill>(skill_json);
-        assert!(result.is_err(), "Should fail when both prompt_template and prompt are present");
+        assert!(
+            result.is_err(),
+            "Should fail when both prompt_template and prompt are present"
+        );
     }
 
     // Parameter Tests
@@ -179,7 +193,7 @@ mod json_schema_tests {
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         let params = skill.parameters.unwrap();
         assert_eq!(params.len(), 1);
-        
+
         let param = &params[0];
         assert_eq!(param.name, "name");
         assert_eq!(param.param_type, "string");
@@ -205,7 +219,7 @@ mod json_schema_tests {
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         let params = skill.parameters.unwrap();
         let param = &params[0];
-        
+
         assert_eq!(param.name, "name");
         assert_eq!(param.param_type, "string");
         assert!(param.required.is_none());
@@ -269,15 +283,18 @@ mod json_schema_tests {
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         let params = skill.parameters.unwrap();
         assert_eq!(params.len(), 2);
-        
+
         assert_eq!(params[0].name, "name");
         assert_eq!(params[0].param_type, "string");
         assert_eq!(params[0].required, Some(true));
-        
+
         assert_eq!(params[1].name, "place");
         assert_eq!(params[1].param_type, "enum");
         assert_eq!(params[1].required, Some(false));
-        assert_eq!(params[1].values, Some(vec!["home".to_string(), "work".to_string(), "school".to_string()]));
+        assert_eq!(
+            params[1].values,
+            Some(vec!["home".to_string(), "work".to_string(), "school".to_string()])
+        );
     }
 
     // Security Configuration Tests
@@ -298,10 +315,10 @@ mod json_schema_tests {
 
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert!(skill.security.is_some());
-        
+
         let security = skill.security.unwrap();
         assert!(security.resource_limits.is_some());
-        
+
         let limits = security.resource_limits.unwrap();
         assert_eq!(limits.max_memory_mb, Some(100));
         assert_eq!(limits.max_execution_time, Some(30));
@@ -324,7 +341,7 @@ mod json_schema_tests {
 
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert!(skill.session_config.is_some());
-        
+
         let config = skill.session_config.unwrap();
         assert_eq!(config.session_timeout, Some(3600));
     }
@@ -345,7 +362,7 @@ mod json_schema_tests {
 
         let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
         assert!(skill.context_files.is_some());
-        
+
         let context = skill.context_files.unwrap();
         assert_eq!(context.patterns, vec!["*.rs", "*.py"]);
         assert_eq!(context.max_files, Some(10));
@@ -404,9 +421,12 @@ mod json_schema_tests {
         assert_eq!(skill.name, "greeting");
         assert_eq!(skill.description, Some("Generate personalized greetings".to_string()));
         assert_eq!(skill.skill_type, SkillType::PromptInline);
-        assert_eq!(skill.prompt_template, Some("Hello {name}! Welcome to {place}. Today is {day}.".to_string()));
+        assert_eq!(
+            skill.prompt_template,
+            Some("Hello {name}! Welcome to {place}. Today is {day}.".to_string())
+        );
         assert_eq!(skill.timeout, Some(10));
-        
+
         let params = skill.parameters.unwrap();
         assert_eq!(params.len(), 3);
         assert_eq!(params[0].name, "name");

@@ -1,11 +1,24 @@
 //! Input utilities for interactive prompts, building on existing Q CLI patterns
 
-use std::io::{self, Write};
-use crossterm::{
-    execute,
-    style::{Color, Print, SetForegroundColor, ResetColor},
-    terminal::{Clear, ClearType},
-    cursor::{MoveUp, MoveToColumn},
+use std::io::{
+    self,
+    Write,
+};
+
+use crossterm::cursor::{
+    MoveToColumn,
+    MoveUp,
+};
+use crossterm::execute;
+use crossterm::style::{
+    Color,
+    Print,
+    ResetColor,
+    SetForegroundColor,
+};
+use crossterm::terminal::{
+    Clear,
+    ClearType,
 };
 use eyre::Result;
 
@@ -13,15 +26,15 @@ use eyre::Result;
 pub fn prompt_required(prompt: &str) -> Result<String> {
     print!("{}: ", prompt);
     io::stdout().flush()?;
-    
+
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
-    
+
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return Err(eyre::eyre!("Input required for: {}", prompt));
     }
-    
+
     Ok(trimmed.to_string())
 }
 
@@ -33,10 +46,10 @@ pub fn prompt_optional(prompt: &str, default: Option<&str>) -> Result<Option<Str
         print!("{}: ", prompt);
     }
     io::stdout().flush()?;
-    
+
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
-    
+
     let trimmed = input.trim();
     if trimmed.is_empty() {
         Ok(default.map(|s| s.to_string()))
@@ -49,10 +62,10 @@ pub fn prompt_optional(prompt: &str, default: Option<&str>) -> Result<Option<Str
 pub fn confirm(message: &str) -> Result<bool> {
     print!("{} (Y/n): ", message);
     io::stdout().flush()?;
-    
+
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
-    
+
     let trimmed = input.trim().to_lowercase();
     Ok(!matches!(trimmed.as_str(), "n" | "no" | "false" | "0"))
 }
@@ -60,7 +73,7 @@ pub fn confirm(message: &str) -> Result<bool> {
 /// Select from multiple options with numbered menu
 pub fn select_option(prompt: &str, options: &[(&str, &str)]) -> Result<String> {
     println!("{}", prompt);
-    
+
     // Display options with colors
     for (i, (key, description)) in options.iter().enumerate() {
         execute!(
@@ -75,35 +88,39 @@ pub fn select_option(prompt: &str, options: &[(&str, &str)]) -> Result<String> {
             Print("\n")
         )?;
     }
-    
+
     print!("\nChoose (1-{}): ", options.len());
     io::stdout().flush()?;
-    
+
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
     let trimmed = input.trim();
-    
+
     // Handle numeric selection (1-based)
     if let Ok(num) = trimmed.parse::<usize>() {
         if num > 0 && num <= options.len() {
             return Ok(options[num - 1].0.to_string());
         }
     }
-    
+
     // Handle key selection
     for (key, _) in options {
         if trimmed == *key {
             return Ok(key.to_string());
         }
     }
-    
-    Err(eyre::eyre!("Invalid selection: {}. Please choose 1-{} or enter the key name.", trimmed, options.len()))
+
+    Err(eyre::eyre!(
+        "Invalid selection: {}. Please choose 1-{} or enter the key name.",
+        trimmed,
+        options.len()
+    ))
 }
 
 /// Select multiple options (comma-separated)
 pub fn select_multiple(prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>> {
     println!("{}", prompt);
-    
+
     // Display options with colors
     for (i, (key, description)) in options.iter().enumerate() {
         execute!(
@@ -118,7 +135,7 @@ pub fn select_multiple(prompt: &str, options: &[(&str, &str)], allow_other: bool
             Print("\n")
         )?;
     }
-    
+
     if allow_other {
         execute!(
             io::stdout(),
@@ -127,22 +144,22 @@ pub fn select_multiple(prompt: &str, options: &[(&str, &str)], allow_other: bool
             ResetColor
         )?;
     }
-    
+
     print!("\nChoose multiple (comma-separated, e.g., 1,3,5): ");
     io::stdout().flush()?;
-    
+
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
     let trimmed = input.trim();
-    
+
     if trimmed.is_empty() {
         return Ok(Vec::new());
     }
-    
+
     let mut selections = Vec::new();
     for part in trimmed.split(',') {
         let part = part.trim();
-        
+
         // Handle numeric selection
         if let Ok(num) = part.parse::<usize>() {
             if num > 0 && num <= options.len() {
@@ -150,7 +167,7 @@ pub fn select_multiple(prompt: &str, options: &[(&str, &str)], allow_other: bool
                 continue;
             }
         }
-        
+
         // Handle key selection
         let mut found = false;
         for (key, _) in options {
@@ -160,13 +177,13 @@ pub fn select_multiple(prompt: &str, options: &[(&str, &str)], allow_other: bool
                 break;
             }
         }
-        
+
         // Handle custom values if allowed
         if !found && allow_other && !part.is_empty() {
             selections.push(part.to_string());
         }
     }
-    
+
     Ok(selections)
 }
 
@@ -203,7 +220,7 @@ mod tests {
 
     // Note: These tests can't easily test actual stdin/stdout interaction
     // The main tests will be in the integration layer with MockUI
-    
+
     #[test]
     fn test_option_parsing_logic() {
         let options = &[
@@ -211,20 +228,20 @@ mod tests {
             ("assistant", "AI conversational helper"),
             ("template", "Text generation"),
         ];
-        
+
         // Test that we can find options by key
         let found = options.iter().find(|(key, _)| *key == "assistant");
         assert!(found.is_some());
         assert_eq!(found.unwrap().0, "assistant");
     }
-    
+
     #[test]
     fn test_numeric_selection_logic() {
         let options = &[
             ("command", "Execute shell commands"),
             ("assistant", "AI conversational helper"),
         ];
-        
+
         // Test 1-based indexing
         let input = "2";
         if let Ok(num) = input.parse::<usize>() {
@@ -233,7 +250,7 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_multiple_selection_parsing() {
         let input = "1,3,custom";

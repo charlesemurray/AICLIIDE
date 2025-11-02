@@ -1,14 +1,22 @@
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use std::path::PathBuf;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::{
+    Value,
+    json,
+};
+
 use crate::cli::skills::types::SkillType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CreationState {
-    Discovery,      // Understanding what user wants to build
-    Configuration,  // Setting up skill parameters
-    Testing,        // Testing prompts/functionality
-    Completion,     // Finalizing and saving skill
+    Discovery,     // Understanding what user wants to build
+    Configuration, // Setting up skill parameters
+    Testing,       // Testing prompts/functionality
+    Completion,    // Finalizing and saving skill
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,32 +100,32 @@ pub struct SkillCreationSession {
     skill_name: String,
     skill_type: SkillType,
     state: CreationState,
-    
+
     // Common fields
     description: Option<String>,
-    
+
     // Command/REPL fields
     command: Option<String>,
     args: Option<Vec<String>>,
     timeout: Option<u32>,
-    
+
     // Template/Assistant fields
     prompt_template: Option<String>,
     parameters: Vec<crate::cli::skills::types::Parameter>,
-    
+
     // Assistant fields
     context_patterns: Vec<String>,
     max_files: Option<u32>,
     max_file_size_kb: Option<u32>,
-    
+
     // REPL fields
     session_timeout: Option<u64>,
     max_sessions: Option<u32>,
     cleanup_on_exit: Option<bool>,
-    
+
     // Testing
     test_cases: Vec<TestCase>,
-    
+
     // File tracking
     created_files: Vec<PathBuf>,
 }
@@ -243,11 +251,11 @@ impl SkillCreationSession {
     // Validation
     pub fn validate(&self) -> Result<(), String> {
         let constraints = SkillTypeConstraints::for_type(&self.skill_type);
-        
+
         if constraints.requires_command() && self.command.is_none() {
             return Err("command is required for this skill type".to_string());
         }
-        
+
         Ok(())
     }
 
@@ -259,7 +267,7 @@ impl SkillCreationSession {
             "type": match self.skill_type {
                 SkillType::Command => "command",
                 SkillType::CodeInline => "code_inline",
-                SkillType::PromptInline => "prompt_inline", 
+                SkillType::PromptInline => "prompt_inline",
                 SkillType::Conversation => "conversation",
                 SkillType::CodeSession => "code_session",
             }
@@ -302,9 +310,8 @@ impl SkillCreationSession {
 
     // Template testing
     pub fn test_template(&self, inputs: &Value) -> Result<String, String> {
-        let template = self.prompt_template.as_ref()
-            .ok_or("No template set")?;
-        
+        let template = self.prompt_template.as_ref().ok_or("No template set")?;
+
         let mut result = template.clone();
         if let Value::Object(map) = inputs {
             for (key, value) in map {
@@ -316,37 +323,42 @@ impl SkillCreationSession {
                 result = result.replace(&placeholder, &replacement);
             }
         }
-        
+
         Ok(result)
     }
 
     // Test execution
     pub fn run_all_tests(&self) -> Vec<TestResult> {
-        self.test_cases.iter().map(|test_case| {
-            let actual_output = match self.test_template(&test_case.inputs) {
-                Ok(output) => output,
-                Err(e) => return TestResult {
+        self.test_cases
+            .iter()
+            .map(|test_case| {
+                let actual_output = match self.test_template(&test_case.inputs) {
+                    Ok(output) => output,
+                    Err(e) => {
+                        return TestResult {
+                            test_case_name: test_case.name.clone(),
+                            passed: false,
+                            actual_output: String::new(),
+                            expected_output: test_case.expected_output.clone(),
+                            error: Some(e),
+                        };
+                    },
+                };
+
+                let passed = if let Some(expected) = &test_case.expected_output {
+                    actual_output == *expected
+                } else {
+                    true // No expected output means we just check it runs
+                };
+
+                TestResult {
                     test_case_name: test_case.name.clone(),
-                    passed: false,
-                    actual_output: String::new(),
+                    passed,
+                    actual_output,
                     expected_output: test_case.expected_output.clone(),
-                    error: Some(e),
-                },
-            };
-
-            let passed = if let Some(expected) = &test_case.expected_output {
-                actual_output == *expected
-            } else {
-                true // No expected output means we just check it runs
-            };
-
-            TestResult {
-                test_case_name: test_case.name.clone(),
-                passed,
-                actual_output,
-                expected_output: test_case.expected_output.clone(),
-                error: None,
-            }
-        }).collect()
+                    error: None,
+                }
+            })
+            .collect()
     }
 }

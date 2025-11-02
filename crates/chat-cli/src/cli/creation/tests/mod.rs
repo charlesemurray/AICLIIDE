@@ -1,23 +1,27 @@
 //! Comprehensive test suite for unified creation system
-//! 
+//!
 //! Tests cover: CLI parsing, creation flows, terminal UI, context intelligence,
 //! and end-to-end workflows.
 
-mod unit;
-mod integration;
 mod cli;
+mod integration;
+mod unit;
 mod ux;
 
-pub use unit::*;
-pub use integration::*;
+use std::path::PathBuf;
+
 pub use cli::*;
+use eyre::Result;
+pub use integration::*;
+use tempfile::TempDir;
+pub use unit::*;
 pub use ux::*;
 
-use crate::cli::creation::types::{TerminalUI, SemanticColor};
-use eyre::Result;
+use crate::cli::creation::types::{
+    SemanticColor,
+    TerminalUI,
+};
 use crate::cli::creation::*;
-use std::path::PathBuf;
-use tempfile::TempDir;
 
 /// Test utilities and fixtures
 pub struct TestFixtures {
@@ -31,7 +35,7 @@ impl TestFixtures {
     pub fn new() -> Self {
         let temp_dir = TempDir::new().unwrap();
         let base = temp_dir.path().to_path_buf();
-        
+
         Self {
             commands_dir: base.join(".q-commands"),
             skills_dir: base.join(".q-skills"),
@@ -39,7 +43,7 @@ impl TestFixtures {
             temp_dir,
         }
     }
-    
+
     pub fn setup_directories(&self) {
         std::fs::create_dir_all(&self.commands_dir).unwrap();
         std::fs::create_dir_all(&self.skills_dir).unwrap();
@@ -62,7 +66,7 @@ impl MockTerminalUI {
             input_index: 0,
         }
     }
-    
+
     pub fn next_input(&mut self) -> String {
         if self.input_index < self.inputs.len() {
             let input = self.inputs[self.input_index].clone();
@@ -103,8 +107,9 @@ impl MockTerminalUI {
         let filled = (current * 8) / total;
         let empty = 8 - filled;
         let bar = "█".repeat(filled) + &"░".repeat(empty);
-        
-        self.outputs.push(format!("{} {}% {}/{} {}", bar, percentage, current, total, message));
+
+        self.outputs
+            .push(format!("{} {}% {}/{} {}", bar, percentage, current, total, message));
     }
 
     pub fn prompt_with_validation<F>(&mut self, prompt: &str, validator: F) -> Result<String>
@@ -114,13 +119,13 @@ impl MockTerminalUI {
         loop {
             let input = self.next_input();
             self.outputs.push(format!("PROMPT: {} -> {}", prompt, input));
-            
+
             match validator(&input) {
                 Ok(()) => return Ok(input),
                 Err(error_msg) => {
                     self.outputs.push(error_msg);
                     // Continue loop to get next input
-                }
+                },
             }
         }
     }
@@ -155,7 +160,8 @@ impl TerminalUI for MockTerminalUI {
     }
 
     fn show_progress(&mut self, current: usize, total: usize, message: &str) {
-        self.outputs.push(format!("PROGRESS: {}/{} - {}", current, total, message));
+        self.outputs
+            .push(format!("PROGRESS: {}/{} - {}", current, total, message));
     }
 
     fn show_message(&mut self, message: &str, _color: SemanticColor) {

@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod builder_tests {
-    use crate::cli::creation::prompt_system::*;
     use eyre::Result;
+
+    use crate::cli::creation::prompt_system::*;
 
     #[test]
     fn test_prompt_builder_basic() -> Result<()> {
@@ -89,8 +90,9 @@ mod builder_tests {
         let builder = PromptBuilder::new(); // No name
         let validation = builder.validate().unwrap();
         assert!(!validation.is_valid);
-        
-        let errors: Vec<_> = validation.issues
+
+        let errors: Vec<_> = validation
+            .issues
             .iter()
             .filter(|i| i.severity == IssueSeverity::Error)
             .collect();

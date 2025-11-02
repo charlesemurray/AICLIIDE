@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod integration_tests {
-    use crate::cli::skills::SkillRegistry;
-    use serde_json::json;
     use std::fs;
+
+    use serde_json::json;
     use tempfile::TempDir;
+
+    use crate::cli::skills::SkillRegistry;
 
     #[tokio::test]
     async fn test_end_to_end_skill_loading_and_execution() {
@@ -22,12 +24,12 @@ mod integration_tests {
             "args": ["Integration test successful"],
             "timeout": 30
         });
-        
+
         fs::write(&echo_skill, serde_json::to_string_pretty(&skill_config).unwrap()).unwrap();
 
         // Load skills and verify the skill is registered
         let registry = SkillRegistry::with_workspace_skills(temp_dir.path()).await.unwrap();
-        
+
         // Verify skill is loaded
         assert!(registry.get("echo-test").is_some());
         let skill = registry.get("echo-test").unwrap();
@@ -60,7 +62,7 @@ mod integration_tests {
                 }
             ]
         });
-        
+
         fs::write(&template_skill, serde_json::to_string_pretty(&skill_config).unwrap()).unwrap();
 
         let registry = SkillRegistry::with_workspace_skills(temp_dir.path()).await.unwrap();
@@ -86,8 +88,12 @@ mod integration_tests {
                 "max_file_size_kb": 100
             }
         });
-        
-        fs::write(&conversation_skill, serde_json::to_string_pretty(&skill_config).unwrap()).unwrap();
+
+        fs::write(
+            &conversation_skill,
+            serde_json::to_string_pretty(&skill_config).unwrap(),
+        )
+        .unwrap();
 
         let registry = SkillRegistry::with_workspace_skills(temp_dir.path()).await.unwrap();
         assert!(registry.get("conversation-test").is_some());

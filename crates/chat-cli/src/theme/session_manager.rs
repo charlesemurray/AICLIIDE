@@ -1,5 +1,10 @@
 use std::collections::HashMap;
-use crate::theme::session::{SessionDisplay, SessionType, SessionStatus};
+
+use crate::theme::session::{
+    SessionDisplay,
+    SessionStatus,
+    SessionType,
+};
 
 /// Manages multiple active sessions
 #[derive(Debug, Default)]
@@ -19,7 +24,7 @@ impl SessionManager {
     /// Start a new session
     pub fn start_session(&mut self, session_type: SessionType, name: impl Into<String>) -> Result<(), String> {
         let name = name.into();
-        
+
         if self.sessions.contains_key(&name) {
             return Err(format!("Session '{}' already exists", name));
         }
@@ -27,7 +32,7 @@ impl SessionManager {
         let session = SessionDisplay::new(session_type, name.clone());
         self.sessions.insert(name.clone(), session);
         self.active_session = Some(name);
-        
+
         Ok(())
     }
 
@@ -43,7 +48,9 @@ impl SessionManager {
 
     /// Close a session
     pub fn close_session(&mut self, name: &str) -> Result<SessionDisplay, String> {
-        let session = self.sessions.remove(name)
+        let session = self
+            .sessions
+            .remove(name)
             .ok_or_else(|| format!("Session '{}' not found", name))?;
 
         // If we're closing the active session, clear active session
@@ -56,11 +63,13 @@ impl SessionManager {
 
     /// Pause a session
     pub fn pause_session(&mut self, name: &str) -> Result<(), String> {
-        let session = self.sessions.get_mut(name)
+        let session = self
+            .sessions
+            .get_mut(name)
             .ok_or_else(|| format!("Session '{}' not found", name))?;
 
         session.status = SessionStatus::Paused;
-        
+
         // If this was the active session, clear active session
         if self.active_session.as_ref() == Some(&name.to_string()) {
             self.active_session = None;
@@ -71,7 +80,9 @@ impl SessionManager {
 
     /// Resume a paused session
     pub fn resume_session(&mut self, name: &str) -> Result<(), String> {
-        let session = self.sessions.get_mut(name)
+        let session = self
+            .sessions
+            .get_mut(name)
             .ok_or_else(|| format!("Session '{}' not found", name))?;
 
         session.status = SessionStatus::Active;
@@ -82,7 +93,9 @@ impl SessionManager {
 
     /// Add a message to a session
     pub fn add_message(&mut self, name: &str) -> Result<(), String> {
-        let session = self.sessions.get_mut(name)
+        let session = self
+            .sessions
+            .get_mut(name)
             .ok_or_else(|| format!("Session '{}' not found", name))?;
 
         session.message_count += 1;
@@ -91,8 +104,7 @@ impl SessionManager {
 
     /// Get the active session
     pub fn active_session(&self) -> Option<&SessionDisplay> {
-        self.active_session.as_ref()
-            .and_then(|name| self.sessions.get(name))
+        self.active_session.as_ref().and_then(|name| self.sessions.get(name))
     }
 
     /// Get a specific session
@@ -107,7 +119,8 @@ impl SessionManager {
 
     /// List active sessions only
     pub fn list_active_sessions(&self) -> Vec<&SessionDisplay> {
-        self.sessions.values()
+        self.sessions
+            .values()
             .filter(|s| s.status == SessionStatus::Active)
             .collect()
     }
@@ -115,7 +128,7 @@ impl SessionManager {
     /// Format a message for the active session using theme colors
     pub fn format_active_message(&self, message: impl Into<String>) -> Option<String> {
         use crate::theme;
-        
+
         self.active_session()
             .map(|session| session.format_message(message, &theme::theme().session))
     }
@@ -128,8 +141,9 @@ impl SessionManager {
     /// Get colored list of all sessions using theme colors
     pub fn colored_session_list(&self) -> Vec<String> {
         use crate::theme;
-        
-        self.sessions.values()
+
+        self.sessions
+            .values()
             .map(|session| session.colored_list_entry(&theme::theme().session))
             .collect()
     }
@@ -142,7 +156,7 @@ mod tests {
     #[test]
     fn test_start_session() {
         let mut manager = SessionManager::new();
-        
+
         let result = manager.start_session(SessionType::Debug, "test-debug");
         assert!(result.is_ok());
         assert_eq!(manager.active_session, Some("test-debug".to_string()));
@@ -152,10 +166,10 @@ mod tests {
     #[test]
     fn test_start_duplicate_session() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
         let result = manager.start_session(SessionType::Planning, "test");
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("already exists"));
     }
@@ -163,10 +177,10 @@ mod tests {
     #[test]
     fn test_switch_session() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "debug1").unwrap();
         manager.start_session(SessionType::Planning, "plan1").unwrap();
-        
+
         let result = manager.switch_session("debug1");
         assert!(result.is_ok());
         assert_eq!(manager.active_session, Some("debug1".to_string()));
@@ -175,7 +189,7 @@ mod tests {
     #[test]
     fn test_switch_nonexistent_session() {
         let mut manager = SessionManager::new();
-        
+
         let result = manager.switch_session("nonexistent");
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
@@ -184,10 +198,10 @@ mod tests {
     #[test]
     fn test_close_session() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
         let result = manager.close_session("test");
-        
+
         assert!(result.is_ok());
         let closed_session = result.unwrap();
         assert_eq!(closed_session.status, SessionStatus::Completed);
@@ -198,15 +212,15 @@ mod tests {
     #[test]
     fn test_pause_and_resume_session() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
-        
+
         // Pause session
         manager.pause_session("test").unwrap();
         let session = manager.get_session("test").unwrap();
         assert_eq!(session.status, SessionStatus::Paused);
         assert_eq!(manager.active_session, None);
-        
+
         // Resume session
         manager.resume_session("test").unwrap();
         let session = manager.get_session("test").unwrap();
@@ -217,12 +231,12 @@ mod tests {
     #[test]
     fn test_add_message() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
-        
+
         manager.add_message("test").unwrap();
         manager.add_message("test").unwrap();
-        
+
         let session = manager.get_session("test").unwrap();
         assert_eq!(session.message_count, 2);
     }
@@ -230,14 +244,14 @@ mod tests {
     #[test]
     fn test_list_sessions() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "debug1").unwrap();
         manager.start_session(SessionType::Planning, "plan1").unwrap();
         manager.pause_session("plan1").unwrap();
-        
+
         let all_sessions = manager.list_sessions();
         assert_eq!(all_sessions.len(), 2);
-        
+
         let active_sessions = manager.list_active_sessions();
         assert_eq!(active_sessions.len(), 1);
         assert_eq!(active_sessions[0].name, "debug1");
@@ -246,12 +260,12 @@ mod tests {
     #[test]
     fn test_format_active_message() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
-        
+
         let formatted = manager.format_active_message("Test message");
         assert!(formatted.is_some());
-        
+
         let formatted = formatted.unwrap();
         // Check for the prefix and message content, accounting for ANSI color codes
         assert!(formatted.contains("debug:"));
@@ -261,7 +275,7 @@ mod tests {
     #[test]
     fn test_format_active_message_no_session() {
         let manager = SessionManager::new();
-        
+
         let formatted = manager.format_active_message("Test message");
         assert!(formatted.is_none());
     }
@@ -270,10 +284,10 @@ mod tests {
     fn test_has_active_sessions() {
         let mut manager = SessionManager::new();
         assert!(!manager.has_active_sessions());
-        
+
         manager.start_session(SessionType::Debug, "test").unwrap();
         assert!(manager.has_active_sessions());
-        
+
         manager.pause_session("test").unwrap();
         assert!(!manager.has_active_sessions());
     }
@@ -281,13 +295,13 @@ mod tests {
     #[test]
     fn test_colored_session_list() {
         let mut manager = SessionManager::new();
-        
+
         manager.start_session(SessionType::Debug, "debug1").unwrap();
         manager.start_session(SessionType::Planning, "plan1").unwrap();
-        
+
         let colored_list = manager.colored_session_list();
         assert_eq!(colored_list.len(), 2);
-        
+
         // The colored list should contain the session names
         let combined = colored_list.join(" ");
         assert!(combined.contains("debug1"));

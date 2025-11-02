@@ -1,10 +1,17 @@
 #[cfg(test)]
 mod tests {
-    use crate::cli::creation::prompt_system::{
-        PromptSystem, PromptTemplate, TemplateParameter, TemplateCategory, 
-        DifficultyLevel, ParameterType, UsageStats, TemplateError
-    };
     use std::collections::HashMap;
+
+    use crate::cli::creation::prompt_system::{
+        DifficultyLevel,
+        ParameterType,
+        PromptSystem,
+        PromptTemplate,
+        TemplateCategory,
+        TemplateError,
+        TemplateParameter,
+        UsageStats,
+    };
 
     #[tokio::test]
     async fn test_prompt_system_creation() {
@@ -17,7 +24,7 @@ mod tests {
         let system = PromptSystem::new().await.unwrap();
         let templates = system.list_templates().await.unwrap();
         assert_eq!(templates.len(), 3);
-        
+
         let template_ids: Vec<&str> = templates.iter().map(|t| t.id.as_str()).collect();
         assert!(template_ids.contains(&"code_reviewer"));
         assert!(template_ids.contains(&"documentation_writer"));
@@ -28,7 +35,7 @@ mod tests {
     async fn test_get_nonexistent_template_uses_fallback() {
         let system = PromptSystem::new().await.unwrap();
         let result = system.get_template("nonexistent").await;
-        
+
         // Should get first available template as fallback
         assert!(result.is_ok());
         let template = result.unwrap();
@@ -40,7 +47,7 @@ mod tests {
     async fn test_quality_validation_returns_score() {
         let system = PromptSystem::new().await.unwrap();
         let score = system.validate_prompt("You are a helpful assistant.");
-        
+
         assert!(score.overall_score >= 0.0);
         assert!(score.overall_score <= 5.0);
         assert!(score.confidence >= 0.0);
@@ -52,7 +59,7 @@ mod tests {
         let system = PromptSystem::new().await.unwrap();
         let template = system.get_template("conversation_assistant").await.unwrap();
         let params = HashMap::new();
-        
+
         let rendered = system.render_template(&template, &params).await;
         assert!(rendered.is_ok());
         assert!(!rendered.unwrap().is_empty());
@@ -62,11 +69,11 @@ mod tests {
     async fn test_suggest_templates_for_use_case() {
         let system = PromptSystem::new().await.unwrap();
         let suggestions = system.suggest_templates_for_use_case("code review").await.unwrap();
-        
+
         // Should return suggestions from embedded templates
         assert!(suggestions.len() > 0);
         assert!(suggestions.len() <= 3); // Max 3 suggestions
-        
+
         // Should include code reviewer template for "code review" use case
         let has_code_reviewer = suggestions.iter().any(|t| t.id == "code_reviewer");
         assert!(has_code_reviewer);
@@ -77,7 +84,7 @@ mod tests {
         let template = create_test_template();
         let system = PromptSystem::new().await.unwrap();
         let params = system.get_template_parameters(&template);
-        
+
         assert_eq!(params.len(), 1);
         assert_eq!(params[0].name, "language");
         assert_eq!(params[0].required, true);
@@ -87,8 +94,10 @@ mod tests {
     fn test_error_types_are_properly_defined() {
         let error = TemplateError::NotFound { id: "test".to_string() };
         assert!(error.to_string().contains("test"));
-        
-        let error = TemplateError::ValidationFailed { reason: "bad template".to_string() };
+
+        let error = TemplateError::ValidationFailed {
+            reason: "bad template".to_string(),
+        };
         assert!(error.to_string().contains("bad template"));
     }
 

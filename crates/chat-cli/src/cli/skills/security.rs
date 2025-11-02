@@ -1,7 +1,12 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+
 use async_trait::async_trait;
-use crate::cli::skills::{SkillResult, SkillUI};
+
+use crate::cli::skills::{
+    SkillResult,
+    SkillUI,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {
@@ -21,9 +26,9 @@ pub type SecurityResult<T> = std::result::Result<T, SecurityError>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TrustLevel {
-    Untrusted,      // External/unknown skills
-    UserVerified,   // User-created skills  
-    SystemTrusted,  // Built-in skills
+    Untrusted,     // External/unknown skills
+    UserVerified,  // User-created skills
+    SystemTrusted, // Built-in skills
 }
 
 #[derive(Debug, Clone)]
@@ -194,26 +199,30 @@ pub trait SecureSkill: Send + Sync {
     fn security_context(&self) -> &SecurityContext;
     fn required_permissions(&self) -> &PermissionSet;
     fn trust_level(&self) -> TrustLevel;
-    
+
     // Basic skill info
     fn name(&self) -> &str;
     fn description(&self) -> &str;
-    fn aliases(&self) -> Vec<String> { vec![] }
-    
+    fn aliases(&self) -> Vec<String> {
+        vec![]
+    }
+
     // Secure execution
     async fn execute_secure(
-        &self, 
+        &self,
         params: serde_json::Value,
-        runtime_context: &RuntimeContext
+        runtime_context: &RuntimeContext,
     ) -> SecurityResult<SkillResult>;
-    
+
     // Security validation
     fn validate_input(&self, params: &serde_json::Value) -> SecurityResult<()>;
     fn validate_output(&self, result: &SkillResult) -> SecurityResult<()>;
-    
+
     // UI rendering
     async fn render_ui(&self) -> SecurityResult<SkillUI>;
-    fn supports_interactive(&self) -> bool { false }
+    fn supports_interactive(&self) -> bool {
+        false
+    }
 }
 
 // Cross-platform sandbox abstraction
@@ -235,13 +244,13 @@ pub struct ResourceUsage {
 pub fn create_platform_sandbox() -> Box<dyn PlatformSandbox> {
     #[cfg(target_os = "linux")]
     return Box::new(crate::cli::skills::platform::linux::LinuxSandbox::new());
-    
+
     #[cfg(target_os = "macos")]
     return Box::new(crate::cli::skills::platform::macos::MacOSSandbox::new());
-    
+
     #[cfg(target_os = "windows")]
     return Box::new(crate::cli::skills::platform::windows::WindowsSandbox::new());
-    
+
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     return Box::new(crate::cli::skills::platform::generic::GenericSandbox::new());
 }

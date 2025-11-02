@@ -1,8 +1,8 @@
-pub mod types;
 pub mod executor;
+pub mod types;
 
 #[cfg(test)]
 mod tests;
 
-pub use types::*;
 pub use executor::*;
+pub use types::*;

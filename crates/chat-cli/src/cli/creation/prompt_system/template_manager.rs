@@ -1,9 +1,10 @@
-use eyre::Result;
 use std::collections::HashMap;
-use async_trait::async_trait;
 
-use crate::cli::creation::prompt_system::types::*;
+use async_trait::async_trait;
+use eyre::Result;
+
 use crate::cli::creation::prompt_system::storage::HybridTemplateStorage;
+use crate::cli::creation::prompt_system::types::*;
 
 #[async_trait]
 pub trait TemplateManager: Send + Sync {
@@ -35,19 +36,22 @@ impl DefaultTemplateManager {
 impl TemplateManager for DefaultTemplateManager {
     async fn list_templates(&self) -> Result<Vec<TemplateInfo>> {
         let templates = self.storage.list_all_templates().await?;
-        Ok(templates.into_iter().map(|t| {
-            let rendered = self.render_template_internal(&t);
-            let quality = self.validate_quality(&rendered).overall_score;
-            TemplateInfo {
-                id: t.id,
-                name: t.name,
-                description: t.description,
-                category: t.category,
-                difficulty: t.difficulty,
-                estimated_quality: quality,
-                usage_stats: t.usage_stats,
-            }
-        }).collect())
+        Ok(templates
+            .into_iter()
+            .map(|t| {
+                let rendered = self.render_template_internal(&t);
+                let quality = self.validate_quality(&rendered).overall_score;
+                TemplateInfo {
+                    id: t.id,
+                    name: t.name,
+                    description: t.description,
+                    category: t.category,
+                    difficulty: t.difficulty,
+                    estimated_quality: quality,
+                    usage_stats: t.usage_stats,
+                }
+            })
+            .collect())
     }
 
     async fn get_template(&self, id: &str) -> Result<PromptTemplate> {
@@ -58,10 +62,10 @@ impl TemplateManager for DefaultTemplateManager {
 
         // Load from storage with fallback
         let template = self.load_with_fallback(id).await?;
-        
+
         // Cache for future use
         self.cache.put(id, &template).await?;
-        
+
         Ok(template)
     }
 
@@ -88,9 +92,9 @@ impl DefaultTemplateManager {
                     }
                 }
                 // Continue to final fallback for any error
-            }
+            },
         }
-        
+
         // Final fallback: Emergency template
         Ok(self.create_emergency_template())
     }
@@ -98,7 +102,9 @@ impl DefaultTemplateManager {
     async fn find_similar_template(&self, _id: &str) -> Result<PromptTemplate> {
         // Simple implementation: return first available template
         let templates = self.storage.list_all_templates().await?;
-        templates.into_iter().next()
+        templates
+            .into_iter()
+            .next()
             .ok_or_else(|| TemplateError::NotFound { id: "any".to_string() }.into())
     }
 
@@ -130,7 +136,8 @@ impl DefaultTemplateManager {
 
     fn render_template_internal(&self, template: &PromptTemplate) -> String {
         // Simple rendering for quality estimation
-        format!("{}\n\nCapabilities:\n{}\n\nConstraints:\n{}", 
+        format!(
+            "{}\n\nCapabilities:\n{}\n\nConstraints:\n{}",
             template.role,
             template.capabilities.join("\n- "),
             template.constraints.join("\n- ")

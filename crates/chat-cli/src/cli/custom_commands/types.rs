@@ -1,7 +1,11 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomCommand {
@@ -36,12 +40,12 @@ pub enum ParameterType {
 pub struct CommandParameter {
     pub name: String,
     #[serde(rename = "type")]
-    pub param_type: ParameterType,       // NEW: Enum type for validation
-    pub required: bool,                  // KEEP: Existing functionality
-    pub default_value: Option<String>,   // KEEP: Existing functionality
-    pub description: Option<String>,     // CHANGE: Make optional
-    pub values: Option<Vec<String>>,     // NEW: For enum validation
-    pub pattern: Option<String>,         // NEW: For security validation (regex)
+    pub param_type: ParameterType, // NEW: Enum type for validation
+    pub required: bool,                // KEEP: Existing functionality
+    pub default_value: Option<String>, // KEEP: Existing functionality
+    pub description: Option<String>,   // CHANGE: Make optional
+    pub values: Option<Vec<String>>,   // NEW: For enum validation
+    pub pattern: Option<String>,       // NEW: For security validation (regex)
 }
 
 #[derive(Debug)]
@@ -111,17 +115,19 @@ impl CustomCommand {
     pub fn validate_parameters(&self, args: &HashMap<String, String>) -> Result<(), CommandError> {
         for param in &self.parameters {
             if param.required && !args.contains_key(&param.name) {
-                return Err(CommandError::InvalidParameter(
-                    format!("Required parameter '{}' is missing", param.name)
-                ));
+                return Err(CommandError::InvalidParameter(format!(
+                    "Required parameter '{}' is missing",
+                    param.name
+                )));
             }
-            
+
             // Validate parameter value if provided
             if let Some(value) = args.get(&param.name) {
                 if let Err(validation_error) = param.validate(value) {
-                    return Err(CommandError::InvalidParameter(
-                        format!("Parameter '{}': {}", param.name, validation_error)
-                    ));
+                    return Err(CommandError::InvalidParameter(format!(
+                        "Parameter '{}': {}",
+                        param.name, validation_error
+                    )));
                 }
             }
         }
@@ -184,17 +190,20 @@ impl CommandParameter {
                 if value.contains(';') || value.contains('|') || value.contains('&') {
                     return Err("Invalid characters detected in string parameter".to_string());
                 }
-            }
+            },
             ParameterType::Number => {
                 if value.parse::<f64>().is_err() {
                     return Err(format!("'{}' is not a valid number", value));
                 }
-            }
+            },
             ParameterType::Boolean => {
-                if !matches!(value.to_lowercase().as_str(), "true" | "false" | "1" | "0" | "yes" | "no") {
+                if !matches!(
+                    value.to_lowercase().as_str(),
+                    "true" | "false" | "1" | "0" | "yes" | "no"
+                ) {
                     return Err(format!("'{}' is not a valid boolean", value));
                 }
-            }
+            },
             ParameterType::Enum => {
                 if let Some(ref allowed_values) = self.values {
                     if !allowed_values.contains(&value.to_string()) {
@@ -203,7 +212,7 @@ impl CommandParameter {
                 } else {
                     return Err("Enum parameter missing allowed values".to_string());
                 }
-            }
+            },
         }
 
         // Pattern validation
@@ -214,10 +223,10 @@ impl CommandParameter {
                     if !regex.is_match(value) {
                         return Err(format!("Value '{}' does not match required pattern", value));
                     }
-                }
+                },
                 Err(_) => {
                     return Err("Invalid regex pattern in parameter definition".to_string());
-                }
+                },
             }
         }
 
@@ -229,21 +238,22 @@ impl CustomCommandRegistry {
     pub fn new(commands_dir: PathBuf) -> Result<Self, CommandError> {
         fs::create_dir_all(&commands_dir)
             .map_err(|e| CommandError::RegistryError(format!("Failed to create commands directory: {}", e)))?;
-        
+
         let mut registry = Self {
             commands: HashMap::new(),
             commands_dir,
         };
-        
+
         registry.load_commands()?;
         Ok(registry)
     }
 
     pub fn add_command(&mut self, command: CustomCommand) -> Result<(), CommandError> {
         if self.commands.contains_key(&command.name) {
-            return Err(CommandError::RegistryError(
-                format!("Command '{}' already exists", command.name)
-            ));
+            return Err(CommandError::RegistryError(format!(
+                "Command '{}' already exists",
+                command.name
+            )));
         }
 
         self.save_command(&command)?;
@@ -285,18 +295,18 @@ impl CustomCommandRegistry {
             .map_err(|e| CommandError::RegistryError(format!("Failed to read commands directory: {}", e)))?;
 
         for entry in entries {
-            let entry = entry
-                .map_err(|e| CommandError::RegistryError(format!("Failed to read directory entry: {}", e)))?;
-            
+            let entry =
+                entry.map_err(|e| CommandError::RegistryError(format!("Failed to read directory entry: {}", e)))?;
+
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 match self.load_command_from_file(&path) {
                     Ok(command) => {
                         self.commands.insert(command.name.clone(), command);
-                    }
+                    },
                     Err(e) => {
                         eprintln!("Warning: Failed to load command from {:?}: {}", path, e);
-                    }
+                    },
                 }
             }
         }
@@ -307,10 +317,10 @@ impl CustomCommandRegistry {
     fn load_command_from_file(&self, path: &PathBuf) -> Result<CustomCommand, CommandError> {
         let content = fs::read_to_string(path)
             .map_err(|e| CommandError::RegistryError(format!("Failed to read command file: {}", e)))?;
-        
+
         let command: CustomCommand = serde_json::from_str(&content)
             .map_err(|e| CommandError::RegistryError(format!("Failed to parse command JSON: {}", e)))?;
-        
+
         Ok(command)
     }
 
@@ -318,10 +328,10 @@ impl CustomCommandRegistry {
         let file_path = self.commands_dir.join(format!("{}.json", command.name));
         let json = serde_json::to_string_pretty(command)
             .map_err(|e| CommandError::RegistryError(format!("Failed to serialize command: {}", e)))?;
-        
+
         fs::write(&file_path, json)
             .map_err(|e| CommandError::RegistryError(format!("Failed to write command file: {}", e)))?;
-        
+
         Ok(())
     }
 

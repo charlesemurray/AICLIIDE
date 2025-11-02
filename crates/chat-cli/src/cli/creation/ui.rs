@@ -1,8 +1,17 @@
 //! Terminal-native UI implementation with ANSI colors and efficient interactions
 
-use crate::cli::creation::{TerminalUI, SemanticColor, CreationError};
+use std::io::{
+    self,
+    Write,
+};
+
 use eyre::Result;
-use std::io::{self, Write};
+
+use crate::cli::creation::{
+    CreationError,
+    SemanticColor,
+    TerminalUI,
+};
 
 /// Terminal UI implementation following Q CLI design principles
 pub struct TerminalUIImpl {
@@ -61,12 +70,9 @@ impl TerminalUI for TerminalUIImpl {
         loop {
             self.print_prompt(field);
             let input = self.read_input()?;
-            
+
             if input.is_empty() {
-                self.show_message(
-                    &format!("{} is required", field),
-                    SemanticColor::Error
-                );
+                self.show_message(&format!("{} is required", field), SemanticColor::Error);
                 continue;
             }
 
@@ -86,15 +92,15 @@ impl TerminalUI for TerminalUIImpl {
         match default {
             Some(def) => {
                 print!("{} [{}]: ", field, def);
-            }
+            },
             None => {
                 print!("{} (optional): ", field);
-            }
+            },
         }
         io::stdout().flush()?;
 
         let input = self.read_input()?;
-        
+
         if input.is_empty() {
             Ok(default.map(|s| s.to_string()))
         } else {
@@ -122,21 +128,10 @@ impl TerminalUI for TerminalUIImpl {
         let percentage = (current * 100) / total;
         let filled = (current * 8) / total;
         let empty = 8 - filled;
-        
-        let bar = format!(
-            "{}{}",
-            "█".repeat(filled),
-            "░".repeat(empty)
-        );
-        
-        println!(
-            "{} {} {}% ({}/{})",
-            bar,
-            message,
-            percentage,
-            current,
-            total
-        );
+
+        let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
+
+        println!("{} {} {}% ({}/{})", bar, message, percentage, current, total);
     }
 
     fn show_message(&mut self, message: &str, color: SemanticColor) {
@@ -146,7 +141,7 @@ impl TerminalUI for TerminalUIImpl {
     fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String> {
         loop {
             println!("{}", self.colorize(prompt, SemanticColor::Info));
-            
+
             // Display options with colors
             for (i, (key, description)) in options.iter().enumerate() {
                 println!(
@@ -156,36 +151,40 @@ impl TerminalUI for TerminalUIImpl {
                     self.colorize(description, SemanticColor::Debug)
                 );
             }
-            
+
             print!("\nChoose (1-{}): ", options.len());
             io::stdout().flush()?;
-            
+
             let input = self.read_input()?;
-            
+
             // Handle numeric selection (1-based)
             if let Ok(num) = input.parse::<usize>() {
                 if num > 0 && num <= options.len() {
                     return Ok(options[num - 1].0.to_string());
                 }
             }
-            
+
             // Handle key selection
             for (key, _) in options {
                 if input == *key {
                     return Ok(key.to_string());
                 }
             }
-            
+
             self.show_message(
-                &format!("Invalid selection: {}. Please choose 1-{} or enter the key name.", input, options.len()),
-                SemanticColor::Error
+                &format!(
+                    "Invalid selection: {}. Please choose 1-{} or enter the key name.",
+                    input,
+                    options.len()
+                ),
+                SemanticColor::Error,
             );
         }
     }
 
     fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>> {
         println!("{}", self.colorize(prompt, SemanticColor::Info));
-        
+
         // Display options with colors
         for (i, (key, description)) in options.iter().enumerate() {
             println!(
@@ -195,23 +194,26 @@ impl TerminalUI for TerminalUIImpl {
                 self.colorize(description, SemanticColor::Debug)
             );
         }
-        
+
         if allow_other {
-            println!("{}", self.colorize("  (You can also type custom values)", SemanticColor::Debug));
+            println!(
+                "{}",
+                self.colorize("  (You can also type custom values)", SemanticColor::Debug)
+            );
         }
-        
+
         print!("\nChoose multiple (comma-separated, e.g., 1,3,5): ");
         io::stdout().flush()?;
-        
+
         let input = self.read_input()?;
         if input.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         let mut selections = Vec::new();
         for part in input.split(',') {
             let part = part.trim();
-            
+
             // Handle numeric selection
             if let Ok(num) = part.parse::<usize>() {
                 if num > 0 && num <= options.len() {
@@ -219,7 +221,7 @@ impl TerminalUI for TerminalUIImpl {
                     continue;
                 }
             }
-            
+
             // Handle key selection
             let mut found = false;
             for (key, _) in options {
@@ -229,13 +231,13 @@ impl TerminalUI for TerminalUIImpl {
                     break;
                 }
             }
-            
+
             // Handle custom values if allowed
             if !found && allow_other && !part.is_empty() {
                 selections.push(part.to_string());
             }
         }
-        
+
         Ok(selections)
     }
 }
@@ -278,11 +280,11 @@ impl TerminalUI for MockTerminalUI {
     fn prompt_required(&mut self, field: &str) -> Result<String> {
         self.record_output(format!("{}: ", field));
         let input = self.next_input();
-        
+
         if input.is_empty() {
             return Err(CreationError::missing_required_field(field, "example").into());
         }
-        
+
         Ok(input)
     }
 
@@ -291,9 +293,9 @@ impl TerminalUI for MockTerminalUI {
             Some(def) => self.record_output(format!("{} [{}]: ", field, def)),
             None => self.record_output(format!("{} (optional): ", field)),
         }
-        
+
         let input = self.next_input();
-        
+
         if input.is_empty() {
             Ok(default.map(|s| s.to_string()))
         } else {
@@ -315,7 +317,7 @@ impl TerminalUI for MockTerminalUI {
         let percentage = (current * 100) / total;
         let filled = (current * 8) / total;
         let empty = 8 - filled;
-        
+
         let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
         self.record_output(format!("{} {} {}% ({}/{})", bar, message, percentage, current, total));
     }
@@ -330,23 +332,23 @@ impl TerminalUI for MockTerminalUI {
         for (i, (key, desc)) in options.iter().enumerate() {
             self.record_output(format!("  {}. {} - {}", i + 1, key, desc));
         }
-        
+
         let input = self.next_input();
-        
+
         // Handle numeric selection (1-based)
         if let Ok(num) = input.parse::<usize>() {
             if num > 0 && num <= options.len() {
                 return Ok(options[num - 1].0.to_string());
             }
         }
-        
+
         // Handle key selection
         for (key, _) in options {
             if input == *key {
                 return Ok(key.to_string());
             }
         }
-        
+
         Err(eyre::eyre!("Invalid selection: {}", input))
     }
 
@@ -355,12 +357,12 @@ impl TerminalUI for MockTerminalUI {
         for (i, (key, desc)) in options.iter().enumerate() {
             self.record_output(format!("  {}. {} - {}", i + 1, key, desc));
         }
-        
+
         let input = self.next_input();
         if input.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         let selections: Vec<String> = input
             .split(',')
             .map(|s| s.trim())
@@ -376,7 +378,7 @@ impl TerminalUI for MockTerminalUI {
                 s.to_string()
             })
             .collect();
-        
+
         Ok(selections)
     }
 }
@@ -390,7 +392,7 @@ mod tests {
         let ui = TerminalUIImpl { use_colors: true };
         let result = ui.colorize("test", SemanticColor::Success);
         assert!(result.contains("\x1b[32m")); // Green
-        assert!(result.contains("\x1b[0m"));  // Reset
+        assert!(result.contains("\x1b[0m")); // Reset
     }
 
     #[test]

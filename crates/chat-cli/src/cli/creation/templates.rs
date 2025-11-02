@@ -1,9 +1,14 @@
 //! Template system for creation flows
 
-use crate::cli::creation::{CreationType, CreationError};
+use std::path::Path;
+
 use eyre::Result;
 use serde_json::Value;
-use std::path::Path;
+
+use crate::cli::creation::{
+    CreationError,
+    CreationType,
+};
 
 /// Template manager for loading and applying templates
 pub struct TemplateManager {
@@ -25,7 +30,7 @@ impl TemplateManager {
         };
 
         let template_file = template_dir.join(format!("{}.json", name));
-        
+
         if !template_file.exists() {
             let available = self.list_available_templates(creation_type)?;
             return Err(CreationError::template_not_found(name, available).into());
@@ -44,7 +49,7 @@ impl TemplateManager {
         };
 
         let mut templates = Vec::new();
-        
+
         if template_dir.exists() {
             for entry in std::fs::read_dir(template_dir)? {
                 let entry = entry?;
@@ -71,7 +76,7 @@ impl TemplateManager {
         let mut template_config = template.clone();
         if let Some(obj) = template_config.as_object_mut() {
             obj.insert("name".to_string(), Value::String(new_name.to_string()));
-            
+
             // Remove runtime fields that shouldn't be copied
             obj.remove("created_at");
             obj.remove("usage_count");
@@ -85,15 +90,16 @@ impl TemplateManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_template_manager_load() {
         let temp_dir = TempDir::new().unwrap();
         let skills_dir = temp_dir.path().join(".q-skills");
         std::fs::create_dir_all(&skills_dir).unwrap();
-        
+
         // Create template skill
         let template_skill = r#"{
             "name": "template-skill",
@@ -101,12 +107,12 @@ mod tests {
             "command": "python {{script}}",
             "description": "Python script runner"
         }"#;
-        
+
         std::fs::write(skills_dir.join("template-skill.json"), template_skill).unwrap();
-        
+
         let manager = TemplateManager::new(temp_dir.path());
         let template = manager.load_template("template-skill", &CreationType::Skill).unwrap();
-        
+
         assert_eq!(template["name"], "template-skill");
         assert_eq!(template["command"], "python {{script}}");
     }
@@ -116,14 +122,14 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let commands_dir = temp_dir.path().join(".q-commands");
         std::fs::create_dir_all(&commands_dir).unwrap();
-        
+
         // Create multiple templates
         std::fs::write(commands_dir.join("template1.json"), "{}").unwrap();
         std::fs::write(commands_dir.join("template2.json"), "{}").unwrap();
-        
+
         let manager = TemplateManager::new(temp_dir.path());
         let templates = manager.list_available_templates(&CreationType::CustomCommand).unwrap();
-        
+
         assert_eq!(templates.len(), 2);
         assert!(templates.contains(&"template1".to_string()));
         assert!(templates.contains(&"template2".to_string()));
@@ -133,10 +139,10 @@ mod tests {
     fn test_template_not_found() {
         let temp_dir = TempDir::new().unwrap();
         let manager = TemplateManager::new(temp_dir.path());
-        
+
         let result = manager.load_template("nonexistent", &CreationType::Skill);
         assert!(result.is_err());
-        
+
         let error = result.unwrap_err();
         assert!(error.to_string().contains("Template 'nonexistent' not found"));
     }

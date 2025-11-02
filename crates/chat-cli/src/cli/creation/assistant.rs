@@ -1,11 +1,20 @@
 //! Creation assistant orchestrator that manages the creation workflow
 
-use crate::cli::creation::{
-    CreationFlow, TerminalUI, TerminalUIImpl, CreationType, CreationPhase, PhaseResult, SemanticColor,
-    CreationConfig, CreationArtifact
-};
-use eyre::Result;
 use std::process::ExitCode;
+
+use eyre::Result;
+
+use crate::cli::creation::{
+    CreationArtifact,
+    CreationConfig,
+    CreationFlow,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    SemanticColor,
+    TerminalUI,
+    TerminalUIImpl,
+};
 
 /// Main creation assistant that orchestrates the creation workflow
 pub struct CreationAssistant<F: CreationFlow> {
@@ -35,29 +44,31 @@ impl<F: CreationFlow> CreationAssistant<F> {
     pub async fn run(mut self) -> Result<ExitCode> {
         let creation_type = self.flow.creation_type();
         let phases = creation_type.required_phases();
-        
+
         self.ui.show_message(
-            &format!("Creating {} '{}'", 
+            &format!(
+                "Creating {} '{}'",
                 self.format_creation_type(&creation_type),
                 self.flow.get_config().get_name()
             ),
-            SemanticColor::Info
+            SemanticColor::Info,
         );
 
         // Execute each phase
         for (index, phase) in phases.iter().enumerate() {
             self.current_phase = index;
-            self.ui.show_progress(index + 1, phases.len(), &self.format_phase(phase));
+            self.ui
+                .show_progress(index + 1, phases.len(), &self.format_phase(phase));
 
             loop {
                 match self.flow.execute_phase(phase.clone())? {
                     PhaseResult::Continue => break,
                     PhaseResult::Complete => {
                         return self.complete_creation().await;
-                    }
+                    },
                     PhaseResult::Retry(error_msg) => {
                         self.ui.show_message(&error_msg, SemanticColor::Error);
-                    }
+                    },
                 }
             }
         }
@@ -83,11 +94,12 @@ impl<F: CreationFlow> CreationAssistant<F> {
         artifact.persist(&location)?;
 
         self.ui.show_message(
-            &format!("Created {} '{}' successfully", 
+            &format!(
+                "Created {} '{}' successfully",
                 self.format_creation_type(&self.flow.creation_type()),
                 artifact.get_name()
             ),
-            SemanticColor::Success
+            SemanticColor::Success,
         );
 
         Ok(ExitCode::SUCCESS)
@@ -96,7 +108,7 @@ impl<F: CreationFlow> CreationAssistant<F> {
     fn generate_preview(&self, config: &F::Config) -> String {
         let creation_type = self.flow.creation_type();
         let type_name = self.format_creation_type(&creation_type);
-        
+
         format!(
             "Creating: {} '{}'\nType: {}\nLocation: {}",
             type_name,
@@ -129,14 +141,14 @@ impl<F: CreationFlow> CreationAssistant<F> {
     fn format_creation_details(&self, _config: &F::Config) -> String {
         match self.flow.creation_type() {
             CreationType::CustomCommand => "script command".to_string(),
-            CreationType::Skill => "executable skill".to_string(), 
+            CreationType::Skill => "executable skill".to_string(),
             CreationType::Agent => "AI agent".to_string(),
         }
     }
 
     fn get_storage_location(&self, creation_type: &CreationType) -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        
+
         match creation_type {
             CreationType::CustomCommand => current_dir.join(".q-commands"),
             CreationType::Skill => current_dir.join(".q-skills"),
@@ -147,9 +159,14 @@ impl<F: CreationFlow> CreationAssistant<F> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cli::creation::{MockTerminalUI, CreationConfig, CreationArtifact};
     use std::path::Path;
+
+    use super::*;
+    use crate::cli::creation::{
+        CreationArtifact,
+        CreationConfig,
+        MockTerminalUI,
+    };
 
     // Mock implementations for testing
     struct MockConfig {
@@ -158,10 +175,19 @@ mod tests {
     }
 
     impl CreationConfig for MockConfig {
-        fn validate(&self) -> Result<()> { Ok(()) }
+        fn validate(&self) -> Result<()> {
+            Ok(())
+        }
+
         fn apply_defaults(&mut self) {}
-        fn is_complete(&self) -> bool { self.complete }
-        fn get_name(&self) -> &str { &self.name }
+
+        fn is_complete(&self) -> bool {
+            self.complete
+        }
+
+        fn get_name(&self) -> &str {
+            &self.name
+        }
     }
 
     struct MockArtifact {
@@ -169,9 +195,17 @@ mod tests {
     }
 
     impl CreationArtifact for MockArtifact {
-        fn persist(&self, _location: &Path) -> Result<()> { Ok(()) }
-        fn validate_before_save(&self) -> Result<()> { Ok(()) }
-        fn get_name(&self) -> &str { &self.name }
+        fn persist(&self, _location: &Path) -> Result<()> {
+            Ok(())
+        }
+
+        fn validate_before_save(&self) -> Result<()> {
+            Ok(())
+        }
+
+        fn get_name(&self) -> &str {
+            &self.name
+        }
     }
 
     struct MockFlow {
@@ -180,8 +214,8 @@ mod tests {
     }
 
     impl CreationFlow for MockFlow {
-        type Config = MockConfig;
         type Artifact = MockArtifact;
+        type Config = MockConfig;
 
         fn creation_type(&self) -> CreationType {
             CreationType::CustomCommand
@@ -270,13 +304,13 @@ mod tests {
         };
 
         let assistant = CreationAssistant::new(flow);
-        
+
         let cmd_location = assistant.get_storage_location(&CreationType::CustomCommand);
         assert!(cmd_location.to_string_lossy().contains(".q-commands"));
-        
+
         let skill_location = assistant.get_storage_location(&CreationType::Skill);
         assert!(skill_location.to_string_lossy().contains(".q-skills"));
-        
+
         let agent_location = assistant.get_storage_location(&CreationType::Agent);
         assert!(agent_location.to_string_lossy().contains(".amazonq"));
     }

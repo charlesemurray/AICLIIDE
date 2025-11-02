@@ -14,8 +14,8 @@ pub mod feed;
 mod issue;
 mod mcp;
 mod settings;
-mod skills_cli;
 pub mod skills;
+mod skills_cli;
 mod user;
 
 use std::fmt::Display;

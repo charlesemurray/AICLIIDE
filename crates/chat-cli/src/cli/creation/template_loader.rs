@@ -1,5 +1,6 @@
-use eyre::Result;
 use std::collections::HashMap;
+
+use eyre::Result;
 use serde_json::Value;
 
 pub struct SimpleTemplateLoader {
@@ -28,7 +29,8 @@ impl SimpleTemplateLoader {
   "timeout": 30,
   "working_directory": ".",
   "environment": {}
-}"#.to_string(),
+}"#
+            .to_string(),
         );
 
         // Basic command template
@@ -40,7 +42,8 @@ impl SimpleTemplateLoader {
   "command": "{{command}}",
   "args": {{args}},
   "aliases": []
-}"#.to_string(),
+}"#
+            .to_string(),
         );
 
         // Basic agent template
@@ -52,7 +55,8 @@ impl SimpleTemplateLoader {
   "role": "{{role}}",
   "capabilities": [{{capabilities}}],
   "constraints": []
-}"#.to_string(),
+}"#
+            .to_string(),
         );
     }
 
@@ -65,7 +69,9 @@ impl SimpleTemplateLoader {
     }
 
     pub fn render_template(&self, template_id: &str, params: &HashMap<String, String>) -> Result<String> {
-        let template = self.templates.get(template_id)
+        let template = self
+            .templates
+            .get(template_id)
             .ok_or_else(|| eyre::eyre!("Template not found: {}", template_id))?;
 
         let mut result = template.clone();

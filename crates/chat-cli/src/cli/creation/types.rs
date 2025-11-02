@@ -1,15 +1,19 @@
 //! Core types and traits for the unified creation system
 
-use serde::{Deserialize, Serialize};
 use std::path::Path;
+
 use eyre::Result;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Creation complexity levels determine UI flow and feature availability
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexityLevel {
-    Low,        // Custom Commands: simple linear flow
-    Medium,     // Skills: guided with security/testing
-    High,       // Agents: expert with MCP/tools/hooks
+    Low,    // Custom Commands: simple linear flow
+    Medium, // Skills: guided with security/testing
+    High,   // Agents: expert with MCP/tools/hooks
 }
 
 /// Creation phases that different types go through
@@ -104,11 +108,11 @@ pub trait CreationArtifact {
 /// Semantic colors for terminal output
 #[derive(Debug, Clone, PartialEq)]
 pub enum SemanticColor {
-    Success,  // Green
-    Error,    // Red
-    Warning,  // Yellow
-    Info,     // Blue
-    Debug,    // Cyan
+    Success, // Green
+    Error,   // Red
+    Warning, // Yellow
+    Info,    // Blue
+    Debug,   // Cyan
 }
 
 /// Terminal UI abstraction
@@ -119,7 +123,7 @@ pub trait TerminalUI {
     fn show_preview(&mut self, content: &str);
     fn show_progress(&mut self, current: usize, total: usize, message: &str);
     fn show_message(&mut self, message: &str, color: SemanticColor);
-    
+
     // New multiple choice methods
     fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String>;
     fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>>;
@@ -212,10 +216,10 @@ pub enum SecurityLevel {
 /// Creation modes for different user preferences
 #[derive(Debug, Clone, PartialEq)]
 pub enum CreationMode {
-    Quick,      // Minimal prompts, smart defaults
-    Guided,     // Step-by-step with explanations
-    Expert,     // Full control, all options
-    Template,   // Copy from existing
-    Preview,    // Show what would be created
-    Batch,      // Non-interactive from config
+    Quick,    // Minimal prompts, smart defaults
+    Guided,   // Step-by-step with explanations
+    Expert,   // Full control, all options
+    Template, // Copy from existing
+    Preview,  // Show what would be created
+    Batch,    // Non-interactive from config
 }

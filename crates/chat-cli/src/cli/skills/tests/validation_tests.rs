@@ -1,7 +1,12 @@
 #[cfg(test)]
 mod validation_tests {
-    use crate::cli::skills::{validation::SkillValidator, types::Parameter};
-    use serde_json::{json, Value};
+    use serde_json::{
+        Value,
+        json,
+    };
+
+    use crate::cli::skills::types::Parameter;
+    use crate::cli::skills::validation::SkillValidator;
 
     #[test]
     fn test_skill_json_validation() {
@@ -54,7 +59,7 @@ mod validation_tests {
                 values: None,
                 required: Some(false),
                 pattern: None,
-            }
+            },
         ];
 
         let result = SkillValidator::validate_parameters(&params, &param_defs);
@@ -68,15 +73,13 @@ mod validation_tests {
             // Missing required "name" parameter
         });
 
-        let param_defs = vec![
-            Parameter {
-                name: "name".to_string(),
-                param_type: "string".to_string(),
-                values: None,
-                required: Some(true),
-                pattern: None,
-            }
-        ];
+        let param_defs = vec![Parameter {
+            name: "name".to_string(),
+            param_type: "string".to_string(),
+            values: None,
+            required: Some(true),
+            pattern: None,
+        }];
 
         let result = SkillValidator::validate_parameters(&params, &param_defs);
         assert!(result.is_err());

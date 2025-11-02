@@ -1,6 +1,11 @@
-use crate::cli::skills::security::{PlatformSandbox, SecurityResult, ResourceUsage};
-use crate::cli::skills::platform::generic::GenericSandbox;
 use async_trait::async_trait;
+
+use crate::cli::skills::platform::generic::GenericSandbox;
+use crate::cli::skills::security::{
+    PlatformSandbox,
+    ResourceUsage,
+    SecurityResult,
+};
 
 pub struct WindowsSandbox {
     generic: GenericSandbox,
@@ -22,16 +27,16 @@ impl PlatformSandbox for WindowsSandbox {
         // - Restricted Tokens for privilege reduction
         // - AppContainer for isolation
         // - Windows Sandbox API
-        
+
         // For now, fall back to generic implementation
         self.generic.execute_with_timeout(timeout_secs).await
     }
-    
+
     fn monitor_resources(&self, pid: u32) -> SecurityResult<ResourceUsage> {
         // TODO: Use Windows Performance Counters for monitoring
         self.generic.monitor_resources(pid)
     }
-    
+
     fn terminate_process(&self, pid: u32) -> SecurityResult<()> {
         // TODO: Use Windows TerminateProcess API
         self.generic.terminate_process(pid)

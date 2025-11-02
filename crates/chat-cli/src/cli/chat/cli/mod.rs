@@ -208,7 +208,9 @@ impl SlashCommand {
             Self::Switch { name } => {
                 println!("🔄 Switching to: {}", name);
                 println!("✓ Switched successfully");
-                Ok(ChatState::PromptUser { skip_printing_tools: true })
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
             },
             // Self::Root(subcommand) => {
             //     if let Err(err) = subcommand.execute(os, database, telemetry).await {

@@ -1,6 +1,13 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use crate::cli::skills::{Skill, SkillResult, SkillError, SkillUI, UIElement};
+
+use crate::cli::skills::{
+    Skill,
+    SkillError,
+    SkillResult,
+    SkillUI,
+    UIElement,
+};
 
 pub struct PlaceholderSkill {
     name: String,
@@ -28,7 +35,7 @@ impl Skill for PlaceholderSkill {
 
     async fn execute(&self, _params: Value) -> Result<SkillResult, SkillError> {
         Err(SkillError::ExecutionFailed(format!(
-            "Skill '{}' is not compiled. Dynamic compilation not yet implemented.", 
+            "Skill '{}' is not compiled. Dynamic compilation not yet implemented.",
             self.name
         )))
     }

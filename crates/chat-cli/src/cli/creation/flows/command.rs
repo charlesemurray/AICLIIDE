@@ -1,14 +1,31 @@
 //! Command creation flow - simplest creation type (LOW complexity)
 
-use crate::cli::creation::{
-    CreationFlow, CreationConfig, CreationArtifact, CreationType, CreationPhase, PhaseResult,
-    CreationMode, TerminalUI, CreationContext, CommandType, CreationError
-};
-use crate::cli::custom_commands::{CustomCommand, CommandHandler};
+use std::path::Path;
+
 use eyre::Result;
 use regex::Regex;
-use serde::{Serialize, Deserialize};
-use std::path::Path;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::cli::creation::{
+    CommandType,
+    CreationArtifact,
+    CreationConfig,
+    CreationContext,
+    CreationError,
+    CreationFlow,
+    CreationMode,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    TerminalUI,
+};
+use crate::cli::custom_commands::{
+    CommandHandler,
+    CustomCommand,
+};
 
 /// Command creation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +79,7 @@ pub struct CommandArtifact {
 impl CreationArtifact for CommandArtifact {
     fn persist(&self, location: &Path) -> Result<()> {
         std::fs::create_dir_all(location)?;
-        
+
         let handler = match self.config.command_type {
             CommandType::Script => CommandHandler::Script {
                 command: self.config.command.clone(),
@@ -130,7 +147,7 @@ impl CommandCreationFlow {
     pub fn new(name: String, mode: CreationMode) -> Result<Self> {
         let current_dir = std::env::current_dir()?;
         let context = CreationContext::new(&current_dir)?;
-        
+
         // Validate name upfront
         let validation = context.validate_name(&name, &CreationType::CustomCommand);
         if !validation.is_valid {
@@ -167,21 +184,21 @@ impl CommandCreationFlow {
         self.ui = Some(ui);
         self
     }
-    
+
     // Stub methods for tests
     pub fn collect_input_single_pass(&mut self) -> Result<CommandConfig> {
         if let Some(ui) = &mut self.ui {
             let command = ui.prompt_required("Command")?;
             let description = ui.prompt_required("Description")?;
             let _parameters = ui.prompt_optional("Parameters", None)?;
-            
+
             self.config.command = command.clone();
             self.config.description = description;
             self.detect_command_type();
-            
+
             // Detect parameters from {{parameter}} patterns
             let parameters = self.extract_parameters(&command);
-            
+
             Ok(CommandConfig {
                 name: self.config.name.clone(),
                 description: self.config.description.clone(),
@@ -199,11 +216,11 @@ impl CommandCreationFlow {
             })
         }
     }
-    
+
     fn extract_parameters(&self, command: &str) -> Vec<CommandParameter> {
         let mut parameters = Vec::new();
         let re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
-        
+
         for cap in re.captures_iter(command) {
             if let Some(param_name) = cap.get(1) {
                 parameters.push(CommandParameter {
@@ -214,25 +231,23 @@ impl CommandCreationFlow {
                 });
             }
         }
-        
+
         parameters
     }
-    
+
     pub fn run_single_pass(&mut self) -> Result<CommandConfig> {
         self.collect_input_single_pass()
     }
-    
+
     pub fn run_preview_only(&mut self) -> Result<String> {
         // Collect input if command is not set
         if self.config.command.is_empty() {
             self.collect_input_single_pass()?;
         }
-        
+
         let preview = format!(
             "Preview: Command '{}' would be created with:\n  Command: {}\n  Type: {:?}",
-            self.config.name,
-            self.config.command,
-            self.config.command_type
+            self.config.name, self.config.command, self.config.command_type
         );
         Ok(preview)
     }
@@ -240,7 +255,7 @@ impl CommandCreationFlow {
     fn execute_discovery(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
         ui.show_message(
             &format!("Creating command '{}'", self.config.name),
-            crate::cli::creation::SemanticColor::Info
+            crate::cli::creation::SemanticColor::Info,
         );
 
         // STEP 1: Ask for command type first
@@ -250,17 +265,14 @@ impl CommandCreationFlow {
             ("script", "Multi-step script with several commands"),
         ];
 
-        let selected_type = ui.select_option(
-            "What type of command do you want to create?",
-            command_type_options
-        )?;
+        let selected_type = ui.select_option("What type of command do you want to create?", command_type_options)?;
 
         // STEP 2: Ask type-specific questions
         match selected_type.as_str() {
             "executable" => {
                 self.config.command = ui.prompt_required("Command to execute")?;
                 self.config.command_type = CommandType::Executable;
-            }
+            },
             "alias" => {
                 self.config.command = ui.prompt_required("Base command")?;
                 let args = ui.prompt_optional("Default arguments", None)?;
@@ -268,15 +280,15 @@ impl CommandCreationFlow {
                     self.config.command = format!("{} {}", self.config.command, args);
                 }
                 self.config.command_type = CommandType::Alias;
-            }
+            },
             "script" => {
                 self.config.command = ui.prompt_required("Script commands (one per line or semicolon-separated)")?;
                 self.config.command_type = CommandType::Script;
-            }
+            },
             _ => {
                 self.config.command = ui.prompt_required("Command")?;
                 self.detect_command_type();
-            }
+            },
         }
 
         // STEP 3: Description (for guided/expert modes)
@@ -299,17 +311,21 @@ impl CommandCreationFlow {
     fn execute_basic_config(&mut self, ui: &mut dyn TerminalUI) -> Result<PhaseResult> {
         // Detect and configure parameters
         self.detect_parameters();
-        
+
         if !self.config.parameters.is_empty() {
             ui.show_message(
                 &format!("Detected {} parameter(s)", self.config.parameters.len()),
-                crate::cli::creation::SemanticColor::Info
+                crate::cli::creation::SemanticColor::Info,
             );
-            
+
             for param in &self.config.parameters {
                 ui.show_message(
-                    &format!("  - {}: {}", param.name, if param.required { "required" } else { "optional" }),
-                    crate::cli::creation::SemanticColor::Debug
+                    &format!(
+                        "  - {}: {}",
+                        param.name,
+                        if param.required { "required" } else { "optional" }
+                    ),
+                    crate::cli::creation::SemanticColor::Debug,
                 );
             }
         }
@@ -319,7 +335,7 @@ impl CommandCreationFlow {
 
     fn detect_command_type(&mut self) {
         let cmd_lower = self.config.command.to_lowercase();
-        
+
         // Simple heuristics for command type detection
         if cmd_lower.starts_with("alias ") || self.is_simple_alias() {
             self.config.command_type = CommandType::Alias;
@@ -334,15 +350,14 @@ impl CommandCreationFlow {
         // Check if it's a simple command alias (no pipes, redirects, etc.)
         let cmd = &self.config.command;
         let name = &self.config.name;
-        
+
         // Basic checks for alias-like patterns
-        if cmd.contains('|') || cmd.contains('>') || cmd.contains('<') || 
-           cmd.contains('&') || cmd.contains(';') {
+        if cmd.contains('|') || cmd.contains('>') || cmd.contains('<') || cmd.contains('&') || cmd.contains(';') {
             return false;
         }
-        
+
         let words: Vec<&str> = cmd.split_whitespace().collect();
-        
+
         // Consider it an alias if:
         // 1. It's a short command (2-3 words)
         // 2. The name is very short (1-2 chars) and shorter than first word (typical alias pattern)
@@ -350,12 +365,11 @@ impl CommandCreationFlow {
         if words.len() >= 2 && words.len() <= 3 {
             let first_word = words[0];
             // Classic alias patterns - only very short names
-            if (name == "ll" && first_word == "ls") ||
-               (name.len() <= 2 && name.len() < first_word.len()) {
+            if (name == "ll" && first_word == "ls") || (name.len() <= 2 && name.len() < first_word.len()) {
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -363,7 +377,7 @@ impl CommandCreationFlow {
         // Check against known builtin functions, but only if it's a single word (no arguments)
         let builtins = ["cd", "pwd", "echo", "exit", "help"];
         let words: Vec<&str> = self.config.command.split_whitespace().collect();
-        
+
         // Only consider it a builtin if it's a single word command
         if words.len() == 1 {
             let first_word = words[0];
@@ -376,10 +390,10 @@ impl CommandCreationFlow {
     fn detect_parameters(&mut self) {
         // Look for {{param}} patterns in the command
         let re = regex::Regex::new(r"\{\{(\w+)\}\}").unwrap();
-        
+
         for cap in re.captures_iter(&self.config.command) {
             let param_name = cap[1].to_string();
-            
+
             if !self.config.parameters.iter().any(|p| p.name == param_name) {
                 self.config.parameters.push(CommandParameter {
                     name: param_name.clone(),
@@ -393,8 +407,8 @@ impl CommandCreationFlow {
 }
 
 impl CreationFlow for CommandCreationFlow {
-    type Config = CommandConfig;
     type Artifact = CommandArtifact;
+    type Config = CommandConfig;
 
     fn creation_type(&self) -> CreationType {
         CreationType::CustomCommand
@@ -402,20 +416,20 @@ impl CreationFlow for CommandCreationFlow {
 
     fn execute_phase(&mut self, phase: CreationPhase) -> Result<PhaseResult> {
         self.current_phase = Some(phase.clone());
-        
+
         match phase {
             CreationPhase::Discovery => {
                 let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 self.execute_discovery(&mut ui)
-            }
+            },
             CreationPhase::BasicConfig => {
                 let mut ui = crate::cli::creation::TerminalUIImpl::new();
                 self.execute_basic_config(&mut ui)
-            }
+            },
             CreationPhase::Completion => {
                 self.config.apply_defaults();
                 Ok(PhaseResult::Complete)
-            }
+            },
             _ => Ok(PhaseResult::Continue),
         }
     }
@@ -434,15 +448,16 @@ impl CreationFlow for CommandCreationFlow {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::cli::creation::MockTerminalUI;
-    use tempfile::TempDir;
 
     #[test]
     fn test_command_creation_flow_new() {
         let flow = CommandCreationFlow::new("test-cmd".to_string(), CreationMode::Quick);
         assert!(flow.is_ok());
-        
+
         let flow = flow.unwrap();
         assert_eq!(flow.config.name, "test-cmd");
         assert_eq!(flow.creation_type(), CreationType::CustomCommand);
@@ -461,7 +476,7 @@ mod tests {
         flow.config.command = "python script.py".to_string();
         flow.detect_command_type();
         assert_eq!(flow.config.command_type, CommandType::Script);
-        
+
         // Test alias detection - short name triggers alias detection
         let mut short_flow = CommandCreationFlow::new("l".to_string(), CreationMode::Quick).unwrap();
         short_flow.config.command = "ls -la".to_string();
@@ -473,9 +488,9 @@ mod tests {
     fn test_detect_parameters() {
         let mut flow = CommandCreationFlow::new("test".to_string(), CreationMode::Quick).unwrap();
         flow.config.command = "echo {{message}} and {{name}}".to_string();
-        
+
         flow.detect_parameters();
-        
+
         assert_eq!(flow.config.parameters.len(), 2);
         assert!(flow.config.parameters.iter().any(|p| p.name == "message"));
         assert!(flow.config.parameters.iter().any(|p| p.name == "name"));
@@ -506,7 +521,7 @@ mod tests {
     #[test]
     fn test_command_artifact_persistence() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         let config = CommandConfig {
             name: "test-cmd".to_string(),
             command: "echo hello".to_string(),

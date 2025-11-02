@@ -1,8 +1,18 @@
 #[cfg(test)]
 mod timeout_test {
-    use crate::cli::skills::{ResourceLimits, execute_with_timeout, SkillResult, SkillError};
-    use std::time::{Duration, Instant};
+    use std::time::{
+        Duration,
+        Instant,
+    };
+
     use tokio::time::sleep;
+
+    use crate::cli::skills::{
+        ResourceLimits,
+        SkillError,
+        SkillResult,
+        execute_with_timeout,
+    };
 
     #[tokio::test]
     async fn test_timeout_functionality() {
@@ -27,7 +37,10 @@ mod timeout_test {
         let duration = start.elapsed();
 
         assert!(result.is_ok(), "Quick operation should succeed");
-        assert!(duration < Duration::from_secs(1), "Quick operation should complete fast");
+        assert!(
+            duration < Duration::from_secs(1),
+            "Quick operation should complete fast"
+        );
 
         // Test that a slow operation times out
         let slow_future = async {
