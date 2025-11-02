@@ -31,6 +31,8 @@ pub struct WorkflowDefinition {
     pub version: String,
     pub description: String,
     pub steps: Vec<WorkflowStep>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
 }
 
 impl WorkflowTool {
@@ -132,5 +134,25 @@ mod tests {
         assert_eq!(definition.steps.len(), 1);
         assert_eq!(definition.steps[0].name, "compile");
         assert_eq!(definition.steps[0].tool, "execute_bash");
+    }
+
+    #[test]
+    fn test_workflow_definition_with_context() {
+        let json = r#"{
+            "name": "deploy-workflow",
+            "version": "1.0.0",
+            "description": "A deployment workflow",
+            "steps": [],
+            "context": {
+                "environment": "production",
+                "region": "us-east-1"
+            }
+        }"#;
+
+        let definition: WorkflowDefinition = serde_json::from_str(json).unwrap();
+        assert!(definition.context.is_some());
+        let context = definition.context.unwrap();
+        assert_eq!(context.get("environment").unwrap(), "production");
+        assert_eq!(context.get("region").unwrap(), "us-east-1");
     }
 }

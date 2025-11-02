@@ -3,6 +3,7 @@
 pub mod error;
 pub mod id_mapper;
 pub mod memory_note;
+pub mod hnsw_wrapper;
 
 pub use error::{
     CortexError,
@@ -10,6 +11,7 @@ pub use error::{
 };
 pub use id_mapper::IdMapper;
 pub use memory_note::MemoryNote;
+pub use hnsw_wrapper::HnswWrapper;
 
 #[cfg(test)]
 mod tests {
