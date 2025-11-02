@@ -1,11 +1,13 @@
 //! Cortex Memory System - Advanced memory for AI agents
 
 pub mod error;
+pub mod memory_note;
 
 pub use error::{
     CortexError,
     Result,
 };
+pub use memory_note::MemoryNote;
 
 #[cfg(test)]
 mod tests {
