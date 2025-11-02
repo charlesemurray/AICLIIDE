@@ -60,11 +60,7 @@ impl WorkflowTool {
             // Validate tool exists
             let known_tools = ["echo", "calculator"];
             if !known_tools.contains(&step.tool.as_str()) {
-                return Err(eyre::eyre!(
-                    "Unknown tool '{}' in step '{}'",
-                    step.tool,
-                    step.name
-                ));
+                return Err(eyre::eyre!("Unknown tool '{}' in step '{}'", step.tool, step.name));
             }
         }
         Ok("Success".to_string())
