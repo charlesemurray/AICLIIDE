@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::cli::custom_commands::*;
+    use crate::cli::custom_commands::types::ParameterType;
     use std::collections::HashMap;
     use tempfile::TempDir;
 
@@ -19,17 +20,17 @@ mod tests {
     }
 
     #[test]
-    fn test_command_parameter_validation() {
+    fn test_command_validation_with_parameters() {
         let mut cmd = CustomCommand::new_script(
             "greet".to_string(),
             "Greet someone".to_string(),
             "echo 'Hello, {{name}}!'".to_string(),
         );
 
-        cmd.add_parameter(CommandParameter::required(
+        cmd.add_parameter(CommandParameter::new(
             "name".to_string(),
-            "Person to greet".to_string(),
-        ));
+            ParameterType::String,
+        ).with_description("Person to greet".to_string()));
 
         // Test with required parameter
         let mut args = HashMap::new();
@@ -167,10 +168,10 @@ mod tests {
             "echo 'Hello, {{name}}!'".to_string(),
         );
 
-        cmd.add_parameter(CommandParameter::required(
+        cmd.add_parameter(CommandParameter::new(
             "name".to_string(),
-            "Name to greet".to_string(),
-        ));
+            ParameterType::String,
+        ).with_description("Name to greet".to_string()));
 
         let mut args = HashMap::new();
         args.insert("name".to_string(), "Alice".to_string());
@@ -248,19 +249,61 @@ mod tests {
 
     #[test]
     fn test_parameter_types() {
-        let required = CommandParameter::required(
+        let required = CommandParameter::new(
             "name".to_string(),
-            "Required name".to_string(),
-        );
+            ParameterType::String,
+        ).with_description("Required name".to_string());
         assert!(required.required);
         assert!(required.default_value.is_none());
 
         let optional = CommandParameter::optional(
             "greeting".to_string(),
-            "Optional greeting".to_string(),
+            ParameterType::String,
             Some("Hello".to_string()),
-        );
+        ).with_description("Optional greeting".to_string());
         assert!(!optional.required);
         assert_eq!(optional.default_value, Some("Hello".to_string()));
+    }
+
+    #[test]
+    fn test_command_parameter_validation() {
+        // Test string parameter with command injection protection
+        let string_param = CommandParameter::new("input".to_string(), ParameterType::String);
+        assert!(string_param.validate("safe_value").is_ok());
+        assert!(string_param.validate("unsafe; rm -rf /").is_err());
+        assert!(string_param.validate("unsafe | cat /etc/passwd").is_err());
+        assert!(string_param.validate("unsafe & echo malicious").is_err());
+
+        // Test number parameter
+        let number_param = CommandParameter::new("count".to_string(), ParameterType::Number);
+        assert!(number_param.validate("42").is_ok());
+        assert!(number_param.validate("3.14").is_ok());
+        assert!(number_param.validate("not_a_number").is_err());
+
+        // Test boolean parameter
+        let bool_param = CommandParameter::new("enabled".to_string(), ParameterType::Boolean);
+        assert!(bool_param.validate("true").is_ok());
+        assert!(bool_param.validate("false").is_ok());
+        assert!(bool_param.validate("1").is_ok());
+        assert!(bool_param.validate("0").is_ok());
+        assert!(bool_param.validate("yes").is_ok());
+        assert!(bool_param.validate("no").is_ok());
+        assert!(bool_param.validate("maybe").is_err());
+
+        // Test enum parameter
+        let enum_param = CommandParameter::enum_param(
+            "environment".to_string(),
+            vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]
+        );
+        assert!(enum_param.validate("dev").is_ok());
+        assert!(enum_param.validate("staging").is_ok());
+        assert!(enum_param.validate("prod").is_ok());
+        assert!(enum_param.validate("invalid").is_err());
+
+        // Test pattern validation
+        let pattern_param = CommandParameter::new("email".to_string(), ParameterType::String)
+            .with_pattern(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$".to_string());
+        assert!(pattern_param.validate("user@example.com").is_ok());
+        assert!(pattern_param.validate("invalid-email").is_err());
     }
 }

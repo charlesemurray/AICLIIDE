@@ -21,10 +21,22 @@ pub enum CommandHandler {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ParameterType {
+    #[serde(rename = "string")]
+    String,
+    #[serde(rename = "number")]
+    Number,
+    #[serde(rename = "boolean")]
+    Boolean,
+    #[serde(rename = "enum")]
+    Enum,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandParameter {
     pub name: String,
     #[serde(rename = "type")]
-    pub param_type: String,              // NEW: "string", "boolean", "number", "enum"
+    pub param_type: ParameterType,       // NEW: Enum type for validation
     pub required: bool,                  // KEEP: Existing functionality
     pub default_value: Option<String>,   // KEEP: Existing functionality
     pub description: Option<String>,     // CHANGE: Make optional
@@ -103,13 +115,22 @@ impl CustomCommand {
                     format!("Required parameter '{}' is missing", param.name)
                 ));
             }
+            
+            // Validate parameter value if provided
+            if let Some(value) = args.get(&param.name) {
+                if let Err(validation_error) = param.validate(value) {
+                    return Err(CommandError::InvalidParameter(
+                        format!("Parameter '{}': {}", param.name, validation_error)
+                    ));
+                }
+            }
         }
         Ok(())
     }
 }
 
 impl CommandParameter {
-    pub fn required(name: String, param_type: String) -> Self {
+    pub fn new(name: String, param_type: ParameterType) -> Self {
         Self {
             name,
             param_type,
@@ -121,7 +142,7 @@ impl CommandParameter {
         }
     }
 
-    pub fn optional(name: String, param_type: String, default: Option<String>) -> Self {
+    pub fn optional(name: String, param_type: ParameterType, default: Option<String>) -> Self {
         Self {
             name,
             param_type,
@@ -133,11 +154,11 @@ impl CommandParameter {
         }
     }
 
-    pub fn enum_param(name: String, values: Vec<String>, required: bool) -> Self {
+    pub fn enum_param(name: String, values: Vec<String>) -> Self {
         Self {
             name,
-            param_type: "enum".to_string(),
-            required,
+            param_type: ParameterType::Enum,
+            required: true,
             default_value: None,
             description: None,
             values: Some(values),
@@ -153,6 +174,54 @@ impl CommandParameter {
     pub fn with_description(mut self, description: String) -> Self {
         self.description = Some(description);
         self
+    }
+
+    pub fn validate(&self, value: &str) -> Result<(), String> {
+        // Type validation
+        match self.param_type {
+            ParameterType::String => {
+                // Basic string validation - check for command injection
+                if value.contains(';') || value.contains('|') || value.contains('&') {
+                    return Err("Invalid characters detected in string parameter".to_string());
+                }
+            }
+            ParameterType::Number => {
+                if value.parse::<f64>().is_err() {
+                    return Err(format!("'{}' is not a valid number", value));
+                }
+            }
+            ParameterType::Boolean => {
+                if !matches!(value.to_lowercase().as_str(), "true" | "false" | "1" | "0" | "yes" | "no") {
+                    return Err(format!("'{}' is not a valid boolean", value));
+                }
+            }
+            ParameterType::Enum => {
+                if let Some(ref allowed_values) = self.values {
+                    if !allowed_values.contains(&value.to_string()) {
+                        return Err(format!("'{}' is not in allowed values: {:?}", value, allowed_values));
+                    }
+                } else {
+                    return Err("Enum parameter missing allowed values".to_string());
+                }
+            }
+        }
+
+        // Pattern validation
+        if let Some(ref pattern) = self.pattern {
+            use regex::Regex;
+            match Regex::new(pattern) {
+                Ok(regex) => {
+                    if !regex.is_match(value) {
+                        return Err(format!("Value '{}' does not match required pattern", value));
+                    }
+                }
+                Err(_) => {
+                    return Err("Invalid regex pattern in parameter definition".to_string());
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
