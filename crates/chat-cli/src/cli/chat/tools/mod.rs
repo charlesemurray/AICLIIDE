@@ -267,6 +267,7 @@ pub struct ToolSpec {
 pub enum ToolOrigin {
     Native,
     McpServer(String),
+    Skill(String),
 }
 
 impl std::hash::Hash for ToolOrigin {
@@ -275,6 +276,7 @@ impl std::hash::Hash for ToolOrigin {
         match self {
             Self::Native => {},
             Self::McpServer(name) => name.hash(state),
+            Self::Skill(name) => name.hash(state),
         }
     }
 }
@@ -284,6 +286,7 @@ impl Borrow<str> for ToolOrigin {
         match self {
             Self::McpServer(name) => name.as_str(),
             Self::Native => "native",
+            Self::Skill(name) => name.as_str(),
         }
     }
 }
@@ -296,6 +299,8 @@ impl<'de> Deserialize<'de> for ToolOrigin {
         let s = String::deserialize(deserializer)?;
         if s == "native___" {
             Ok(ToolOrigin::Native)
+        } else if s.starts_with("skill___") {
+            Ok(ToolOrigin::Skill(s.strip_prefix("skill___").unwrap().to_string()))
         } else {
             Ok(ToolOrigin::McpServer(s))
         }
@@ -310,6 +315,7 @@ impl Serialize for ToolOrigin {
         match self {
             ToolOrigin::Native => serializer.serialize_str("native___"),
             ToolOrigin::McpServer(server) => serializer.serialize_str(server),
+            ToolOrigin::Skill(name) => serializer.serialize_str(&format!("skill___{}", name)),
         }
     }
 }
@@ -319,6 +325,7 @@ impl std::fmt::Display for ToolOrigin {
         match self {
             ToolOrigin::Native => write!(f, "Built-in"),
             ToolOrigin::McpServer(server) => write!(f, "{} (MCP)", server),
+            ToolOrigin::Skill(name) => write!(f, "{} (Skill)", name),
         }
     }
 }
@@ -614,5 +621,21 @@ mod tests {
             format!("{ACTIVE_USER_HOME}{MAIN_SEPARATOR}other").as_str(),
         )
         .await;
+    }
+
+    #[test]
+    fn test_tool_origin_skill_display() {
+        let skill_origin = ToolOrigin::Skill("my-skill".to_string());
+        assert_eq!(format!("{}", skill_origin), "my-skill (Skill)");
+    }
+
+    #[test]
+    fn test_tool_origin_skill_serialization() {
+        let skill_origin = ToolOrigin::Skill("test-skill".to_string());
+        let serialized = serde_json::to_string(&skill_origin).unwrap();
+        assert_eq!(serialized, "\"skill___test-skill\"");
+
+        let deserialized: ToolOrigin = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, skill_origin);
     }
 }

@@ -41,9 +41,12 @@ pub enum ConversionError {
 - Test trait can be implemented
 
 **Validation**:
-- `cargo build` succeeds
-- `cargo test` passes
-- `cargo clippy` has no warnings
+```bash
+cargo build --bin chat_cli
+cargo test
+cargo clippy
+cargo +nightly fmt --check
+```
 
 **Git Commit**: `feat(skills): add ToToolSpec trait for skill conversion`
 
@@ -168,9 +171,14 @@ mod tests {
 ```
 
 **Validation**:
+```bash
+cargo build --bin chat_cli
+cargo test
+cargo clippy
+cargo +nightly fmt --check
+```
 - All tests pass
 - Code coverage >80% for new code
-- `cargo clippy` clean
 
 **Git Commit**: `feat(skills): implement JsonSkill to ToolSpec conversion`
 
@@ -230,6 +238,9 @@ async fn test_invalid_skill_filtered_out() {
 ```
 
 **Validation**:
+```bash
+cargo test skills::registry
+```
 - Tests pass
 - No unwrap() or expect() in production code
 - Error handling is explicit
@@ -309,6 +320,9 @@ async fn test_skill_with_parameters() {
 ```
 
 **Validation**:
+```bash
+cargo test tools::skill_tool
+```
 - All error paths tested
 - No panics possible
 - Resource cleanup verified
@@ -379,6 +393,10 @@ async fn test_skill_tool_invocation_through_enum() {
 ```
 
 **Validation**:
+```bash
+cargo test tools::tests
+cargo clippy
+```
 - Pattern matching is exhaustive
 - No compilation warnings
 - All existing tests still pass
@@ -433,6 +451,9 @@ async fn test_skill_toolspec_retrievable() {
 ```
 
 **Validation**:
+```bash
+cargo test tool_manager
+```
 - Integration test with real OS
 - Memory usage acceptable
 - Performance <100ms for registration
@@ -507,6 +528,9 @@ fn test_step_type_serialization() {
 ```
 
 **Validation**:
+```bash
+cargo test workflow::types
+```
 - Serde derives work correctly
 - JSON round-trip successful
 - No unsafe code
@@ -593,6 +617,10 @@ fn test_workflow_input_schema() {
 ```
 
 **Validation**:
+```bash
+cargo test workflow::types::test_workflow_to_toolspec
+cargo test workflow::types::test_workflow_input_schema
+```
 - Schema matches JSON Schema spec
 - Required fields handled correctly
 - Error cases covered
@@ -696,6 +724,9 @@ async fn test_input_merging() {
 ```
 
 **Validation**:
+```bash
+cargo test workflow::executor
+```
 - Sequential execution works
 - Error propagation correct
 - No resource leaks
@@ -751,6 +782,9 @@ async fn test_workflow_tool_invocation() {
 ```
 
 **Validation**:
+```bash
+cargo test tools::workflow_tool
+```
 - Integrates with Tool enum pattern
 - Error handling consistent
 
@@ -783,6 +817,10 @@ async fn test_workflow_tool_in_enum() {
 ```
 
 **Validation**:
+```bash
+cargo test tools
+cargo clippy
+```
 - Exhaustive pattern matching
 - No regressions in existing tests
 
@@ -825,6 +863,10 @@ async fn test_concurrent_skill_invocations() {
 ```
 
 **Validation**:
+```bash
+cargo test --test skill_toolspec_integration
+cargo test --test workflow_toolspec_integration
+```
 - All integration tests pass
 - No flaky tests
 - Tests run in <5s
@@ -861,6 +903,9 @@ criterion_main!(benches);
 ```
 
 **Validation**:
+```bash
+cargo bench
+```
 - Skill conversion <1ms
 - Workflow execution <100ms for simple workflows
 - No performance regressions
@@ -883,6 +928,11 @@ criterion_main!(benches);
 - Troubleshooting guide
 
 **Validation**:
+```bash
+# Verify examples work
+cargo run --bin chat_cli -- skills list
+cargo run --bin chat_cli -- skills run example-skill --params '{}'
+```
 - Documentation builds without errors
 - Examples are tested and work
 - Links are valid
@@ -894,14 +944,61 @@ criterion_main!(benches);
 ## Quality Gates
 
 ### After Each Step
-- [ ] `cargo build` succeeds
-- [ ] `cargo test` passes (all tests)
-- [ ] `cargo clippy -- -D warnings` passes
-- [ ] `cargo fmt --check` passes
+```bash
+# Build check
+cargo build --bin chat_cli
+
+# Run all tests
+cargo test
+
+# Lint check
+cargo clippy
+
+# Format check
+cargo +nightly fmt --check
+
+# Optional: Run specific test module
+cargo test skills::toolspec_conversion
+```
+
+**Checklist**:
+- [ ] Build succeeds
+- [ ] All tests pass
+- [ ] No clippy warnings
+- [ ] Code is formatted
 - [ ] New code has >80% test coverage
+- [ ] Tests use proper isolation (TestFixtures, no set_current_dir)
 - [ ] Git commit with descriptive message
 
+### Test Isolation Requirements
+Following [TEST_CONSISTENCY_GUIDE.md](docs/TEST_CONSISTENCY_GUIDE.md):
+
+**✅ Do**:
+- Use `TestFixtures::new()` for all tests requiring file operations
+- Call `fixtures.setup_directories()` to create required directories
+- Pass `fixtures.temp_dir.path()` to constructors
+- Use `fixtures.skills_dir`, `fixtures.commands_dir` for file operations
+
+**❌ Don't**:
+- Use `std::env::current_dir()` in tests
+- Use `std::env::set_current_dir()` in tests
+- Create files in shared directories
+- Assume test execution order
+
 ### After Each Phase
+```bash
+# Full test suite
+cargo test
+
+# Integration tests
+cargo test --test integration_tests
+
+# Performance check
+cargo build --bin chat_cli --release
+time ./target/release/chat_cli skills list
+```
+
+**Checklist**:
 - [ ] Integration tests pass
 - [ ] Performance benchmarks meet targets
 - [ ] Documentation updated
@@ -909,6 +1006,19 @@ criterion_main!(benches);
 - [ ] Manual testing performed
 
 ### Final Validation
+```bash
+# Complete validation
+cargo clean
+cargo build --bin chat_cli
+cargo test
+cargo clippy
+cargo +nightly fmt --check
+
+# Manual end-to-end test
+cargo run --bin chat_cli -- skills list
+```
+
+**Checklist**:
 - [ ] All tests pass (unit + integration)
 - [ ] Benchmarks show acceptable performance
 - [ ] Documentation complete and accurate

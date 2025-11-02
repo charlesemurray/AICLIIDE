@@ -5,6 +5,7 @@ use eyre::Result;
 pub mod command_builder;
 pub mod creation_builder;
 pub mod examples;
+pub mod interactive;
 pub mod prompt_builder;
 pub mod storage;
 pub mod template_manager;
@@ -31,6 +32,9 @@ mod error_tests;
 #[cfg(test)]
 mod builder_tests;
 
+#[cfg(test)]
+mod interactive_tests;
+
 pub use command_builder::{
     CommandBuilder,
     CommandConfig,
@@ -41,6 +45,7 @@ pub use creation_builder::{
     ValidationIssue,
     ValidationResult,
 };
+pub use interactive::InteractivePromptBuilder;
 pub use prompt_builder::PromptBuilder;
 pub use template_manager::{
     DefaultTemplateManager,

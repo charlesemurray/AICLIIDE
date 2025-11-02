@@ -16,6 +16,7 @@ pub mod security_logging;
 pub mod security_testing;
 pub mod security_tools;
 pub mod tests;
+pub mod toolspec_conversion;
 pub mod types;
 pub mod validation;
 
@@ -23,6 +24,10 @@ pub mod validation;
 mod unit_tests;
 
 pub use registry::SkillRegistry;
+pub use toolspec_conversion::{
+    ConversionError,
+    ToToolSpec,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {
