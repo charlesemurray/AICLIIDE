@@ -162,9 +162,9 @@ impl MultiSessionCoordinator {
     }
 
     /// Get session by ID
-    pub async fn get_session(&self, id: &str) -> Option<ManagedSession> {
+    pub async fn get_session(&self, id: &str) -> Option<String> {
         let sessions = self.sessions.lock().await;
-        sessions.get(id).cloned()
+        sessions.get(id).map(|s| s.display.name.clone())
     }
 
     /// List all session names
@@ -195,7 +195,7 @@ impl MultiSessionCoordinator {
         let mut sessions = self.sessions.lock().await;
 
         if let Some(session) = sessions.get_mut(id) {
-            session.update_state(new_state)?;
+            session.update_state(new_state).map_err(|e| eyre::eyre!(e))?;
 
             // Update display status
             session.display.status = match new_state {
