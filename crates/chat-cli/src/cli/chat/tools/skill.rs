@@ -182,6 +182,50 @@ impl SkillTool {
             _ => Err(eyre::eyre!("Skill does not have a command implementation")),
         }
     }
+
+    pub async fn execute_command_with_timeout(
+        &self,
+        definition: &SkillDefinition,
+        params: &HashMap<String, Value>,
+        timeout_secs: u64,
+    ) -> Result<String> {
+        match &definition.implementation {
+            Some(SkillImplementation::Command { command }) => {
+                let parsed_command = self.parse_command_template(command, params)?;
+                let timeout_duration = std::time::Duration::from_secs(timeout_secs);
+
+                let output = tokio::time::timeout(
+                    timeout_duration,
+                    tokio::task::spawn_blocking(move || {
+                        #[cfg(unix)]
+                        let result = std::process::Command::new("sh")
+                            .arg("-c")
+                            .arg(&parsed_command)
+                            .output();
+
+                        #[cfg(windows)]
+                        let result = std::process::Command::new("cmd")
+                            .arg("/C")
+                            .arg(&parsed_command)
+                            .output();
+
+                        result
+                    }),
+                )
+                .await
+                .map_err(|_| eyre::eyre!("Command execution timeout after {} seconds", timeout_secs))?
+                .map_err(|e| eyre::eyre!("Failed to spawn command: {}", e))??;
+
+                if output.status.success() {
+                    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    Err(eyre::eyre!("Command execution failed: {}", stderr))
+                }
+            },
+            _ => Err(eyre::eyre!("Skill does not have a command implementation")),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -553,5 +597,40 @@ mod tests {
         assert!(result.is_ok());
         let output = result.unwrap();
         assert!(output.contains("Hello World"));
+    }
+
+    #[tokio::test]
+    async fn test_command_timeout() {
+        use std::collections::HashMap;
+
+        #[cfg(unix)]
+        let definition = SkillDefinition {
+            name: "slow".to_string(),
+            description: "Slow command".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Command {
+                command: "sleep 10".to_string(),
+            }),
+        };
+
+        #[cfg(windows)]
+        let definition = SkillDefinition {
+            name: "slow".to_string(),
+            description: "Slow command".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Command {
+                command: "timeout /t 10".to_string(),
+            }),
+        };
+
+        let skill = SkillTool::new("slow".to_string(), "Slow".to_string());
+        let params = HashMap::new();
+
+        let result = skill.execute_command_with_timeout(&definition, &params, 1).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("timeout"));
     }
 }
