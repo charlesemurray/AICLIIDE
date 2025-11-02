@@ -5,9 +5,9 @@
 
 ## Quick Stats
 
-- **Iterations Complete**: 3 / 102
-- **Commits**: 3 / 102+
-- **Tests Added**: 6 / 102+
+- **Iterations Complete**: 4 / 102
+- **Commits**: 4 / 102+
+- **Tests Added**: 7 / 102+
 - **Current Phase**: Phase 1 - Core Infrastructure
 - **Days Elapsed**: 0 / 12
 
@@ -16,12 +16,14 @@
 ### Phase 1: Core Infrastructure (Days 1-3)
 **Status**: 🟡 In Progress
 
-**Progress**: 3 / 24 iterations (13%)
+**Progress**: 4 / 24 iterations (17%)
 
 - [x] 1.1.1: Add Skill variant to ToolOrigin (30 min) - Commit: 0856e446
 - [x] 1.1.2: Add Workflow variant to ToolOrigin (30 min) - Commit: 25352b76
 - [x] 1.2.1: Create skill.rs with basic struct (45 min) - Commit: 990eb497
-- [ ] 1.2.2: Add Skill to Tool enum (30 min)
+- [x] 1.2.2: Add Skill to Tool enum (30 min) - Commit: 4fb64feb
+
+**Checkpoint**: ⬜ Quick review after 4 iterations (10 min)
 - [ ] 1.2.1: Create skill.rs with basic struct (45 min)
 - [ ] 1.2.2: Add Skill to Tool enum (30 min)
 - [ ] 1.2.3: Implement validate for Skill (30 min)
