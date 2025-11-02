@@ -648,26 +648,43 @@ Imported 1,247 memories
 
 ---
 
-## Open Questions
+## Open Questions - RESOLVED ✅
 
-1. **✅ Embedding Model**: ~~Use Q's LLM or separate lightweight model?~~
-   - **DECIDED**: Use Q CLI's existing `CandleTextEmbedder` (all-MiniLM-L6-v2, 384 dims)
-   - Already integrated, zero additional cost, production-proven
+### 1. ✅ Embedding Model
+**Decision**: Use Q CLI's existing `CandleTextEmbedder` (all-MiniLM-L6-v2, 384 dims)
+- Already integrated in `semantic-search-client` crate
+- Zero additional cost, production-proven
+- See: `docs/cortex-embedding-research.md`
 
-2. **Memory Retention**: How long to keep memories?
-   - **Recommendation**: 30 days default, configurable
+### 2. ✅ Memory Scope Default
+**Decision**: Session-only by default, configurable cross-session
+- Default: Current session only
+- `/recall --session <id>` for specific sessions
+- `/recall --global` for all sessions
+- `/recall --list-sessions` for discovery
+- See: `docs/cortex-session-integration.md`
 
-3. **Auto-Promotion**: When to move STM → LTM?
-   - **Recommendation**: After 3 references or explicit "remember this"
+### 3. ✅ Memory Retention
+**Decision**: Hybrid (30 days OR 100 MB, whichever first)
+- Configurable via `~/.q/config/settings.json`
+- Settings: `memory.retentionDays`, `memory.maxSizeMb`
+- Auto-cleanup on startup, after store, daily
+- See: `docs/cortex-memory-config.md`
 
-4. **Cross-Session Recall**: Default on or off?
-   - **Recommendation**: On by default, opt-out available
+### 4. ✅ Privacy Default
+**Decision**: Enabled by default with clear disclosure
+- Local storage only (no cloud sync)
+- Welcome message on first run
+- Easy opt-out: `/memory toggle --disable`
+- Ephemeral sessions: `q chat --no-memory`
+- See: `docs/cortex-privacy-design.md`
 
-5. **Storage Limits**: Max memory size?
-   - **Recommendation**: 100MB default, warn at 80%
-
----
-
+### 5. ✅ Visual Indicators
+**Decision**: Minimal (Q CLI's Spinner during recall)
+- `▰▰▰▱▱▱▱ Recalling context...` during search
+- Silent during store
+- Verbose mode available via `memory.verbose` setting
+- See: `docs/cortex-visual-indicators.md`
 ## Success Metrics
 
 ### Technical Metrics
