@@ -1,273 +1,214 @@
-//! Template management with loading, caching, and validation
-
-use super::*;
-use eyre::{eyre, Result};
+use eyre::Result;
 use std::collections::HashMap;
-use tokio::fs;
+use async_trait::async_trait;
 
-/// Manages prompt templates with caching and validation
-pub struct TemplateManager {
-    base_path: PathBuf,
-    cache: HashMap<String, PromptTemplate>,
-    cache_valid: bool,
+use crate::cli::creation::prompt_system::types::*;
+use crate::cli::creation::prompt_system::storage::HybridTemplateStorage;
+
+#[async_trait]
+pub trait TemplateManager: Send + Sync {
+    async fn list_templates(&self) -> Result<Vec<TemplateInfo>>;
+    async fn get_template(&self, id: &str) -> Result<PromptTemplate>;
+    async fn render_template(&self, template: &PromptTemplate, params: &HashMap<String, String>) -> Result<String>;
+    fn validate_quality(&self, prompt: &str) -> QualityScore;
 }
 
-impl TemplateManager {
-    /// Create new template manager
-    pub fn new(base_path: &Path) -> Result<Self> {
+pub struct DefaultTemplateManager {
+    storage: Box<dyn TemplateStorage>,
+    validator: Box<dyn QualityValidator>,
+    renderer: Box<dyn TemplateRenderer>,
+    cache: Box<dyn CacheManager>,
+}
+
+impl DefaultTemplateManager {
+    pub async fn new() -> Result<Self> {
         Ok(Self {
-            base_path: base_path.to_path_buf(),
-            cache: HashMap::new(),
-            cache_valid: false,
+            storage: Box::new(HybridTemplateStorage::new().await?),
+            validator: Box::new(MultiDimensionalValidator::new()),
+            renderer: Box::new(SafeTemplateRenderer::new()),
+            cache: Box::new(TwoTierCacheManager::new()),
         })
     }
-    
-    /// Load a specific template by name
-    pub async fn load_template(&mut self, name: &str) -> Result<PromptTemplate> {
-        // Check cache first
-        if self.cache_valid {
-            if let Some(template) = self.cache.get(name) {
-                return Ok(template.clone());
+}
+
+#[async_trait]
+impl TemplateManager for DefaultTemplateManager {
+    async fn list_templates(&self) -> Result<Vec<TemplateInfo>> {
+        let templates = self.storage.list_all_templates().await?;
+        Ok(templates.into_iter().map(|t| {
+            let rendered = self.render_template_internal(&t);
+            let quality = self.validate_quality(&rendered).overall_score;
+            TemplateInfo {
+                id: t.id,
+                name: t.name,
+                description: t.description,
+                category: t.category,
+                difficulty: t.difficulty,
+                estimated_quality: quality,
+                usage_stats: t.usage_stats,
             }
+        }).collect())
+    }
+
+    async fn get_template(&self, id: &str) -> Result<PromptTemplate> {
+        // Check cache first
+        if let Some(template) = self.cache.get(id).await? {
+            return Ok(template);
         }
+
+        // Load from storage with fallback
+        let template = self.load_with_fallback(id).await?;
         
-        // Load from file
-        let template_path = self.base_path.join("templates").join(format!("{}.json", name));
-        
-        if !template_path.exists() {
-            return Err(eyre!("Template '{}' not found at {:?}", name, template_path));
-        }
-        
-        let content = fs::read_to_string(&template_path).await?;
-        let template: PromptTemplate = serde_json::from_str(&content)
-            .map_err(|e| eyre!("Failed to parse template '{}': {}", name, e))?;
-        
-        // Validate template
-        let validation = template.validate()?;
-        if !validation.is_valid {
-            let errors: Vec<_> = validation.issues.iter()
-                .filter(|i| i.severity == IssueSeverity::Error)
-                .map(|i| &i.message)
-                .collect();
-            return Err(eyre!("Template '{}' validation failed: {:?}", name, errors));
-        }
-        
-        // Cache the template
-        self.cache.insert(name.to_string(), template.clone());
+        // Cache for future use
+        self.cache.put(id, &template).await?;
         
         Ok(template)
     }
-    
-    /// List all available templates
-    pub async fn list_templates(&mut self) -> Result<Vec<TemplateInfo>> {
-        let templates_dir = self.base_path.join("templates");
-        
-        if !templates_dir.exists() {
-            return Ok(Vec::new());
-        }
-        
-        let mut templates = Vec::new();
-        let mut entries = fs::read_dir(&templates_dir).await?;
-        
-        while let Some(entry) = entries.next_entry().await? {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    // Try to load template for metadata
-                    match self.load_template(stem).await {
-                        Ok(template) => {
-                            templates.push(TemplateInfo {
-                                name: stem.to_string(),
-                                display_name: template.name,
-                                description: template.description,
-                                category: template.metadata.category,
-                                difficulty: template.metadata.difficulty,
-                                success_rate: template.metadata.usage_stats.success_rate,
-                            });
-                        }
-                        Err(_) => {
-                            // Skip invalid templates but don't fail entirely
-                            continue;
-                        }
+
+    async fn render_template(&self, template: &PromptTemplate, params: &HashMap<String, String>) -> Result<String> {
+        self.renderer.render(template, params).await
+    }
+
+    fn validate_quality(&self, prompt: &str) -> QualityScore {
+        self.validator.validate(prompt)
+    }
+}
+
+impl DefaultTemplateManager {
+    async fn load_with_fallback(&self, id: &str) -> Result<PromptTemplate> {
+        // Primary: Load from storage
+        match self.storage.load_template(id).await {
+            Ok(template) => return Ok(template),
+            Err(e) => {
+                // Check if it's a "not found" error by examining the error message
+                if e.to_string().contains("not found") || e.to_string().contains("NotFound") {
+                    // Fallback 1: Try similar template
+                    if let Ok(similar) = self.find_similar_template(id).await {
+                        return Ok(similar);
                     }
                 }
+                // Continue to final fallback for any error
             }
         }
         
-        // Sort by success rate and category
-        templates.sort_by(|a, b| {
-            b.success_rate.partial_cmp(&a.success_rate)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.category.to_string().cmp(&b.category.to_string()))
-        });
-        
-        Ok(templates)
+        // Final fallback: Emergency template
+        Ok(self.create_emergency_template())
     }
-    
-    /// Create built-in templates if they don't exist
-    pub async fn ensure_builtin_templates(&mut self) -> Result<()> {
-        let templates_dir = self.base_path.join("templates");
-        fs::create_dir_all(&templates_dir).await?;
-        
-        // Create core templates
-        self.create_code_reviewer_template().await?;
-        self.create_documentation_writer_template().await?;
-        self.create_domain_expert_template().await?;
-        
-        Ok(())
-    }
-    
-    async fn create_code_reviewer_template(&self) -> Result<()> {
-        let template = PromptTemplate {
-            name: "Code Reviewer".to_string(),
-            description: "Reviews code for security, performance, and best practices".to_string(),
-            role: "You are an expert code reviewer with 10+ years of experience in software development. You specialize in identifying security vulnerabilities, performance issues, and adherence to best practices.".to_string(),
-            capabilities: vec![
-                "Security vulnerability analysis".to_string(),
-                "Performance optimization suggestions".to_string(),
-                "Code quality assessment".to_string(),
-                "Best practices enforcement".to_string(),
-            ],
-            constraints: vec![
-                "Always explain your reasoning".to_string(),
-                "Provide specific examples".to_string(),
-                "Be constructive and helpful".to_string(),
-                "Focus on the most critical issues first".to_string(),
-            ],
-            example_conversation: Some(ExampleConversation {
-                input: "Review this function: def login(user, password): return user == 'admin'".to_string(),
-                output: "This function has a critical security vulnerability. It uses plain text comparison and hardcoded credentials. Here's what's wrong and how to fix it: 1) Password should be hashed and verified securely, 2) User authentication should use a proper database lookup, 3) Consider implementing rate limiting to prevent brute force attacks.".to_string(),
-            }),
-            metadata: TemplateMetadata {
-                category: TemplateCategory::CodeReview,
-                difficulty: DifficultyLevel::Beginner,
-                tags: vec!["security".to_string(), "performance".to_string(), "best-practices".to_string()],
-                usage_stats: UsageStats {
-                    success_rate: 0.87,
-                    avg_satisfaction: 4.3,
-                    usage_count: 245,
-                },
-                created_at: Utc::now(),
-                updated_at: Utc::now(),
-            },
-        };
-        
-        self.save_template("code-reviewer", &template).await
-    }
-    
-    async fn create_documentation_writer_template(&self) -> Result<()> {
-        let template = PromptTemplate {
-            name: "Documentation Writer".to_string(),
-            description: "Creates clear, comprehensive technical documentation".to_string(),
-            role: "You are a technical writer who specializes in creating clear, comprehensive documentation for software projects. You excel at explaining complex concepts in simple terms.".to_string(),
-            capabilities: vec![
-                "API documentation".to_string(),
-                "User guides and tutorials".to_string(),
-                "Code comments and inline documentation".to_string(),
-                "README files and project documentation".to_string(),
-            ],
-            constraints: vec![
-                "Use simple, clear language".to_string(),
-                "Include practical examples".to_string(),
-                "Structure information logically".to_string(),
-                "Consider the target audience".to_string(),
-            ],
-            example_conversation: Some(ExampleConversation {
-                input: "Document this API endpoint: POST /users - creates a new user".to_string(),
-                output: "## Create User\n\n**Endpoint:** `POST /users`\n\n**Description:** Creates a new user account in the system.\n\n**Request Body:**\n```json\n{\n  \"name\": \"string\",\n  \"email\": \"string\"\n}\n```\n\n**Response:** Returns the created user with ID\n\n**Example:**\n```bash\ncurl -X POST /users -d '{\"name\":\"John\",\"email\":\"john@example.com\"}'\n```".to_string(),
-            }),
-            metadata: TemplateMetadata {
-                category: TemplateCategory::Documentation,
-                difficulty: DifficultyLevel::Beginner,
-                tags: vec!["documentation".to_string(), "api".to_string(), "writing".to_string()],
-                usage_stats: UsageStats {
-                    success_rate: 0.91,
-                    avg_satisfaction: 4.5,
-                    usage_count: 189,
-                },
-                created_at: Utc::now(),
-                updated_at: Utc::now(),
-            },
-        };
-        
-        self.save_template("documentation-writer", &template).await
-    }
-    
-    async fn create_domain_expert_template(&self) -> Result<()> {
-        let template = PromptTemplate {
-            name: "Domain Expert".to_string(),
-            description: "Specialized knowledge assistant for specific domains".to_string(),
-            role: "You are a domain expert with deep knowledge and experience in your field. You provide accurate, well-reasoned answers and guidance based on established best practices and current knowledge.".to_string(),
-            capabilities: vec![
-                "Answer domain-specific questions".to_string(),
-                "Provide expert guidance and recommendations".to_string(),
-                "Explain complex concepts clearly".to_string(),
-                "Share relevant best practices".to_string(),
-            ],
-            constraints: vec![
-                "Cite sources when possible".to_string(),
-                "Admit uncertainty when appropriate".to_string(),
-                "Focus on accuracy over speed".to_string(),
-                "Provide context for recommendations".to_string(),
-            ],
-            example_conversation: Some(ExampleConversation {
-                input: "What's the best approach for handling database migrations in a production environment?".to_string(),
-                output: "For production database migrations, I recommend a blue-green deployment strategy: 1) Test migrations thoroughly in staging, 2) Use backward-compatible changes when possible, 3) Plan rollback procedures, 4) Monitor performance during migration, 5) Consider maintenance windows for breaking changes. Tools like Flyway or Liquibase can help manage this process safely.".to_string(),
-            }),
-            metadata: TemplateMetadata {
-                category: TemplateCategory::DomainExpert,
-                difficulty: DifficultyLevel::Intermediate,
-                tags: vec!["expert".to_string(), "domain-knowledge".to_string(), "guidance".to_string()],
-                usage_stats: UsageStats {
-                    success_rate: 0.83,
-                    avg_satisfaction: 4.1,
-                    usage_count: 156,
-                },
-                created_at: Utc::now(),
-                updated_at: Utc::now(),
-            },
-        };
-        
-        self.save_template("domain-expert", &template).await
-    }
-    
-    pub async fn save_template(&self, name: &str, template: &PromptTemplate) -> Result<()> {
-        let templates_dir = self.base_path.join("templates");
-        fs::create_dir_all(&templates_dir).await?;
-        
-        let template_path = templates_dir.join(format!("{}.json", name));
-        let content = serde_json::to_string_pretty(template)?;
-        fs::write(template_path, content).await?;
-        
-        Ok(())
-    }
-    
-    /// Invalidate cache (call when templates are modified externally)
-    pub fn invalidate_cache(&mut self) {
-        self.cache.clear();
-        self.cache_valid = false;
-    }
-}
 
-/// Template information for listing
-#[derive(Debug, Clone)]
-pub struct TemplateInfo {
-    pub name: String,
-    pub display_name: String,
-    pub description: String,
-    pub category: TemplateCategory,
-    pub difficulty: DifficultyLevel,
-    pub success_rate: f64,
-}
+    async fn find_similar_template(&self, _id: &str) -> Result<PromptTemplate> {
+        // Simple implementation: return first available template
+        let templates = self.storage.list_all_templates().await?;
+        templates.into_iter().next()
+            .ok_or_else(|| TemplateError::NotFound { id: "any".to_string() }.into())
+    }
 
-impl TemplateCategory {
-    fn to_string(&self) -> String {
-        match self {
-            TemplateCategory::CodeReview => "Code Review".to_string(),
-            TemplateCategory::Documentation => "Documentation".to_string(),
-            TemplateCategory::DomainExpert => "Domain Expert".to_string(),
-            TemplateCategory::GeneralAssistant => "General Assistant".to_string(),
-            TemplateCategory::Custom => "Custom".to_string(),
+    fn create_emergency_template(&self) -> PromptTemplate {
+        PromptTemplate {
+            id: "emergency".to_string(),
+            name: "Basic Assistant".to_string(),
+            description: "Emergency fallback template".to_string(),
+            version: 1,
+            category: TemplateCategory::ConversationAssistant,
+            difficulty: DifficultyLevel::Beginner,
+            tags: vec!["fallback".to_string()],
+            role: "You are a helpful assistant.".to_string(),
+            capabilities: vec!["Answer questions".to_string()],
+            constraints: vec!["Be helpful and accurate".to_string()],
+            context: None,
+            parameters: vec![],
+            examples: vec![],
+            quality_indicators: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            usage_stats: UsageStats {
+                success_rate: 0.5,
+                avg_satisfaction: 3.0,
+                usage_count: 0,
+            },
         }
+    }
+
+    fn render_template_internal(&self, template: &PromptTemplate) -> String {
+        // Simple rendering for quality estimation
+        format!("{}\n\nCapabilities:\n{}\n\nConstraints:\n{}", 
+            template.role,
+            template.capabilities.join("\n- "),
+            template.constraints.join("\n- ")
+        )
+    }
+}
+
+// Trait definitions for components
+#[async_trait]
+pub trait TemplateStorage: Send + Sync {
+    async fn load_template(&self, id: &str) -> Result<PromptTemplate>;
+    async fn list_all_templates(&self) -> Result<Vec<PromptTemplate>>;
+}
+
+pub trait QualityValidator: Send + Sync {
+    fn validate(&self, prompt: &str) -> QualityScore;
+}
+
+#[async_trait]
+pub trait TemplateRenderer: Send + Sync {
+    async fn render(&self, template: &PromptTemplate, params: &HashMap<String, String>) -> Result<String>;
+}
+
+#[async_trait]
+pub trait CacheManager: Send + Sync {
+    async fn get(&self, id: &str) -> Result<Option<PromptTemplate>>;
+    async fn put(&self, id: &str, template: &PromptTemplate) -> Result<()>;
+}
+
+// Placeholder implementations (to be implemented in subsequent steps)
+pub struct MultiDimensionalValidator;
+pub struct SafeTemplateRenderer;
+pub struct TwoTierCacheManager;
+
+impl MultiDimensionalValidator {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl SafeTemplateRenderer {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl TwoTierCacheManager {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+// Temporary implementations - will be replaced with real implementations
+impl QualityValidator for MultiDimensionalValidator {
+    fn validate(&self, _prompt: &str) -> QualityScore {
+        QualityScore {
+            overall_score: 3.5,
+            component_scores: HashMap::new(),
+            feedback: vec![],
+            confidence: 0.8,
+        }
+    }
+}
+
+#[async_trait]
+impl TemplateRenderer for SafeTemplateRenderer {
+    async fn render(&self, template: &PromptTemplate, _params: &HashMap<String, String>) -> Result<String> {
+        Ok(template.role.clone())
+    }
+}
+
+#[async_trait]
+impl CacheManager for TwoTierCacheManager {
+    async fn get(&self, _id: &str) -> Result<Option<PromptTemplate>> {
+        Ok(None)
+    }
+
+    async fn put(&self, _id: &str, _template: &PromptTemplate) -> Result<()> {
+        Ok(())
     }
 }
