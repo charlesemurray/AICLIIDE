@@ -637,6 +637,8 @@ pub struct ChatSession {
     resume_tx: Option<tokio::sync::mpsc::UnboundedSender<()>>,
     /// Saved terminal state for restoration
     terminal_state: Option<terminal_state::TerminalState>,
+    /// Conversation analytics logger
+    analytics: Option<crate::analytics::ConversationAnalytics>,
 }
 
 impl ChatSession {
@@ -736,6 +738,24 @@ impl ChatSession {
             },
         };
 
+        // Initialize analytics if enabled
+        let analytics = if os.database.settings.get_bool(crate::database::settings::Setting::TelemetryEnabled).unwrap_or(true) {
+            let analytics_dir = crate::util::paths::logs_dir()
+                .ok()
+                .map(|dir| dir.join("analytics"));
+            
+            analytics_dir.and_then(|dir| {
+                crate::analytics::ConversationAnalytics::new(&dir)
+                    .map_err(|e| {
+                        tracing::warn!("Failed to initialize analytics: {}", e);
+                        e
+                    })
+                    .ok()
+            })
+        } else {
+            None
+        };
+
         // Spawn a task for listening and broadcasting sigints.
         let (ctrlc_tx, ctrlc_rx) = tokio::sync::broadcast::channel(4);
         tokio::spawn(async move {
@@ -781,6 +801,7 @@ impl ChatSession {
             pause_rx: None,
             resume_tx: None,
             terminal_state: None,
+            analytics,
         })
     }
 
