@@ -3,6 +3,7 @@
 //! Tests cover: CLI parsing, creation flows, terminal UI, context intelligence,
 //! and end-to-end workflows.
 
+mod assistant_cli;
 mod cli;
 mod integration;
 mod unit;

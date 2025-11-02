@@ -49,6 +49,7 @@ pub mod workspace {
     pub const TODO_LISTS_DIR: &str = ".amazonq/cli-todo-lists";
     pub const SUBAGENTS_DIR: &str = ".amazonq/.subagents";
     pub const RULES_PATTERN: &str = ".amazonq/rules/**/*.md";
+    pub const SESSIONS_DIR: &str = ".amazonq/sessions";
 
     // Default documentation files for agent resources
     pub const DEFAULT_AGENT_RESOURCES: &[&str] = &["file://AmazonQ.md", "file://AGENTS.md", "file://README.md"];
