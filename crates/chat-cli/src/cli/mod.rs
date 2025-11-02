@@ -407,6 +407,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })),
             verbose: 2,

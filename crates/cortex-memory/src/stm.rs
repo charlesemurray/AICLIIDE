@@ -1,5 +1,12 @@
-use crate::{MemoryNote, Result};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
+
+use crate::{
+    MemoryNote,
+    Result,
+};
 
 pub struct ShortTermMemory {
     capacity: usize,
@@ -80,8 +87,9 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
+    use super::*;
 
     fn create_test_note(id: &str, content: &str) -> MemoryNote {
         MemoryNote::new(id.to_string(), content.to_string(), HashMap::new())
@@ -104,12 +112,9 @@ mod tests {
     fn test_stm_lru_eviction() {
         let mut stm = ShortTermMemory::new(2);
 
-        stm.add(create_test_note("1", "first"), vec![1.0, 0.0, 0.0])
-            .unwrap();
-        stm.add(create_test_note("2", "second"), vec![0.0, 1.0, 0.0])
-            .unwrap();
-        stm.add(create_test_note("3", "third"), vec![0.0, 0.0, 1.0])
-            .unwrap();
+        stm.add(create_test_note("1", "first"), vec![1.0, 0.0, 0.0]).unwrap();
+        stm.add(create_test_note("2", "second"), vec![0.0, 1.0, 0.0]).unwrap();
+        stm.add(create_test_note("3", "third"), vec![0.0, 0.0, 1.0]).unwrap();
 
         assert_eq!(stm.len(), 2);
         assert!(stm.get("1").is_none());
@@ -121,12 +126,9 @@ mod tests {
     fn test_stm_search() {
         let mut stm = ShortTermMemory::new(10);
 
-        stm.add(create_test_note("1", "rust"), vec![1.0, 0.0, 0.0])
-            .unwrap();
-        stm.add(create_test_note("2", "python"), vec![0.9, 0.1, 0.0])
-            .unwrap();
-        stm.add(create_test_note("3", "java"), vec![0.0, 1.0, 0.0])
-            .unwrap();
+        stm.add(create_test_note("1", "rust"), vec![1.0, 0.0, 0.0]).unwrap();
+        stm.add(create_test_note("2", "python"), vec![0.9, 0.1, 0.0]).unwrap();
+        stm.add(create_test_note("3", "java"), vec![0.0, 1.0, 0.0]).unwrap();
 
         let results = stm.search(&[1.0, 0.0, 0.0], 2);
 
@@ -139,8 +141,7 @@ mod tests {
     fn test_stm_delete() {
         let mut stm = ShortTermMemory::new(10);
 
-        stm.add(create_test_note("1", "test"), vec![1.0, 0.0, 0.0])
-            .unwrap();
+        stm.add(create_test_note("1", "test"), vec![1.0, 0.0, 0.0]).unwrap();
 
         assert!(stm.delete("1"));
         assert!(stm.get("1").is_none());
@@ -151,15 +152,12 @@ mod tests {
     fn test_stm_lru_access_updates() {
         let mut stm = ShortTermMemory::new(2);
 
-        stm.add(create_test_note("1", "first"), vec![1.0, 0.0, 0.0])
-            .unwrap();
-        stm.add(create_test_note("2", "second"), vec![0.0, 1.0, 0.0])
-            .unwrap();
+        stm.add(create_test_note("1", "first"), vec![1.0, 0.0, 0.0]).unwrap();
+        stm.add(create_test_note("2", "second"), vec![0.0, 1.0, 0.0]).unwrap();
 
         stm.get("1");
 
-        stm.add(create_test_note("3", "third"), vec![0.0, 0.0, 1.0])
-            .unwrap();
+        stm.add(create_test_note("3", "third"), vec![0.0, 0.0, 1.0]).unwrap();
 
         assert!(stm.get("1").is_some());
         assert!(stm.get("2").is_none());

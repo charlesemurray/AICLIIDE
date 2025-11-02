@@ -35,6 +35,10 @@ impl SkillRegistry {
         self.skills.get(name)
     }
 
+    pub fn get_skill(&self, name: &str) -> Option<&SkillDefinition> {
+        self.get(name)
+    }
+
     pub fn len(&self) -> usize {
         self.skills.len()
     }
@@ -82,5 +86,29 @@ mod tests {
 
         assert_eq!(registry.len(), 1);
         assert!(registry.get("test-skill").is_some());
+    }
+
+    #[test]
+    fn test_get_skill_exists() {
+        let mut registry = SkillRegistry::new();
+        let skill = SkillDefinition {
+            name: "test-skill".to_string(),
+            description: "Test".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: None,
+        };
+        registry.skills.insert("test-skill".to_string(), skill);
+
+        let result = registry.get_skill("test-skill");
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().name, "test-skill");
+    }
+
+    #[test]
+    fn test_get_skill_not_found() {
+        let registry = SkillRegistry::new();
+        let result = registry.get_skill("nonexistent");
+        assert!(result.is_none());
     }
 }
