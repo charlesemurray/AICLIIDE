@@ -76,6 +76,10 @@ impl ConversationAnalytics {
         &self.session_id
     }
 
+    pub fn file_path(&self) -> &Path {
+        &self.file_path
+    }
+
     pub fn log_event(&mut self, event: ConversationAnalyticsEvent) -> Result<(), std::io::Error> {
         let json_line = serde_json::to_string(&event)?;
         writeln!(self.writer, "{}", json_line)?;
@@ -83,7 +87,7 @@ impl ConversationAnalytics {
         Ok(())
     }
 
-    pub fn start_session(&mut self, initial_request: &str) -> Result<(), std::io::Error> {
+    pub fn start_session(&mut self, _initial_request: &str) -> Result<(), std::io::Error> {
         use super::types::{
             AnalyticsEventType,
             SessionEventType,

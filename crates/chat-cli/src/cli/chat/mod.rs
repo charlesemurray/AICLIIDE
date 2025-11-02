@@ -739,11 +739,14 @@ impl ChatSession {
         };
 
         // Initialize analytics if enabled
-        let analytics = if os.database.settings.get_bool(crate::database::settings::Setting::TelemetryEnabled).unwrap_or(true) {
-            let analytics_dir = crate::util::paths::logs_dir()
-                .ok()
-                .map(|dir| dir.join("analytics"));
-            
+        let analytics = if os
+            .database
+            .settings
+            .get_bool(crate::database::settings::Setting::TelemetryEnabled)
+            .unwrap_or(true)
+        {
+            let analytics_dir = crate::util::paths::logs_dir().ok().map(|dir| dir.join("analytics"));
+
             analytics_dir.and_then(|dir| {
                 crate::analytics::ConversationAnalytics::new(&dir)
                     .map_err(|e| {
@@ -1329,6 +1332,20 @@ impl ChatSession {
             .reload_builtin_tools(os, &mut self.stderr)
             .await
             .map_err(|e| ChatError::Custom(format!("Failed to update tool spec: {e}").into()))
+    }
+
+    /// Log an analytics event if analytics is enabled
+    pub fn log_analytics_event(&mut self, event: crate::analytics::ConversationAnalyticsEvent) {
+        if let Some(ref mut analytics) = self.analytics {
+            if let Err(e) = analytics.log_event(event) {
+                tracing::warn!("Failed to log analytics event: {}", e);
+            }
+        }
+    }
+
+    /// Get the current session ID for analytics
+    pub fn analytics_session_id(&self) -> Option<&str> {
+        self.analytics.as_ref().map(|a| a.session_id())
     }
 }
 
