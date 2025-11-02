@@ -834,6 +834,17 @@ Return only the JSON configuration, no additional text.",
             }
         }
 
+        // Add session workspace context
+        context_content.push_str(CONTEXT_ENTRY_START_HEADER);
+        context_content.push_str(&format!(
+            "Session workspace: .amazonq/sessions/{}/\n\
+             - Use for: analysis, research, planning, temporary notes\n\
+             - Use repository for: code, tests, docs to commit, explicit paths\n\
+             - When unsure: ask the user\n",
+            self.conversation_id
+        ));
+        context_content.push_str(CONTEXT_ENTRY_END_HEADER);
+
         if let Some(context) = additional_context {
             context_content.push_str(&context);
         }

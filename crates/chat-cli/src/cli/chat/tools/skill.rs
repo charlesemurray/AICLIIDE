@@ -19,12 +19,21 @@ pub struct SkillTool {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SkillImplementation {
+    Script { path: String },
+    Command { command: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillDefinition {
     pub name: String,
     pub description: String,
     pub skill_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implementation: Option<SkillImplementation>,
 }
 
 impl SkillTool {
@@ -127,5 +136,49 @@ mod tests {
         assert!(definition.parameters.is_some());
         let params = definition.parameters.unwrap();
         assert!(params.get("type").is_some());
+    }
+
+    #[test]
+    fn test_skill_definition_script_implementation() {
+        let json = r#"{
+            "name": "test-skill",
+            "description": "A test skill",
+            "skill_type": "code_inline",
+            "implementation": {
+                "type": "script",
+                "path": "./scripts/test.sh"
+            }
+        }"#;
+
+        let definition: SkillDefinition = serde_json::from_str(json).unwrap();
+        assert!(definition.implementation.is_some());
+        match definition.implementation.unwrap() {
+            SkillImplementation::Script { path } => {
+                assert_eq!(path, "./scripts/test.sh");
+            },
+            _ => panic!("Expected Script implementation"),
+        }
+    }
+
+    #[test]
+    fn test_skill_definition_command_implementation() {
+        let json = r#"{
+            "name": "test-skill",
+            "description": "A test skill",
+            "skill_type": "code_inline",
+            "implementation": {
+                "type": "command",
+                "command": "echo 'Hello'"
+            }
+        }"#;
+
+        let definition: SkillDefinition = serde_json::from_str(json).unwrap();
+        assert!(definition.implementation.is_some());
+        match definition.implementation.unwrap() {
+            SkillImplementation::Command { command } => {
+                assert_eq!(command, "echo 'Hello'");
+            },
+            _ => panic!("Expected Command implementation"),
+        }
     }
 }

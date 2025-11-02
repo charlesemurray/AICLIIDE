@@ -1,12 +1,14 @@
 //! Cortex Memory System - Advanced memory for AI agents
 
 pub mod error;
+pub mod id_mapper;
 pub mod memory_note;
 
 pub use error::{
     CortexError,
     Result,
 };
+pub use id_mapper::IdMapper;
 pub use memory_note::MemoryNote;
 
 #[cfg(test)]
