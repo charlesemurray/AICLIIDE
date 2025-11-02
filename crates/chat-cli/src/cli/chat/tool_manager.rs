@@ -417,6 +417,15 @@ impl ToolManagerBuilder {
             let _ = tool_manager.skill_registry.load_from_directory(&skills_dir).await;
         }
 
+        // Load workflows from default directory if it exists
+        let workflows_dir = os.env.home().unwrap_or_default().join(".q").join("workflows");
+        if workflows_dir.exists() {
+            let _ = tool_manager
+                .workflow_registry
+                .load_from_directory(&workflows_dir)
+                .await;
+        }
+
         Ok(tool_manager)
     }
 }
