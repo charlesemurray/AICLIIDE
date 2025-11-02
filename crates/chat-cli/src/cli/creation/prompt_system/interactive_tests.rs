@@ -24,7 +24,6 @@ mod interactive_tests {
     #[test]
     fn test_create_custom_assistant() -> Result<()> {
         let mut ui = MockTerminalUI::new(vec![
-            "5".to_string(),                    // Choose custom
             "Test Assistant".to_string(),       // Name
             "A test assistant".to_string(),     // Description
             "1".to_string(),                    // Code specialization
