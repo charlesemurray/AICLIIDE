@@ -97,6 +97,37 @@ impl SkillTool {
             Err(eyre::eyre!("Script execution failed: {}", stderr))
         }
     }
+
+    pub async fn execute_script_with_timeout(
+        &self,
+        definition: &SkillDefinition,
+        params: &HashMap<String, Value>,
+        timeout_secs: u64,
+    ) -> Result<String> {
+        let script_path = self.get_script_path(definition)?;
+        let env_vars = self.build_env_vars(params);
+
+        let timeout_duration = std::time::Duration::from_secs(timeout_secs);
+
+        let output = tokio::time::timeout(
+            timeout_duration,
+            tokio::task::spawn_blocking(move || {
+                std::process::Command::new(&script_path)
+                    .envs(&env_vars)
+                    .output()
+            }),
+        )
+        .await
+        .map_err(|_| eyre::eyre!("Script execution timeout after {} seconds", timeout_secs))?
+        .map_err(|e| eyre::eyre!("Failed to spawn script: {}", e))??;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(eyre::eyre!("Script execution failed: {}", stderr))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -289,5 +320,49 @@ mod tests {
         assert!(result.is_ok());
         let output = result.unwrap();
         assert!(output.contains("Hello World"));
+    }
+
+    #[tokio::test]
+    async fn test_script_timeout() {
+        use std::collections::HashMap;
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let script_path = dir.path().join("slow.sh");
+
+        #[cfg(unix)]
+        let script_content = "#!/bin/bash\nsleep 10";
+        #[cfg(windows)]
+        let script_content = "@echo off\ntimeout /t 10";
+
+        fs::write(&script_path, script_content).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms).unwrap();
+        }
+
+        let definition = SkillDefinition {
+            name: "slow".to_string(),
+            description: "Slow script".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Script {
+                path: script_path.to_string_lossy().to_string(),
+            }),
+        };
+
+        let skill = SkillTool::new("slow".to_string(), "Slow".to_string());
+        let params = HashMap::new();
+
+        let result = skill.execute_script_with_timeout(&definition, &params, 1).await;
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("timeout"));
     }
 }
