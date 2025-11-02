@@ -13,6 +13,7 @@ pub mod logging;
 pub mod mcp_client;
 pub mod os;
 pub mod request;
+pub mod session;
 pub mod telemetry;
 pub mod theme;
 pub mod util;

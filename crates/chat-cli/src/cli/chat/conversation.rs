@@ -371,6 +371,51 @@ impl ConversationState {
         self.conversation_id.as_ref()
     }
 
+    /// Create session metadata file for this conversation
+    pub async fn create_session_metadata(&self, first_message: &str, os: &Os) -> eyre::Result<()> {
+        use crate::session::{SessionMetadata, save_metadata};
+        
+        let session_dir = os.env.current_dir()?
+            .join(".amazonq/sessions")
+            .join(&self.conversation_id);
+        
+        let metadata = SessionMetadata::new(&self.conversation_id, first_message);
+        save_metadata(&session_dir, &metadata).await
+            .map_err(|e| eyre::eyre!("Failed to create session metadata: {}", e))?;
+        
+        Ok(())
+    }
+
+    /// Update session metadata with current conversation stats
+    pub async fn update_session_metadata(&self, os: &Os) -> eyre::Result<()> {
+        use crate::session::{load_metadata, save_metadata};
+        
+        let session_dir = os.env.current_dir()?
+            .join(".amazonq/sessions")
+            .join(&self.conversation_id);
+        
+        if let Ok(mut metadata) = load_metadata(&session_dir).await {
+            metadata.update_activity();
+            metadata.message_count = self.history.len();
+            
+            // Count files in session directory
+            if let Ok(mut entries) = tokio::fs::read_dir(&session_dir).await {
+                let mut file_count: usize = 0;
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    if entry.file_type().await.map(|t| t.is_file()).unwrap_or(false) {
+                        file_count += 1;
+                    }
+                }
+                metadata.file_count = file_count.saturating_sub(1); // Exclude metadata.json itself
+            }
+            
+            save_metadata(&session_dir, &metadata).await
+                .map_err(|e| eyre::eyre!("Failed to update session metadata: {}", e))?;
+        }
+        
+        Ok(())
+    }
+
     /// Returns the message id associated with the last assistant message, if present.
     ///
     /// This is equivalent to `utterance_id` in the Q API.
