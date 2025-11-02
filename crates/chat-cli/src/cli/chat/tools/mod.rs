@@ -12,6 +12,7 @@ pub mod thinking;
 pub mod todo;
 pub mod use_aws;
 pub mod workflow;
+pub mod workflow_tool;
 
 use std::borrow::{
     Borrow,
