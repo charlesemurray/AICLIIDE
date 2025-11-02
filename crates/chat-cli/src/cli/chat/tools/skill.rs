@@ -1,7 +1,11 @@
 //! Skill tool implementation
 
+use std::collections::HashMap;
+use std::path::PathBuf;
+
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::os::Os;
@@ -44,6 +48,24 @@ impl SkillTool {
 
     pub fn eval_perm(&self, _os: &Os, _agent: &Agent) -> PermissionEvalResult {
         PermissionEvalResult::Allow
+    }
+
+    pub fn invoke(&self, _params: HashMap<String, Value>) -> Result<String> {
+        Ok("not implemented".to_string())
+    }
+
+    pub fn get_script_path(&self, definition: &SkillDefinition) -> Result<PathBuf> {
+        match &definition.implementation {
+            Some(SkillImplementation::Script { path }) => {
+                let path_buf = PathBuf::from(path);
+                if path_buf.exists() {
+                    Ok(path_buf)
+                } else {
+                    Err(eyre::eyre!("Script path does not exist: {}", path))
+                }
+            },
+            _ => Err(eyre::eyre!("Skill does not have a script implementation")),
+        }
     }
 }
 

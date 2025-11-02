@@ -10,6 +10,7 @@ pub mod context;
 mod conversation;
 pub mod coordinator;
 mod input_source;
+pub mod input_router;
 pub mod managed_session;
 mod message;
 mod parse;
