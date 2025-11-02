@@ -17,6 +17,7 @@ mod settings;
 pub mod skills;
 mod skills_cli;
 mod user;
+pub mod workflow;
 
 use std::fmt::Display;
 use std::io::{

@@ -301,7 +301,7 @@ impl Tool {
             Tool::Delegate(_) => Ok(()),
             Tool::Skill(_) => Ok(()), // Skills are validated by the registry
             Tool::SkillNew(skill) => skill.validate(),
-            Tool::WorkflowNew(_) => Ok(()),
+            Tool::WorkflowNew(workflow) => workflow.validate(),
         }
     }
 

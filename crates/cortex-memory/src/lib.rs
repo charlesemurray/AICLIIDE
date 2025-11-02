@@ -2,11 +2,18 @@
 
 pub mod error;
 
-pub use error::{CortexError, Result};
+pub use error::{
+    CortexError,
+    Result,
+};
 
 #[cfg(test)]
 mod tests {
-    use hnswlib::{HnswDistanceFunction, HnswIndex, HnswIndexInitConfig};
+    use hnswlib::{
+        HnswDistanceFunction,
+        HnswIndex,
+        HnswIndexInitConfig,
+    };
 
     #[test]
     fn test_hnswlib_basic() {
