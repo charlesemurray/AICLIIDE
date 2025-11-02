@@ -16,6 +16,7 @@ use crate::cli::chat::managed_session::{
     ManagedSession,
     OutputBuffer,
 };
+use crate::cli::chat::memory_monitor::MemoryMonitor;
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::session_mode::SessionStateChange;
 use crate::theme::session::{
@@ -59,6 +60,8 @@ pub struct MultiSessionCoordinator {
     state_tx: mpsc::UnboundedSender<SessionStateChange>,
     /// API rate limiter
     rate_limiter: ApiRateLimiter,
+    /// Memory monitor
+    memory_monitor: MemoryMonitor,
 }
 
 impl MultiSessionCoordinator {
@@ -66,6 +69,7 @@ impl MultiSessionCoordinator {
     pub fn new(config: CoordinatorConfig) -> Self {
         let (state_tx, state_rx) = mpsc::unbounded_channel();
         let rate_limiter = ApiRateLimiter::new(config.max_concurrent_api_calls);
+        let memory_monitor = MemoryMonitor::new();
 
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
@@ -74,6 +78,7 @@ impl MultiSessionCoordinator {
             state_rx,
             state_tx,
             rate_limiter,
+            memory_monitor,
         }
     }
 
@@ -238,6 +243,21 @@ impl MultiSessionCoordinator {
         let active = self.rate_limiter.active_count().await;
         let available = self.rate_limiter.available_permits();
         (active, available)
+    }
+
+    /// Get memory monitor
+    pub fn memory_monitor(&self) -> MemoryMonitor {
+        self.memory_monitor.clone()
+    }
+
+    /// Get memory usage summary
+    pub async fn memory_summary(&self) -> crate::cli::chat::memory_monitor::MemorySummary {
+        self.memory_monitor.summary().await
+    }
+
+    /// Check for sessions that should be hibernated
+    pub async fn check_memory_pressure(&self) -> Vec<String> {
+        self.memory_monitor.sessions_to_hibernate().await
     }
 
     /// Process state changes from background sessions

@@ -1362,6 +1362,16 @@ impl ChatSession {
     pub fn analytics_session_id(&self) -> Option<&str> {
         self.analytics.as_ref().map(|a| a.session_id())
     }
+
+    /// Apply conversation mode instructions to user input
+    fn apply_conversation_mode(&self, input: String) -> String {
+        let mode_suffix = self.conversation_mode.system_prompt_suffix();
+        if mode_suffix.is_empty() {
+            input
+        } else {
+            format!("{}{}", input, mode_suffix)
+        }
+    }
 }
 
 impl Drop for ChatSession {
@@ -2389,6 +2399,17 @@ impl ChatSession {
     async fn handle_input(&mut self, os: &mut Os, mut user_input: String) -> Result<ChatState, ChatError> {
         queue!(self.stderr, style::Print('\n'))?;
         user_input = sanitize_unicode_tags(&user_input);
+
+        // Handle pending prompts first (may modify user_input)
+        if !self.pending_prompts.is_empty() {
+            let prompts = self.pending_prompts.drain(0..).collect();
+            user_input = self
+                .conversation
+                .append_prompts(prompts)
+                .ok_or(ChatError::Custom("Prompt append failed".into()))?;
+        }
+
+        // Now create input from the final user_input
         let input = user_input.trim();
 
         // Log user response for analytics
@@ -2421,14 +2442,11 @@ impl ChatSession {
             
             // Log mode transition for analytics
             if let Some(session_id) = self.analytics_session_id() {
-                let event = crate::analytics::ConversationAnalyticsEvent::new(
+                let event = crate::analytics::ConversationAnalyticsEvent::mode_transition(
                     session_id.to_string(),
-                    crate::analytics::AnalyticsEventType::ModeTransition {
-                        from_mode: Some(format!("{:?}", old_mode)),
-                        to_mode: format!("{:?}", new_mode),
-                        at_message_count: self.conversation.history().len() as u32,
-                        trigger: crate::analytics::ModeTransitionTrigger::UserCommand,
-                    }
+                    Some(old_mode.to_analytics_mode()),
+                    new_mode.to_analytics_mode(),
+                    crate::analytics::ModeTransitionTrigger::UserCommand,
                 );
                 self.log_analytics_event(event);
             }
@@ -2717,12 +2735,6 @@ impl ChatSession {
 
                     return Ok(ChatState::ExecuteTools);
                 }
-            } else if !self.pending_prompts.is_empty() {
-                let prompts = self.pending_prompts.drain(0..).collect();
-                user_input = self
-                    .conversation
-                    .append_prompts(prompts)
-                    .ok_or(ChatError::Custom("Prompt append failed".into()))?;
             }
 
             // Otherwise continue with normal chat on 'n' or other responses
@@ -2741,7 +2753,28 @@ impl ChatSession {
                 };
                 self.conversation.abandon_tool_use(&self.tool_uses, user_input);
             } else {
-                self.conversation.set_next_user_message(user_input).await;
+                // Auto-detect conversation mode for new conversations
+                if self.conversation.history().is_empty() {
+                    let detected_mode = crate::conversation_modes::ConversationMode::detect_from_context(input);
+                    if detected_mode != self.conversation_mode {
+                        let old_mode = self.conversation_mode.clone();
+                        self.conversation_mode = detected_mode.clone();
+                        
+                        // Log mode transition for analytics
+                        if let Some(session_id) = self.analytics_session_id() {
+                            let event = crate::analytics::ConversationAnalyticsEvent::mode_transition(
+                                session_id.to_string(),
+                                Some(old_mode.to_analytics_mode()),
+                                detected_mode.to_analytics_mode(),
+                                crate::analytics::ModeTransitionTrigger::Auto,
+                            );
+                            self.log_analytics_event(event);
+                        }
+                    }
+                }
+                
+                let enhanced_input = self.apply_conversation_mode(user_input);
+                self.conversation.set_next_user_message(enhanced_input).await;
             }
 
             self.reset_user_turn();
