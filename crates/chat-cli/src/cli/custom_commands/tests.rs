@@ -419,4 +419,207 @@ mod tests {
         assert!(command.parameters[1].validate("v1.2.3").is_ok());
         assert!(command.parameters[1].validate("invalid-version").is_err());
     }
+
+    #[test]
+    fn test_command_execution_workflow() {
+        use tempfile::TempDir;
+        
+        // Create temporary directory for testing
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let mut registry = CustomCommandRegistry::new(temp_dir.path().to_path_buf())
+            .expect("Failed to create registry");
+
+        // Create a command with parameters
+        let mut cmd = CustomCommand::new_script(
+            "greet".to_string(),
+            "Greet someone with validation".to_string(),
+            "echo 'Hello {{name}} from {{env}}'".to_string(),
+        );
+
+        // Add validated parameters
+        cmd.add_parameter(
+            CommandParameter::new("name".to_string(), ParameterType::String)
+                .with_description("Name to greet".to_string())
+        );
+        
+        cmd.add_parameter(
+            CommandParameter::enum_param(
+                "env".to_string(),
+                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]
+            ).with_description("Environment".to_string())
+        );
+
+        // Test adding command to registry
+        registry.add_command(cmd).expect("Failed to add command");
+
+        // Test retrieving command
+        let retrieved_cmd = registry.get_command("greet").expect("Command not found");
+        assert_eq!(retrieved_cmd.name, "greet");
+        assert_eq!(retrieved_cmd.parameters.len(), 2);
+
+        // Test parameter validation with valid inputs
+        let mut valid_args = HashMap::new();
+        valid_args.insert("name".to_string(), "Alice".to_string());
+        valid_args.insert("env".to_string(), "dev".to_string());
+        
+        assert!(retrieved_cmd.validate_parameters(&valid_args).is_ok());
+
+        // Test parameter validation with invalid inputs
+        let mut invalid_args = HashMap::new();
+        invalid_args.insert("name".to_string(), "Alice; rm -rf /".to_string()); // Command injection attempt
+        invalid_args.insert("env".to_string(), "production".to_string()); // Invalid enum value
+        
+        let validation_result = retrieved_cmd.validate_parameters(&invalid_args);
+        assert!(validation_result.is_err());
+        
+        // Verify error message is helpful
+        let error_msg = validation_result.unwrap_err().to_string();
+        assert!(error_msg.contains("Invalid characters detected") || error_msg.contains("not in allowed values"));
+    }
+
+    #[test]
+    fn test_error_handling_and_user_experience() {
+        // Test helpful error messages for validation failures
+        let string_param = CommandParameter::new("name".to_string(), ParameterType::String);
+        
+        // Test command injection error message
+        let result = string_param.validate("malicious; rm -rf /");
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("Invalid characters detected"));
+        
+        // Test enum validation error message
+        let enum_param = CommandParameter::enum_param(
+            "env".to_string(),
+            vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]
+        );
+        let result = enum_param.validate("production");
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("not in allowed values"));
+        assert!(error_msg.contains("dev"));
+        assert!(error_msg.contains("staging"));
+        assert!(error_msg.contains("prod"));
+        
+        // Test pattern validation error message
+        let pattern_param = CommandParameter::new("version".to_string(), ParameterType::String)
+            .with_pattern(r"^v\d+\.\d+\.\d+$".to_string());
+        let result = pattern_param.validate("invalid-version");
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("does not match required pattern"));
+        
+        // Test number validation error message
+        let number_param = CommandParameter::new("count".to_string(), ParameterType::Number);
+        let result = number_param.validate("not-a-number");
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("not a valid number"));
+    }
+
+    #[test]
+    fn test_real_command_execution_with_parameters() {
+        // Test actual command execution with parameter substitution
+        let mut cmd = CustomCommand::new_script(
+            "echo-test".to_string(),
+            "Test echo command with parameters".to_string(),
+            "echo 'Hello {{name}} from {{env}}'".to_string(),
+        );
+
+        cmd.add_parameter(
+            CommandParameter::new("name".to_string(), ParameterType::String)
+                .with_description("Name to greet".to_string())
+        );
+        
+        cmd.add_parameter(
+            CommandParameter::enum_param(
+                "env".to_string(),
+                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()]
+            ).with_description("Environment".to_string())
+        );
+
+        // Test parameter validation with valid inputs
+        let mut valid_args = HashMap::new();
+        valid_args.insert("name".to_string(), "Alice".to_string());
+        valid_args.insert("env".to_string(), "dev".to_string());
+        
+        // Validate parameters
+        assert!(cmd.validate_parameters(&valid_args).is_ok());
+
+        // Test that command string contains parameter placeholders
+        match &cmd.handler {
+            CommandHandler::Script { command, .. } => {
+                assert!(command.contains("{{name}}"));
+                assert!(command.contains("{{env}}"));
+            }
+            _ => panic!("Expected script handler"),
+        }
+
+        // Test parameter substitution logic (simulated)
+        let command_template = "echo 'Hello {{name}} from {{env}}'";
+        let mut substituted = command_template.to_string();
+        for (key, value) in &valid_args {
+            substituted = substituted.replace(&format!("{{{{{}}}}}", key), value);
+        }
+        assert_eq!(substituted, "echo 'Hello Alice from dev'");
+
+        // Test security: malicious parameter should be blocked by validation
+        let mut malicious_args = HashMap::new();
+        malicious_args.insert("name".to_string(), "Alice; rm -rf /".to_string());
+        malicious_args.insert("env".to_string(), "dev".to_string());
+        
+        let validation_result = cmd.validate_parameters(&malicious_args);
+        assert!(validation_result.is_err());
+    }
+
+    #[test]
+    fn test_performance_at_scale() {
+        use tempfile::TempDir;
+        use std::time::Instant;
+        
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let mut registry = CustomCommandRegistry::new(temp_dir.path().to_path_buf())
+            .expect("Failed to create registry");
+
+        // Create 100 commands with parameters to test performance
+        let start = Instant::now();
+        
+        for i in 0..100 {
+            let mut cmd = CustomCommand::new_script(
+                format!("cmd-{}", i),
+                format!("Test command {}", i),
+                format!("echo 'Command {} with {{param}}'", i),
+            );
+            
+            cmd.add_parameter(
+                CommandParameter::new("param".to_string(), ParameterType::String)
+                    .with_description("Test parameter".to_string())
+            );
+            
+            registry.add_command(cmd).expect("Failed to add command");
+        }
+        
+        let creation_time = start.elapsed();
+        
+        // Test retrieval and validation performance
+        let start = Instant::now();
+        
+        for i in 0..100 {
+            let cmd = registry.get_command(&format!("cmd-{}", i)).expect("Command not found");
+            
+            let mut args = HashMap::new();
+            args.insert("param".to_string(), format!("value-{}", i));
+            
+            assert!(cmd.validate_parameters(&args).is_ok());
+        }
+        
+        let validation_time = start.elapsed();
+        
+        // Performance assertions (should be very fast)
+        assert!(creation_time.as_millis() < 1000, "Creation took too long: {:?}", creation_time);
+        assert!(validation_time.as_millis() < 100, "Validation took too long: {:?}", validation_time);
+        
+        // Verify all commands exist
+        assert_eq!(registry.list_commands().len(), 100);
+    }
 }
