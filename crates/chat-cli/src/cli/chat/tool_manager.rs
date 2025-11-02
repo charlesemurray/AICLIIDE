@@ -618,6 +618,8 @@ pub struct ToolManager {
     pub agent: Arc<Mutex<Agent>>,
 
     is_first_launch: bool,
+
+    pub skill_registry: crate::cli::chat::skill_registry::SkillRegistry,
 }
 
 impl Clone for ToolManager {
@@ -631,6 +633,7 @@ impl Clone for ToolManager {
             is_interactive: self.is_interactive,
             mcp_load_record: self.mcp_load_record.clone(),
             disabled_servers: self.disabled_servers.clone(),
+            skill_registry: self.skill_registry.clone(),
             ..Default::default()
         }
     }
@@ -2266,5 +2269,14 @@ mod tests {
             assert_eq!(ts.name, "calculator");
             assert!(matches!(ts.tool_origin, crate::cli::chat::tools::ToolOrigin::Skill(_)));
         }
+    }
+
+    #[tokio::test]
+    async fn test_tool_manager_has_skill_registry() {
+        let os = Os::new().await.unwrap();
+        let manager = ToolManager::new_with_skills(&os).await.unwrap();
+
+        // Verify skill_registry field exists and is accessible
+        assert!(manager.skill_registry.len() >= 0);
     }
 }

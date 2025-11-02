@@ -1,0 +1,88 @@
+{
+  "ltm_basic_operations": {
+    "description": "Basic LTM add, get, delete operations",
+    "dimensionality": 3,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "rust programming",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {
+          "tag": "programming"
+        }
+      },
+      {
+        "type": "get",
+        "id": "1",
+        "expected": {
+          "id": "1",
+          "content": "rust programming"
+        }
+      },
+      {
+        "type": "delete",
+        "id": "1",
+        "expected": true
+      },
+      {
+        "type": "get",
+        "id": "1",
+        "expected": null
+      }
+    ]
+  },
+  "ltm_metadata_filtering": {
+    "description": "Metadata filtering in search",
+    "dimensionality": 3,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "rust content",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {
+          "tag": "rust",
+          "type": "code"
+        }
+      },
+      {
+        "type": "add",
+        "id": "2",
+        "content": "python content",
+        "embedding": [
+          0.9,
+          0.1,
+          0.0
+        ],
+        "metadata": {
+          "tag": "python",
+          "type": "code"
+        }
+      },
+      {
+        "type": "search",
+        "query_embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "k": 2,
+        "filter": {
+          "tag": "rust"
+        },
+        "expected_ids": [
+          "1"
+        ]
+      }
+    ]
+  }
+}

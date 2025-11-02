@@ -15,6 +15,7 @@ mod input_source;
 pub mod managed_session;
 mod message;
 mod parse;
+pub mod session_mode;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
@@ -626,6 +627,12 @@ pub struct ChatSession {
     auto_approve_remaining: Option<u32>,
     /// Batch mode state - auto-approve until user stops
     batch_mode_active: bool,
+    /// Session execution mode (foreground or background)
+    session_mode: session_mode::SessionMode,
+    /// Pause signal for background sessions
+    pause_rx: Option<tokio::sync::mpsc::UnboundedReceiver<()>>,
+    /// Resume signal for background sessions
+    resume_tx: Option<tokio::sync::mpsc::UnboundedSender<()>>,
 }
 
 impl ChatSession {
@@ -766,7 +773,50 @@ impl ChatSession {
             prompt_ack_rx,
             auto_approve_remaining: auto_approve,
             batch_mode_active: batch_mode,
+            session_mode: session_mode::SessionMode::Foreground,
+            pause_rx: None,
+            resume_tx: None,
         })
+    }
+
+    /// Pause the session (for background execution)
+    pub async fn pause(&mut self) -> Result<()> {
+        // Signal that session is paused
+        if let session_mode::SessionMode::Background { .. } = &self.session_mode {
+            // Session is already in background mode, just wait for resume signal
+            if let Some(ref mut rx) = self.pause_rx {
+                let _ = rx.recv().await;
+            }
+        }
+        Ok(())
+    }
+
+    /// Resume the session (bring to foreground)
+    pub async fn resume(&mut self) -> Result<()> {
+        // Signal that session should resume
+        if let Some(ref tx) = self.resume_tx {
+            let _ = tx.send(());
+        }
+        Ok(())
+    }
+
+    /// Switch session to background mode
+    pub fn switch_to_background(
+        &mut self,
+        buffer: std::sync::Arc<tokio::sync::Mutex<managed_session::OutputBuffer>>,
+        state_tx: tokio::sync::mpsc::UnboundedSender<session_mode::SessionStateChange>,
+    ) {
+        self.session_mode = session_mode::SessionMode::Background { buffer, state_tx };
+    }
+
+    /// Switch session to foreground mode
+    pub fn switch_to_foreground(&mut self) {
+        self.session_mode = session_mode::SessionMode::Foreground;
+    }
+
+    /// Check if session is in background mode
+    pub fn is_background(&self) -> bool {
+        self.session_mode.is_background()
     }
 
     pub async fn next(&mut self, os: &mut Os) -> Result<(), ChatError> {

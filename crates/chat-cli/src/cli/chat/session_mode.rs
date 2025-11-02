@@ -1,7 +1,11 @@
 //! Session execution mode for foreground vs background operation
 
 use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
+
+use tokio::sync::{
+    Mutex,
+    mpsc,
+};
 
 use crate::cli::chat::managed_session::OutputBuffer;
 
@@ -74,10 +78,7 @@ mod tests {
     fn test_session_mode_is_background() {
         let (tx, _rx) = mpsc::unbounded_channel();
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(1000)));
-        let mode = SessionMode::Background {
-            buffer,
-            state_tx: tx,
-        };
+        let mode = SessionMode::Background { buffer, state_tx: tx };
         assert!(!mode.is_foreground());
         assert!(mode.is_background());
     }
@@ -100,10 +101,7 @@ mod tests {
     fn test_notify_state_change() {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(1000)));
-        let mode = SessionMode::Background {
-            buffer,
-            state_tx: tx,
-        };
+        let mode = SessionMode::Background { buffer, state_tx: tx };
 
         mode.notify_state_change(SessionStateChange::NeedsInput("test-id".to_string()));
 

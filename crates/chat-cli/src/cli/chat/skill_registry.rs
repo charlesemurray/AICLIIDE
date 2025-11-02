@@ -7,6 +7,7 @@ use eyre::Result;
 
 use crate::cli::chat::tools::skill::SkillDefinition;
 
+#[derive(Clone, Debug)]
 pub struct SkillRegistry {
     skills: HashMap<String, SkillDefinition>,
 }

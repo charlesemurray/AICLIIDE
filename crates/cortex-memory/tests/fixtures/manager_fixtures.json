@@ -1,0 +1,38 @@
+{
+  "manager_stm_to_ltm_promotion": {
+    "description": "Promote memory from STM to LTM",
+    "stm_capacity": 10,
+    "dimensionality": 3,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "test content",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "promote",
+        "id": "1",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "expected": true
+      },
+      {
+        "type": "get_from_ltm",
+        "id": "1",
+        "expected": {
+          "id": "1",
+          "content": "test content"
+        }
+      }
+    ]
+  }
+}

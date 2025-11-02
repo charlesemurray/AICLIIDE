@@ -1,5 +1,11 @@
-use crate::{LongTermMemory, MemoryNote, Result, ShortTermMemory};
 use std::path::Path;
+
+use crate::{
+    LongTermMemory,
+    MemoryNote,
+    Result,
+    ShortTermMemory,
+};
 
 pub struct MemoryManager {
     stm: ShortTermMemory,
@@ -8,19 +14,11 @@ pub struct MemoryManager {
 }
 
 impl MemoryManager {
-    pub fn new<P: AsRef<Path>>(
-        db_path: P,
-        dimensionality: usize,
-        stm_capacity: usize,
-    ) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(db_path: P, dimensionality: usize, stm_capacity: usize) -> Result<Self> {
         let stm = ShortTermMemory::new(stm_capacity);
         let ltm = LongTermMemory::new(db_path, dimensionality)?;
 
-        Ok(Self {
-            stm,
-            ltm,
-            stm_capacity,
-        })
+        Ok(Self { stm, ltm, stm_capacity })
     }
 
     pub fn add(&mut self, note: MemoryNote, embedding: Vec<f32>) -> Result<()> {
@@ -67,9 +65,11 @@ impl MemoryManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     fn create_test_note(id: &str, content: &str) -> MemoryNote {
         MemoryNote::new(id.to_string(), content.to_string(), HashMap::new())
@@ -95,9 +95,7 @@ mod tests {
         let temp_file = NamedTempFile::new().unwrap();
         let mut manager = MemoryManager::new(temp_file.path(), 3, 10).unwrap();
 
-        manager
-            .add(create_test_note("1", "rust"), vec![1.0, 0.0, 0.0])
-            .unwrap();
+        manager.add(create_test_note("1", "rust"), vec![1.0, 0.0, 0.0]).unwrap();
         manager
             .add(create_test_note("2", "python"), vec![0.9, 0.1, 0.0])
             .unwrap();
@@ -128,9 +126,7 @@ mod tests {
         let temp_file = NamedTempFile::new().unwrap();
         let mut manager = MemoryManager::new(temp_file.path(), 3, 10).unwrap();
 
-        manager
-            .add(create_test_note("1", "test"), vec![1.0, 0.0, 0.0])
-            .unwrap();
+        manager.add(create_test_note("1", "test"), vec![1.0, 0.0, 0.0]).unwrap();
 
         assert!(manager.delete("1").unwrap());
         assert!(manager.get("1").unwrap().is_none());

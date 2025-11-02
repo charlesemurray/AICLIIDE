@@ -1,0 +1,171 @@
+{
+  "stm_basic_operations": {
+    "description": "Basic STM add and search operations",
+    "capacity": 10,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "rust programming language",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "add",
+        "id": "2",
+        "content": "python programming language",
+        "embedding": [
+          0.9,
+          0.1,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "search",
+        "query_embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "k": 2,
+        "expected_order": [
+          "1",
+          "2"
+        ]
+      }
+    ]
+  },
+  "stm_lru_eviction": {
+    "description": "LRU eviction when capacity is reached",
+    "capacity": 2,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "first",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "add",
+        "id": "2",
+        "content": "second",
+        "embedding": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "add",
+        "id": "3",
+        "content": "third",
+        "embedding": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "get",
+        "id": "1",
+        "expected": null
+      },
+      {
+        "type": "get",
+        "id": "2",
+        "expected": {
+          "id": "2",
+          "content": "second"
+        }
+      },
+      {
+        "type": "get",
+        "id": "3",
+        "expected": {
+          "id": "3",
+          "content": "third"
+        }
+      }
+    ]
+  },
+  "stm_lru_access_order": {
+    "description": "Access updates LRU order",
+    "capacity": 2,
+    "operations": [
+      {
+        "type": "add",
+        "id": "1",
+        "content": "first",
+        "embedding": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "add",
+        "id": "2",
+        "content": "second",
+        "embedding": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "get",
+        "id": "1",
+        "expected": {
+          "id": "1",
+          "content": "first"
+        }
+      },
+      {
+        "type": "add",
+        "id": "3",
+        "content": "third",
+        "embedding": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "metadata": {}
+      },
+      {
+        "type": "get",
+        "id": "1",
+        "expected": {
+          "id": "1",
+          "content": "first"
+        }
+      },
+      {
+        "type": "get",
+        "id": "2",
+        "expected": null
+      },
+      {
+        "type": "get",
+        "id": "3",
+        "expected": {
+          "id": "3",
+          "content": "third"
+        }
+      }
+    ]
+  }
+}
