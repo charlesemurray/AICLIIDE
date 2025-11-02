@@ -1,8 +1,16 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
 
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
-use serde::{Deserialize, Serialize};
+use schemars::{
+    JsonSchema,
+    Schema,
+    SchemaGenerator,
+    json_schema,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Subject of the tool name change. For tools in mcp servers, you would need to prefix them with
 /// their server names

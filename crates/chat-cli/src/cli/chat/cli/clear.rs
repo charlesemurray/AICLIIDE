@@ -1,8 +1,18 @@
 use clap::Args;
-use crossterm::style::{self, Stylize};
-use crossterm::{cursor, execute};
+use crossterm::style::{
+    self,
+    Stylize,
+};
+use crossterm::{
+    cursor,
+    execute,
+};
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::theme::StyledText;
 
 #[deny(missing_docs)]

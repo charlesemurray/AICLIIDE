@@ -3,7 +3,10 @@
 use std::path::Path;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Creation complexity levels determine UI flow and feature availability
 #[derive(Debug, Clone, PartialEq)]

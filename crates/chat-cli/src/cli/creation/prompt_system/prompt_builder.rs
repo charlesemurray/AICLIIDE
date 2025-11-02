@@ -3,8 +3,19 @@
 use chrono::Utc;
 use eyre::Result;
 
-use super::creation_builder::{CreationBuilder, IssueSeverity, ValidationIssue, ValidationResult};
-use super::{DifficultyLevel, ExampleConversation, PromptTemplate, TemplateCategory, UsageStats};
+use super::creation_builder::{
+    CreationBuilder,
+    IssueSeverity,
+    ValidationIssue,
+    ValidationResult,
+};
+use super::{
+    DifficultyLevel,
+    ExampleConversation,
+    PromptTemplate,
+    TemplateCategory,
+    UsageStats,
+};
 
 /// Interactive prompt builder for step-by-step creation
 pub struct PromptBuilder {

@@ -1,9 +1,15 @@
 use clap::Args;
 use crossterm::execute;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 
 use super::editor::open_editor;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::theme::StyledText;
 
 /// Arguments to the `/reply` command.

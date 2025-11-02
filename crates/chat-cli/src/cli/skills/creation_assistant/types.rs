@@ -1,7 +1,13 @@
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::{
+    Value,
+    json,
+};
 
 use crate::cli::skills::types::SkillType;
 

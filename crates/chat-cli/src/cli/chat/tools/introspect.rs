@@ -2,12 +2,24 @@ use std::io::Write;
 
 use clap::CommandFactory;
 use eyre::Result;
-use serde::{Deserialize, Serialize};
-use strum::{EnumMessage, IntoEnumIterator};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    EnumMessage,
+    IntoEnumIterator,
+};
 
-use super::{InvokeOutput, OutputKind};
+use super::{
+    InvokeOutput,
+    OutputKind,
+};
 use crate::cli::chat::cli::SlashCommand;
-use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
+use crate::cli::experiment::experiment_manager::{
+    ExperimentManager,
+    ExperimentName,
+};
 use crate::database::settings::Setting;
 use crate::os::Os;
 
@@ -162,7 +174,10 @@ impl Introspect {
     }
 
     pub fn queue_description(output: &mut impl Write) -> Result<()> {
-        use crossterm::{queue, style};
+        use crossterm::{
+            queue,
+            style,
+        };
         queue!(output, style::Print("Introspecting to get you the right information"))?;
         Ok(())
     }

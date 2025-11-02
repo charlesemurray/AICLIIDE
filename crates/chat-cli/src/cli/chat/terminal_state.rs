@@ -2,7 +2,11 @@
 
 use std::io::Write;
 
-use crossterm::{cursor, style, terminal};
+use crossterm::{
+    cursor,
+    style,
+    terminal,
+};
 use eyre::Result;
 
 /// Saved terminal state for restoration

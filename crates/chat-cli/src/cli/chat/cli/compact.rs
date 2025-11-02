@@ -2,7 +2,11 @@ use clap::Args;
 
 use crate::cli::chat::consts::MAX_USER_MESSAGE_SIZE;
 use crate::cli::chat::message::UserMessageContent;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 
 #[deny(missing_docs)]
@@ -64,18 +68,13 @@ impl CompactArgs {
         session.reset_user_turn();
 
         session
-            .compact_history(
-                os,
-                prompt,
-                self.show_summary,
-                CompactStrategy {
-                    messages_to_exclude: self.messages_to_exclude.unwrap_or(default.messages_to_exclude),
-                    truncate_large_messages: self.truncate_large_messages.unwrap_or(default.truncate_large_messages),
-                    max_message_length: self.max_message_length.map_or(default.max_message_length, |v| {
-                        v.clamp(UserMessageContent::TRUNCATED_SUFFIX.len(), MAX_USER_MESSAGE_SIZE)
-                    }),
-                },
-            )
+            .compact_history(os, prompt, self.show_summary, CompactStrategy {
+                messages_to_exclude: self.messages_to_exclude.unwrap_or(default.messages_to_exclude),
+                truncate_large_messages: self.truncate_large_messages.unwrap_or(default.truncate_large_messages),
+                max_message_length: self.max_message_length.map_or(default.max_message_length, |v| {
+                    v.clamp(UserMessageContent::TRUNCATED_SUFFIX.len(), MAX_USER_MESSAGE_SIZE)
+                }),
+            })
             .await
     }
 }

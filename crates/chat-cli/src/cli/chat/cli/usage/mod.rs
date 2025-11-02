@@ -1,7 +1,11 @@
 use clap::Args;
 
 use crate::cli::chat::token_counter::TokenCount;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 
 pub mod usage_data_provider;

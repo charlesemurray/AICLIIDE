@@ -3,7 +3,10 @@
 use eyre::Result;
 
 use crate::cli::creation::TerminalUI;
-use crate::cli::creation::prompt_system::{InteractivePromptBuilder, PromptTemplate};
+use crate::cli::creation::prompt_system::{
+    InteractivePromptBuilder,
+    PromptTemplate,
+};
 
 /// Create a skill using the interactive prompt builder
 pub fn create_skill_with_prompt_builder<T: TerminalUI>(ui: &mut T) -> Result<PromptTemplate> {

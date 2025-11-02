@@ -26,8 +26,9 @@ pub async fn load_metadata(session_dir: &Path) -> Result<SessionMetadata, Sessio
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_save_metadata() {

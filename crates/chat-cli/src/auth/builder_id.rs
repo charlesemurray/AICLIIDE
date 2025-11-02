@@ -23,25 +23,46 @@
 
 use aws_sdk_ssooidc::client::Client;
 use aws_sdk_ssooidc::config::retry::RetryConfig;
-use aws_sdk_ssooidc::config::{BehaviorVersion, ConfigBag, RuntimeComponents, SharedAsyncSleep};
+use aws_sdk_ssooidc::config::{
+    BehaviorVersion,
+    ConfigBag,
+    RuntimeComponents,
+    SharedAsyncSleep,
+};
 use aws_sdk_ssooidc::error::SdkError;
 use aws_sdk_ssooidc::operation::create_token::CreateTokenOutput;
 use aws_sdk_ssooidc::operation::register_client::RegisterClientOutput;
 use aws_smithy_async::rt::sleep::TokioSleep;
 use aws_smithy_runtime_api::client::identity::http::Token;
-use aws_smithy_runtime_api::client::identity::{Identity, IdentityFuture, ResolveIdentity};
+use aws_smithy_runtime_api::client::identity::{
+    Identity,
+    IdentityFuture,
+    ResolveIdentity,
+};
 use aws_smithy_types::error::display::DisplayErrorContext;
 use aws_types::region::Region;
-use eyre::{Result, eyre};
+use eyre::{
+    Result,
+    eyre,
+};
 use time::OffsetDateTime;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
 
 use crate::api_client::stalled_stream_protection_config;
 use crate::auth::AuthError;
 use crate::auth::consts::*;
 use crate::auth::scope::is_scopes;
 use crate::aws_common::app_name;
-use crate::database::{Database, Secret};
+use crate::database::{
+    Database,
+    Secret,
+};
 use crate::os::Env;
 use crate::util::env_var::is_sigv4_enabled;
 

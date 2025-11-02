@@ -3,11 +3,23 @@
 use std::path::Path;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::creation::{
-    CreationArtifact, CreationConfig, CreationContext, CreationFlow, CreationMode, CreationPhase, CreationType,
-    PhaseResult, SecurityLevel, SkillType, TerminalUI,
+    CreationArtifact,
+    CreationConfig,
+    CreationContext,
+    CreationFlow,
+    CreationMode,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    SecurityLevel,
+    SkillType,
+    TerminalUI,
 };
 
 // Tests moved to separate test files

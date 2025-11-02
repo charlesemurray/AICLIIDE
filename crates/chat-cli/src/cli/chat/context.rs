@@ -2,15 +2,26 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
-use eyre::{Result, eyre};
+use eyre::{
+    Result,
+    eyre,
+};
 use glob::glob;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
+};
 
 use super::cli::hooks::HookOutput;
 use super::cli::model::context_window_tokens;
 use super::util::drop_matched_context_files;
 use crate::cli::agent::Agent;
-use crate::cli::agent::hook::{Hook, HookTrigger};
+use crate::cli::agent::hook::{
+    Hook,
+    HookTrigger,
+};
 use crate::cli::chat::ChatError;
 use crate::cli::chat::cli::hooks::HookExecutor;
 use crate::cli::chat::cli::model::ModelInfo;

@@ -2,7 +2,11 @@
 
 use clap::Parser;
 
-use crate::cli::creation::{AssistantMode, CreateArgs, CreateCommand};
+use crate::cli::creation::{
+    AssistantMode,
+    CreateArgs,
+    CreateCommand,
+};
 
 #[cfg(test)]
 mod tests {

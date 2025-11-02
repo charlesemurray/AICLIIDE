@@ -1,12 +1,22 @@
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use aws_smithy_runtime_api::box_error::BoxError;
 use aws_smithy_runtime_api::client::interceptors::Intercept;
 use aws_smithy_runtime_api::client::interceptors::context::BeforeTransmitInterceptorContextRef;
 use aws_smithy_runtime_api::client::retries::RequestAttempts;
 use aws_smithy_runtime_api::client::runtime_components::RuntimeComponents;
-use aws_smithy_types::config_bag::{ConfigBag, Storable, StoreReplace};
-use crossterm::{execute, style};
+use aws_smithy_types::config_bag::{
+    ConfigBag,
+    Storable,
+    StoreReplace,
+};
+use crossterm::{
+    execute,
+    style,
+};
 
 use crate::api_client::MAX_RETRY_DELAY_DURATION;
 use crate::theme::StyledText;

@@ -1,9 +1,18 @@
 #[cfg(test)]
 mod skill_interface_tests {
     use serde_json::json;
-    use tokio::time::{Duration, timeout};
+    use tokio::time::{
+        Duration,
+        timeout,
+    };
 
-    use crate::cli::skills::{Skill, SkillError, SkillResult, SkillUI, UIElement};
+    use crate::cli::skills::{
+        Skill,
+        SkillError,
+        SkillResult,
+        SkillUI,
+        UIElement,
+    };
 
     struct TestSkill {
         name: String,

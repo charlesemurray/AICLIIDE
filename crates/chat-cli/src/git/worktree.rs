@@ -1,7 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::process::Command;
 
-use super::error::{GitError, Result};
+use super::error::{
+    GitError,
+    Result,
+};
 
 #[derive(Debug, Clone)]
 pub struct WorktreeInfo {
@@ -58,9 +64,7 @@ fn parse_worktree_list(output: &str) -> Result<Vec<WorktreeInfo>> {
     }
 
     // Handle last entry if no trailing newline
-    if let (Some(path), Some(commit), Some(branch)) =
-        (current_path, current_commit, current_branch)
-    {
+    if let (Some(path), Some(commit), Some(branch)) = (current_path, current_commit, current_branch) {
         worktrees.push(WorktreeInfo {
             path: PathBuf::from(path),
             branch,
@@ -71,12 +75,7 @@ fn parse_worktree_list(output: &str) -> Result<Vec<WorktreeInfo>> {
     Ok(worktrees)
 }
 
-pub fn create_worktree(
-    repo_root: &Path,
-    name: &str,
-    base_branch: &str,
-    path: Option<PathBuf>,
-) -> Result<PathBuf> {
+pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Option<PathBuf>) -> Result<PathBuf> {
     // Check if branch already exists
     if branch_exists(repo_root, name)? {
         return Err(GitError::BranchExists(name.to_string()));
@@ -86,17 +85,16 @@ pub fn create_worktree(
     let worktree_path = if let Some(p) = path {
         p
     } else {
-        repo_root
-            .parent()
-            .unwrap_or(repo_root)
-            .join(format!("{}-{}", repo_root.file_name().unwrap().to_str().unwrap(), name))
+        repo_root.parent().unwrap_or(repo_root).join(format!(
+            "{}-{}",
+            repo_root.file_name().unwrap().to_str().unwrap(),
+            name
+        ))
     };
 
     // Check if worktree already exists
     if worktree_path.exists() {
-        return Err(GitError::WorktreeExists(
-            worktree_path.display().to_string(),
-        ));
+        return Err(GitError::WorktreeExists(worktree_path.display().to_string()));
     }
 
     // Create worktree
@@ -138,12 +136,7 @@ pub fn remove_worktree(path: &Path) -> Result<()> {
 pub fn worktree_exists(repo_root: &Path, name: &str) -> bool {
     list_worktrees(repo_root)
         .ok()
-        .and_then(|worktrees| {
-            worktrees
-                .iter()
-                .find(|wt| wt.branch == name)
-                .map(|_| true)
-        })
+        .and_then(|worktrees| worktrees.iter().find(|wt| wt.branch == name).map(|_| true))
         .unwrap_or(false)
 }
 
@@ -169,9 +162,9 @@ mod tests {
     #[test]
     fn test_parse_worktree_list() {
         let output = "worktree /path/to/repo\nHEAD abc123\nbranch refs/heads/main\n\nworktree /path/to/worktree\nHEAD def456\nbranch refs/heads/feature\n\n";
-        
+
         let worktrees = parse_worktree_list(output).unwrap();
-        
+
         assert_eq!(worktrees.len(), 2);
         assert_eq!(worktrees[0].branch, "main");
         assert_eq!(worktrees[1].branch, "feature");

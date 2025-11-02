@@ -1,7 +1,12 @@
 use eyre::Result;
 use rustyline::error::ReadlineError;
 
-use super::prompt::{PasteState, PromptQueryResponseReceiver, PromptQuerySender, rl};
+use super::prompt::{
+    PasteState,
+    PromptQueryResponseReceiver,
+    PromptQuerySender,
+    rl,
+};
 #[cfg(unix)]
 use super::skim_integration::SkimCommandSelector;
 use crate::os::Os;
@@ -68,7 +73,10 @@ impl InputSource {
         context_manager: std::sync::Arc<super::context::ContextManager>,
         tool_names: Vec<String>,
     ) {
-        use rustyline::{EventHandler, KeyEvent};
+        use rustyline::{
+            EventHandler,
+            KeyEvent,
+        };
 
         use crate::database::settings::Setting;
 

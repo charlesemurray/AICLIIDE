@@ -1,17 +1,50 @@
 use std::collections::HashMap;
 use std::env;
 
-use chrono::{DateTime, Datelike, FixedOffset};
-use serde::{Deserialize, Serialize};
-use tracing::{error, warn};
+use chrono::{
+    DateTime,
+    Datelike,
+    FixedOffset,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use tracing::{
+    error,
+    warn,
+};
 
-use super::consts::{MAX_CURRENT_WORKING_DIRECTORY_LEN, MAX_USER_MESSAGE_SIZE};
-use super::conversation::{CONTEXT_ENTRY_END_HEADER, CONTEXT_ENTRY_START_HEADER};
-use super::tools::{InvokeOutput, OutputKind, ToolOrigin};
-use super::util::{document_to_serde_value, serde_value_to_document, truncate_safe, truncate_safe_in_place};
+use super::consts::{
+    MAX_CURRENT_WORKING_DIRECTORY_LEN,
+    MAX_USER_MESSAGE_SIZE,
+};
+use super::conversation::{
+    CONTEXT_ENTRY_END_HEADER,
+    CONTEXT_ENTRY_START_HEADER,
+};
+use super::tools::{
+    InvokeOutput,
+    OutputKind,
+    ToolOrigin,
+};
+use super::util::{
+    document_to_serde_value,
+    serde_value_to_document,
+    truncate_safe,
+    truncate_safe_in_place,
+};
 use crate::api_client::model::{
-    AssistantResponseMessage, EnvState, ImageBlock, Tool, ToolResult, ToolResultContentBlock, ToolResultStatus,
-    ToolUse, UserInputMessage, UserInputMessageContext,
+    AssistantResponseMessage,
+    EnvState,
+    ImageBlock,
+    Tool,
+    ToolResult,
+    ToolResultContentBlock,
+    ToolResultStatus,
+    ToolUse,
+    UserInputMessage,
+    UserInputMessageContext,
 };
 
 const USER_ENTRY_START_HEADER: &str = "--- USER MESSAGE BEGIN ---\n";

@@ -1,8 +1,15 @@
 use crossterm::style::Attribute;
-use crossterm::{execute, queue, style};
+use crossterm::{
+    execute,
+    queue,
+    style,
+};
 
 use crate::cli::chat::token_counter::TokenCount;
-use crate::cli::chat::{ChatError, ChatSession};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+};
 use crate::theme::StyledText;
 
 /// Calculate usage percentage from token counts (private utility)

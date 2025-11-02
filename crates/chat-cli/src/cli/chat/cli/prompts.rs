@@ -1,20 +1,43 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::sync::LazyLock;
 
-use clap::{Args, Subcommand};
-use crossterm::style::{self, Attribute};
-use crossterm::{execute, queue};
+use clap::{
+    Args,
+    Subcommand,
+};
+use crossterm::style::{
+    self,
+    Attribute,
+};
+use crossterm::{
+    execute,
+    queue,
+};
 use regex::Regex;
-use rmcp::model::{PromptMessage, PromptMessageContent, PromptMessageRole};
+use rmcp::model::{
+    PromptMessage,
+    PromptMessageContent,
+    PromptMessageRole,
+};
 use serde_json::Value;
 use thiserror::Error;
 use unicode_width::UnicodeWidthStr;
 
 use crate::cli::chat::cli::editor::open_editor_file;
 use crate::cli::chat::tool_manager::PromptBundle;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::mcp_client::McpClientError;
 use crate::os::Os;
 use crate::theme::StyledText;

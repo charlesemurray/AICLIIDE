@@ -1,4 +1,7 @@
-use crate::cli::chat::{ChatError, ChatSession};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+};
 use crate::database::settings::Setting;
 use crate::os::Os;
 

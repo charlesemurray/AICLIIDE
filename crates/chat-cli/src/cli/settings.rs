@@ -1,9 +1,16 @@
 use std::process::ExitCode;
 
 use anstream::println;
-use clap::{ArgGroup, Args, Subcommand};
+use clap::{
+    ArgGroup,
+    Args,
+    Subcommand,
+};
 use crossterm::style::Stylize;
-use eyre::{Result, WrapErr};
+use eyre::{
+    Result,
+    WrapErr,
+};
 use globset::Glob;
 use serde_json::json;
 use strum::IntoEnumIterator;

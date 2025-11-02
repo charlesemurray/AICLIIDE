@@ -2,12 +2,26 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{Args, Subcommand};
-use crossterm::{queue, style};
-use eyre::{Result, bail};
+use clap::{
+    Args,
+    Subcommand,
+};
+use crossterm::{
+    queue,
+    style,
+};
+use eyre::{
+    Result,
+    bail,
+};
 use schemars::schema_for;
 
-use super::{Agent, Agents, McpServerConfig, legacy};
+use super::{
+    Agent,
+    Agents,
+    McpServerConfig,
+    legacy,
+};
 use crate::database::settings::Setting;
 use crate::os::Os;
 use crate::theme::StyledText;

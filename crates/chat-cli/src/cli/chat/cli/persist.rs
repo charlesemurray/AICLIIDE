@@ -1,10 +1,16 @@
 use clap::Subcommand;
 use crossterm::execute;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 
 use crate::cli::ConversationState;
 use crate::cli::chat::context::ContextFilePath;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 

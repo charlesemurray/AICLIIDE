@@ -1,11 +1,21 @@
 //! Context intelligence for smart defaults and project-aware suggestions
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 use eyre::Result;
 
-use crate::cli::creation::{CommandType, CreationDefaults, CreationType, ProjectType, SkillType, ValidationResult};
+use crate::cli::creation::{
+    CommandType,
+    CreationDefaults,
+    CreationType,
+    ProjectType,
+    SkillType,
+    ValidationResult,
+};
 
 /// Context analyzer that provides smart defaults and suggestions
 #[derive(Debug)]

@@ -1,6 +1,9 @@
 use eyre::Result;
 
-use crate::cli::creation::{SemanticColor, TerminalUI};
+use crate::cli::creation::{
+    SemanticColor,
+    TerminalUI,
+};
 
 pub struct EnhancedPrompts;
 

@@ -1,8 +1,18 @@
 use std::io::Write;
 
-use crossterm::style::{Color, Stylize};
-use crossterm::terminal::{self, ClearType};
-use crossterm::{cursor, execute, style};
+use crossterm::style::{
+    Color,
+    Stylize,
+};
+use crossterm::terminal::{
+    self,
+    ClearType,
+};
+use crossterm::{
+    cursor,
+    execute,
+    style,
+};
 use eyre::Result;
 use strip_ansi_escapes::strip_str;
 

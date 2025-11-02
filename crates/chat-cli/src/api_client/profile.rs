@@ -1,7 +1,16 @@
 use crate::api_client::endpoints::Endpoint;
-use crate::api_client::{ApiClient, ApiClientError};
-use crate::database::{AuthProfile, Database};
-use crate::os::{Env, Fs};
+use crate::api_client::{
+    ApiClient,
+    ApiClientError,
+};
+use crate::database::{
+    AuthProfile,
+    Database,
+};
+use crate::os::{
+    Env,
+    Fs,
+};
 
 pub async fn list_available_profiles(
     env: &Env,

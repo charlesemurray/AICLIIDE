@@ -5,7 +5,10 @@ use std::path::Path;
 use eyre::Result;
 use serde_json::Value;
 
-use crate::cli::creation::{CreationError, CreationType};
+use crate::cli::creation::{
+    CreationError,
+    CreationType,
+};
 
 /// Template manager for loading and applying templates
 pub struct TemplateManager {

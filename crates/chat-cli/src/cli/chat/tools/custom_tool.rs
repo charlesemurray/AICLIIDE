@@ -2,18 +2,30 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
 
-use crossterm::{queue, style};
+use crossterm::{
+    queue,
+    style,
+};
 use eyre::Result;
 use rmcp::model::CallToolRequestParam;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tracing::warn;
 
 use super::InvokeOutput;
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::cli::chat::CONTINUATION_LINE;
 use crate::cli::chat::token_counter::TokenCounter;
-use crate::mcp_client::{RunningService, oauth_util};
+use crate::mcp_client::{
+    RunningService,
+    oauth_util,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::MCP_SERVER_TOOL_DELIMITER;

@@ -1,9 +1,18 @@
 use std::collections::HashMap;
-use std::env::{self, VarError};
-use std::ffi::{OsStr, OsString};
+use std::env::{
+    self,
+    VarError,
+};
+use std::ffi::{
+    OsStr,
+    OsString,
+};
 use std::io;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 use crate::os::ACTIVE_USER_HOME;
 
@@ -13,7 +22,10 @@ pub struct Env(inner::Inner);
 mod inner {
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use std::sync::{Arc, Mutex};
+    use std::sync::{
+        Arc,
+        Mutex,
+    };
 
     #[derive(Debug, Clone)]
     pub(super) enum Inner {

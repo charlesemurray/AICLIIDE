@@ -1,12 +1,20 @@
 use std::io::Write;
 
 use crossterm::queue;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 use eyre::Result;
 use serde::Deserialize;
 
-use super::{InvokeOutput, OutputKind};
-use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
+use super::{
+    InvokeOutput,
+    OutputKind,
+};
+use crate::cli::experiment::experiment_manager::{
+    ExperimentManager,
+    ExperimentName,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 

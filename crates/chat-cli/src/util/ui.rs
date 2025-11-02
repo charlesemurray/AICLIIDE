@@ -1,9 +1,15 @@
 use std::io::Write;
 
 use crossterm::execute;
-use crossterm::style::{self, Attribute};
+use crossterm::style::{
+    self,
+    Attribute,
+};
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::feed::Feed;
 use crate::constants::ui_text;

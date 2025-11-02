@@ -4,11 +4,23 @@ use std::path::Path;
 use std::str::FromStr;
 
 use crossterm::execute;
-use crossterm::style::{self};
-use serde::{Deserialize, Serialize};
+use crossterm::style::{
+    self,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::api_client::model::{ImageBlock, ImageFormat, ImageSource};
-use crate::cli::chat::consts::{MAX_IMAGE_SIZE, MAX_NUMBER_OF_IMAGES_PER_REQUEST};
+use crate::api_client::model::{
+    ImageBlock,
+    ImageFormat,
+    ImageSource,
+};
+use crate::cli::chat::consts::{
+    MAX_IMAGE_SIZE,
+    MAX_NUMBER_OF_IMAGES_PER_REQUEST,
+};
 use crate::theme::StyledText;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -63,14 +75,11 @@ pub fn handle_images_from_paths(output: &mut impl Write, paths: &[String]) -> Ri
 
                 let image_size = fs::metadata(path).map(|m| m.len()).unwrap_or_default();
 
-                extracted_images.push((
-                    image_block,
-                    ImageMetadata {
-                        filename,
-                        filepath: path.clone(),
-                        size: image_size,
-                    },
-                ));
+                extracted_images.push((image_block, ImageMetadata {
+                    filename,
+                    filepath: path.clone(),
+                    size: image_size,
+                }));
             }
         }
     }

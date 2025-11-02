@@ -5,8 +5,15 @@ use std::process::ExitCode;
 use eyre::Result;
 
 use crate::cli::creation::{
-    CreationArtifact, CreationConfig, CreationFlow, CreationPhase, CreationType, PhaseResult, SemanticColor,
-    TerminalUI, TerminalUIImpl,
+    CreationArtifact,
+    CreationConfig,
+    CreationFlow,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    SemanticColor,
+    TerminalUI,
+    TerminalUIImpl,
 };
 
 /// Main creation assistant that orchestrates the creation workflow
@@ -155,7 +162,11 @@ mod tests {
     use std::path::Path;
 
     use super::*;
-    use crate::cli::creation::{CreationArtifact, CreationConfig, MockTerminalUI};
+    use crate::cli::creation::{
+        CreationArtifact,
+        CreationConfig,
+        MockTerminalUI,
+    };
 
     // Mock implementations for testing
     struct MockConfig {

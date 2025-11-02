@@ -1,8 +1,18 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 
-use crate::cli::chat::tools::{InputSchema, ToolOrigin, ToolSpec};
-use crate::cli::skills::toolspec_conversion::{ConversionError, ToToolSpec};
+use crate::cli::chat::tools::{
+    InputSchema,
+    ToolOrigin,
+    ToolSpec,
+};
+use crate::cli::skills::toolspec_conversion::{
+    ConversionError,
+    ToToolSpec,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workflow {

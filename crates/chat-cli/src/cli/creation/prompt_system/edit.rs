@@ -2,8 +2,15 @@
 
 use eyre::Result;
 
-use super::{DifficultyLevel, PromptTemplate, TemplateCategory};
-use crate::cli::creation::{SemanticColor, TerminalUI};
+use super::{
+    DifficultyLevel,
+    PromptTemplate,
+    TemplateCategory,
+};
+use crate::cli::creation::{
+    SemanticColor,
+    TerminalUI,
+};
 
 pub struct AssistantEditor<'a, T: TerminalUI> {
     ui: &'a mut T,
@@ -22,18 +29,15 @@ impl<'a, T: TerminalUI> AssistantEditor<'a, T> {
         );
 
         loop {
-            let choice = self.ui.select_option(
-                "\nWhat would you like to edit?",
-                &[
-                    ("name", "Name"),
-                    ("description", "Description"),
-                    ("role", "Role"),
-                    ("capabilities", "Capabilities (add/remove)"),
-                    ("constraints", "Constraints (add/remove)"),
-                    ("difficulty", "Difficulty level"),
-                    ("done", "Done editing"),
-                ],
-            )?;
+            let choice = self.ui.select_option("\nWhat would you like to edit?", &[
+                ("name", "Name"),
+                ("description", "Description"),
+                ("role", "Role"),
+                ("capabilities", "Capabilities (add/remove)"),
+                ("constraints", "Constraints (add/remove)"),
+                ("difficulty", "Difficulty level"),
+                ("done", "Done editing"),
+            ])?;
 
             match choice.as_str() {
                 "name" => self.edit_name()?,
@@ -86,14 +90,11 @@ impl<'a, T: TerminalUI> AssistantEditor<'a, T> {
                 SemanticColor::Debug,
             );
 
-            let action = self.ui.select_option(
-                "Action:",
-                &[
-                    ("add", "Add capability"),
-                    ("remove", "Remove capability"),
-                    ("done", "Done"),
-                ],
-            )?;
+            let action = self.ui.select_option("Action:", &[
+                ("add", "Add capability"),
+                ("remove", "Remove capability"),
+                ("done", "Done"),
+            ])?;
 
             match action.as_str() {
                 "add" => {
@@ -128,14 +129,11 @@ impl<'a, T: TerminalUI> AssistantEditor<'a, T> {
                 SemanticColor::Debug,
             );
 
-            let action = self.ui.select_option(
-                "Action:",
-                &[
-                    ("add", "Add constraint"),
-                    ("remove", "Remove constraint"),
-                    ("done", "Done"),
-                ],
-            )?;
+            let action = self.ui.select_option("Action:", &[
+                ("add", "Add constraint"),
+                ("remove", "Remove constraint"),
+                ("done", "Done"),
+            ])?;
 
             match action.as_str() {
                 "add" => {
@@ -168,14 +166,11 @@ impl<'a, T: TerminalUI> AssistantEditor<'a, T> {
             SemanticColor::Debug,
         );
 
-        let choice = self.ui.select_option(
-            "New difficulty:",
-            &[
-                ("beginner", "Beginner"),
-                ("intermediate", "Intermediate"),
-                ("advanced", "Advanced"),
-            ],
-        )?;
+        let choice = self.ui.select_option("New difficulty:", &[
+            ("beginner", "Beginner"),
+            ("intermediate", "Intermediate"),
+            ("advanced", "Advanced"),
+        ])?;
 
         self.template.difficulty = match choice.as_str() {
             "beginner" => DifficultyLevel::Beginner,

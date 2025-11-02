@@ -1,8 +1,15 @@
 use std::collections::VecDeque;
 use std::io::Write;
 
-use crossterm::{queue, style};
-use eyre::{Result, WrapErr, eyre};
+use crossterm::{
+    queue,
+    style,
+};
+use eyre::{
+    Result,
+    WrapErr,
+    eyre,
+};
 use serde::Deserialize;
 
 use super::super::context::ContextManager;

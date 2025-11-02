@@ -1,25 +1,52 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::sync::LazyLock;
 
 use crossterm::queue;
-use crossterm::style::{self};
-use eyre::{ContextCompat as _, Result, bail, eyre};
+use crossterm::style::{
+    self,
+};
+use eyre::{
+    ContextCompat as _,
+    Result,
+    bail,
+    eyre,
+};
 use globset::GlobSetBuilder;
 use serde::Deserialize;
 use similar::DiffableStr;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
-use syntect::util::{LinesWithEndings, as_24_bit_terminal_escaped};
-use tracing::{error, warn};
+use syntect::util::{
+    LinesWithEndings,
+    as_24_bit_terminal_escaped,
+};
+use tracing::{
+    error,
+    warn,
+};
 
-use super::{InvokeOutput, format_path, sanitize_path_tool_arg, supports_truecolor};
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use super::{
+    InvokeOutput,
+    format_path,
+    sanitize_path_tool_arg,
+    supports_truecolor,
+};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::cli::chat::line_tracker::FileLineTracker;
 use crate::os::Os;
-use crate::theme::{StyledText, theme};
+use crate::theme::{
+    StyledText,
+    theme,
+};
 use crate::util::paths;
 use crate::util::tool_permission_checker::is_tool_in_allowlist;
 
@@ -62,15 +89,12 @@ pub enum FsWrite {
 
 impl FsWrite {
     pub fn path(&self, os: &Os) -> PathBuf {
-        sanitize_path_tool_arg(
-            os,
-            match self {
-                FsWrite::Create { path, .. } => path.as_str(),
-                FsWrite::StrReplace { path, .. } => path.as_str(),
-                FsWrite::Insert { path, .. } => path.as_str(),
-                FsWrite::Append { path, .. } => path.as_str(),
-            },
-        )
+        sanitize_path_tool_arg(os, match self {
+            FsWrite::Create { path, .. } => path.as_str(),
+            FsWrite::StrReplace { path, .. } => path.as_str(),
+            FsWrite::Insert { path, .. } => path.as_str(),
+            FsWrite::Append { path, .. } => path.as_str(),
+        })
     }
 
     pub fn path_with_session(&self, os: &Os, conversation_id: Option<&str>) -> PathBuf {
@@ -859,7 +883,11 @@ mod tests {
 
     use super::*;
     use crate::cli::agent::ToolSettingTarget;
-    use crate::cli::chat::util::test::{TEST_FILE_CONTENTS, TEST_FILE_PATH, setup_test_directory};
+    use crate::cli::chat::util::test::{
+        TEST_FILE_CONTENTS,
+        TEST_FILE_PATH,
+        setup_test_directory,
+    };
 
     #[test]
     fn test_fs_write_deserialize() {

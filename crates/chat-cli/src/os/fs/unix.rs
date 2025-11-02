@@ -1,6 +1,12 @@
 use std::ffi::OsString;
-use std::os::unix::ffi::{OsStrExt, OsStringExt};
-use std::path::{Path, PathBuf};
+use std::os::unix::ffi::{
+    OsStrExt,
+    OsStringExt,
+};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 /// Performs `a.join(b)`, except:
 /// - if `b` is an absolute path, then the resulting path will equal `/a/b`

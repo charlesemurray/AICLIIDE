@@ -3,7 +3,10 @@ mod manager_tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::cli::creation::prompt_system::template_manager::{DefaultTemplateManager, TemplateManager};
+    use crate::cli::creation::prompt_system::template_manager::{
+        DefaultTemplateManager,
+        TemplateManager,
+    };
 
     #[tokio::test]
     async fn test_manager_initialization() {

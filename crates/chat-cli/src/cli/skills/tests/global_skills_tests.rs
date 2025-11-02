@@ -107,7 +107,11 @@ mod global_skills_tests {
 
     #[test]
     fn test_skill_info_with_scope_serialization() {
-        use crate::cli::skills::{EnhancedSkillInfo, SkillScope, SkillType};
+        use crate::cli::skills::{
+            EnhancedSkillInfo,
+            SkillScope,
+            SkillType,
+        };
 
         let skill_info = EnhancedSkillInfo {
             name: "test-skill".to_string(),

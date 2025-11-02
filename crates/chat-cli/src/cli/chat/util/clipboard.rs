@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
-use image::{ImageBuffer, ImageFormat, Rgba};
+use image::{
+    ImageBuffer,
+    ImageFormat,
+    Rgba,
+};
 
 /// Error types for clipboard operations
 #[derive(Debug, thiserror::Error)]

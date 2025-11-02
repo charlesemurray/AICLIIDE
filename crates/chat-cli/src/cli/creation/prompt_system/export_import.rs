@@ -1,11 +1,19 @@
 //! Export and import assistants
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 use eyre::Result;
 
-use super::{PromptTemplate, list_templates, load_template, save_template};
+use super::{
+    PromptTemplate,
+    list_templates,
+    load_template,
+    save_template,
+};
 
 /// Export a single assistant to a file
 pub fn export_assistant(id: &str, output_path: &Path) -> Result<PathBuf> {
@@ -97,10 +105,18 @@ pub enum ConflictStrategy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cli::creation::prompt_system::{PromptBuilder, CreationBuilder};
+    use std::time::{
+        SystemTime,
+        UNIX_EPOCH,
+    };
+
     use tempfile::TempDir;
-    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::*;
+    use crate::cli::creation::prompt_system::{
+        CreationBuilder,
+        PromptBuilder,
+    };
 
     fn unique_name(prefix: &str) -> String {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();

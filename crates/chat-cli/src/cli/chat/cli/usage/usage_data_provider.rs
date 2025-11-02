@@ -1,6 +1,12 @@
 use crate::cli::chat::cli::model::context_window_tokens;
-use crate::cli::chat::token_counter::{CharCount, TokenCount};
-use crate::cli::chat::{ChatError, ChatSession};
+use crate::cli::chat::token_counter::{
+    CharCount,
+    TokenCount,
+};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+};
 use crate::os::Os;
 
 /// Get detailed usage data for context window analysis

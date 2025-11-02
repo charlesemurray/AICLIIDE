@@ -3,11 +3,21 @@
 use std::path::Path;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::creation::{
-    CreationArtifact, CreationConfig, CreationContext, CreationFlow, CreationMode, CreationPhase, CreationType,
-    PhaseResult, TerminalUI,
+    CreationArtifact,
+    CreationConfig,
+    CreationContext,
+    CreationFlow,
+    CreationMode,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    TerminalUI,
 };
 
 /// Agent creation configuration

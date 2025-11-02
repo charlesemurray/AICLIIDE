@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::cli::creation::{CreateArgs, CreateCommand};
+    use crate::cli::creation::{
+        CreateArgs,
+        CreateCommand,
+    };
 
     #[tokio::test]
     async fn test_create_skill_command_integration() {

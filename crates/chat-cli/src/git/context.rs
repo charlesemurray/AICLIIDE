@@ -1,7 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::process::Command;
 
-use super::error::{GitError, Result};
+use super::error::{
+    GitError,
+    Result,
+};
 
 #[derive(Debug, Clone)]
 pub struct GitContext {
@@ -36,11 +42,7 @@ pub fn detect_git_context(path: &Path) -> Result<GitContext> {
     let branch_name = get_current_branch(path)?;
     let is_worktree = is_worktree(path)?;
     let is_main_branch = is_main_branch(&branch_name);
-    let worktree_path = if is_worktree {
-        Some(path.to_path_buf())
-    } else {
-        None
-    };
+    let worktree_path = if is_worktree { Some(path.to_path_buf()) } else { None };
 
     let repo_name = repo_root
         .file_name()
@@ -68,9 +70,7 @@ pub fn get_repo_root(path: &Path) -> Result<PathBuf> {
         return Err(GitError::NotARepository);
     }
 
-    let root = String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .to_string();
+    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
     Ok(PathBuf::from(root))
 }
@@ -101,7 +101,7 @@ pub fn is_worktree(path: &Path) -> Result<bool> {
     }
 
     let git_dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    
+
     // Worktrees have .git file pointing to worktrees directory
     Ok(git_dir.contains("worktrees"))
 }

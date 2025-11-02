@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use winreg::RegKey;
 use winreg::enums::HKEY_LOCAL_MACHINE;
 

@@ -4,7 +4,11 @@ use eyre::Result;
 
 use crate::cli::creation::enhanced_prompts::EnhancedPrompts;
 use crate::cli::creation::template_loader::SimpleTemplateLoader;
-use crate::cli::creation::{CreationType, SemanticColor, TerminalUI};
+use crate::cli::creation::{
+    CreationType,
+    SemanticColor,
+    TerminalUI,
+};
 
 pub struct InteractiveCreationFlow<T: TerminalUI> {
     ui: T,

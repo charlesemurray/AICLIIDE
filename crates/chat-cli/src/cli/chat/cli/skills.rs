@@ -1,7 +1,15 @@
 use clap::Subcommand;
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
-use crate::cli::creation::{CreateArgs, CreateCommand, SkillMode};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
+use crate::cli::creation::{
+    CreateArgs,
+    CreateCommand,
+    SkillMode,
+};
 use crate::cli::skills::SkillRegistry;
 use crate::os::Os;
 

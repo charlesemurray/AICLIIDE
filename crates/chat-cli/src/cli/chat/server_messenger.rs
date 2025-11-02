@@ -1,8 +1,25 @@
-use rmcp::model::{ListPromptsResult, ListResourceTemplatesResult, ListResourcesResult, ListToolsResult};
-use rmcp::{Peer, RoleClient};
-use tokio::sync::mpsc::{Receiver, Sender, channel};
+use rmcp::model::{
+    ListPromptsResult,
+    ListResourceTemplatesResult,
+    ListResourcesResult,
+    ListToolsResult,
+};
+use rmcp::{
+    Peer,
+    RoleClient,
+};
+use tokio::sync::mpsc::{
+    Receiver,
+    Sender,
+    channel,
+};
 
-use crate::mcp_client::messenger::{Messenger, MessengerError, MessengerResult, Result};
+use crate::mcp_client::messenger::{
+    Messenger,
+    MessengerError,
+    MessengerResult,
+    Result,
+};
 
 #[allow(dead_code)]
 #[derive(Debug)]

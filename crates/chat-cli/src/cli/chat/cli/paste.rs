@@ -1,9 +1,16 @@
 use clap::Args;
 use crossterm::execute;
-use crossterm::style::{self, Color};
+use crossterm::style::{
+    self,
+    Color,
+};
 
 use crate::cli::chat::util::clipboard::paste_image_from_clipboard;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 
 #[derive(Debug, Args, PartialEq)]

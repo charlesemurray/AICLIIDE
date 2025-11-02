@@ -1,18 +1,44 @@
-use std::io::{Write, stdin, stdout};
+use std::io::{
+    Write,
+    stdin,
+    stdout,
+};
 use std::path::PathBuf;
 
 use chrono::Utc;
 use crossterm::style::Print;
-use crossterm::{execute, queue, style};
-use eyre::{Result, bail};
+use crossterm::{
+    execute,
+    queue,
+    style,
+};
+use eyre::{
+    Result,
+    bail,
+};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use strum::{Display, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    Display,
+    EnumString,
+};
 
 use crate::cli::agent::Agents;
-use crate::cli::chat::tools::{InvokeOutput, OutputKind};
-use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
-use crate::cli::{Agent, DEFAULT_AGENT_NAME};
+use crate::cli::chat::tools::{
+    InvokeOutput,
+    OutputKind,
+};
+use crate::cli::experiment::experiment_manager::{
+    ExperimentManager,
+    ExperimentName,
+};
+use crate::cli::{
+    Agent,
+    DEFAULT_AGENT_NAME,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::env_var::get_all_env_vars;

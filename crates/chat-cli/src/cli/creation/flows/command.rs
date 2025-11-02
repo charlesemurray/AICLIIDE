@@ -4,13 +4,28 @@ use std::path::Path;
 
 use eyre::Result;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::cli::creation::{
-    CommandType, CreationArtifact, CreationConfig, CreationContext, CreationError, CreationFlow, CreationMode,
-    CreationPhase, CreationType, PhaseResult, TerminalUI,
+    CommandType,
+    CreationArtifact,
+    CreationConfig,
+    CreationContext,
+    CreationError,
+    CreationFlow,
+    CreationMode,
+    CreationPhase,
+    CreationType,
+    PhaseResult,
+    TerminalUI,
 };
-use crate::cli::custom_commands::{CommandHandler, CustomCommand};
+use crate::cli::custom_commands::{
+    CommandHandler,
+    CustomCommand,
+};
 
 /// Command creation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,7 +3,11 @@ mod tests {
     use serde_json::json;
 
     use crate::cli::skills::builtin::calculator::Calculator;
-    use crate::cli::skills::{Skill, SkillError, SkillRegistry};
+    use crate::cli::skills::{
+        Skill,
+        SkillError,
+        SkillRegistry,
+    };
 
     #[tokio::test]
     async fn test_calculator_basic_operations() {

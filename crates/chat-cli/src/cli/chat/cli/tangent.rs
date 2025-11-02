@@ -1,9 +1,21 @@
-use clap::{Args, Subcommand};
+use clap::{
+    Args,
+    Subcommand,
+};
 use crossterm::execute;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
-use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
+use crate::cli::experiment::experiment_manager::{
+    ExperimentManager,
+    ExperimentName,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 

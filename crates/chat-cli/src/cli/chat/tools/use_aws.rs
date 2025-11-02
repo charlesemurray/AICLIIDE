@@ -3,14 +3,31 @@ use std::io::Write;
 use std::process::Stdio;
 
 use bstr::ByteSlice;
-use convert_case::{Case, Casing};
-use crossterm::{queue, style};
-use eyre::{Result, WrapErr};
+use convert_case::{
+    Case,
+    Casing,
+};
+use crossterm::{
+    queue,
+    style,
+};
+use eyre::{
+    Result,
+    WrapErr,
+};
 use serde::Deserialize;
 use tracing::error;
 
-use super::{InvokeOutput, MAX_TOOL_RESPONSE_SIZE, OutputKind, env_vars_with_user_agent};
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use super::{
+    InvokeOutput,
+    MAX_TOOL_RESPONSE_SIZE,
+    OutputKind,
+    env_vars_with_user_agent,
+};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::os::Os;
 use crate::util::tool_permission_checker::is_tool_in_allowlist;
 

@@ -1,10 +1,20 @@
 use clap::Args;
 use crossterm::style::Stylize;
-use crossterm::{cursor, execute, queue, style};
+use crossterm::{
+    cursor,
+    execute,
+    queue,
+    style,
+};
 
 use crate::auth::builder_id::is_idc_user;
 use crate::cli::chat::{
-    ActualSubscriptionStatus, ChatError, ChatSession, ChatState, get_subscription_status_with_spinner, with_spinner,
+    ActualSubscriptionStatus,
+    ChatError,
+    ChatSession,
+    ChatState,
+    get_subscription_status_with_spinner,
+    with_spinner,
 };
 use crate::os::Os;
 use crate::theme::StyledText;

@@ -44,16 +44,37 @@ mod e2e_test;
 #[cfg(test)]
 mod persistence_test;
 
-pub use command_builder::{CommandBuilder, CommandConfig};
-pub use creation_builder::{CreationBuilder, IssueSeverity, ValidationIssue, ValidationResult};
+pub use command_builder::{
+    CommandBuilder,
+    CommandConfig,
+};
+pub use creation_builder::{
+    CreationBuilder,
+    IssueSeverity,
+    ValidationIssue,
+    ValidationResult,
+};
 pub use edit::AssistantEditor;
 pub use export_import::{
-    ConflictStrategy, export_all_assistants, export_assistant, import_all_assistants, import_assistant,
+    ConflictStrategy,
+    export_all_assistants,
+    export_assistant,
+    import_all_assistants,
+    import_assistant,
 };
 pub use interactive::InteractivePromptBuilder;
-pub use persistence::{delete_template, get_assistants_dir, list_templates, load_template, save_template};
+pub use persistence::{
+    delete_template,
+    get_assistants_dir,
+    list_templates,
+    load_template,
+    save_template,
+};
 pub use prompt_builder::PromptBuilder;
-pub use template_manager::{DefaultTemplateManager, TemplateManager};
+pub use template_manager::{
+    DefaultTemplateManager,
+    TemplateManager,
+};
 pub use types::*;
 
 /// Main entry point for the prompt building system

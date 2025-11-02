@@ -2,7 +2,10 @@
 mod chat_integration_tests {
     use serde_json::json;
 
-    use crate::cli::skills::{SkillError, SkillRegistry};
+    use crate::cli::skills::{
+        SkillError,
+        SkillRegistry,
+    };
 
     struct MockChatSession {
         registry: SkillRegistry,

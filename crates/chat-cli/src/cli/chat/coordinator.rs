@@ -3,13 +3,26 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use eyre::{Result, bail};
-use tokio::sync::{Mutex, mpsc};
+use eyre::{
+    Result,
+    bail,
+};
+use tokio::sync::{
+    Mutex,
+    mpsc,
+};
 
-use crate::cli::chat::managed_session::{ManagedSession, OutputBuffer};
+use crate::cli::chat::managed_session::{
+    ManagedSession,
+    OutputBuffer,
+};
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::session_mode::SessionStateChange;
-use crate::theme::session::{SessionDisplay, SessionStatus, SessionType};
+use crate::theme::session::{
+    SessionDisplay,
+    SessionStatus,
+    SessionType,
+};
 
 /// Configuration for multi-session coordinator
 #[derive(Debug, Clone)]

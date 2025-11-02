@@ -1,10 +1,17 @@
 //! Terminal-native UI implementation with ANSI colors and efficient interactions
 
-use std::io::{self, Write};
+use std::io::{
+    self,
+    Write,
+};
 
 use eyre::Result;
 
-use crate::cli::creation::{CreationError, SemanticColor, TerminalUI};
+use crate::cli::creation::{
+    CreationError,
+    SemanticColor,
+    TerminalUI,
+};
 
 /// Terminal UI implementation following Q CLI design principles
 pub struct TerminalUIImpl {

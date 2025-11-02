@@ -1,10 +1,18 @@
 // ABOUTME: Implements the /experiment slash command for toggling experimental features
 // ABOUTME: Provides interactive selection interface similar to /model command
 use clap::Args;
-use crossterm::{execute, queue, style};
+use crossterm::{
+    execute,
+    queue,
+    style,
+};
 use dialoguer::Select;
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::cli::experiment::experiment_manager::ExperimentManager;
 use crate::os::Os;
 use crate::theme::StyledText;

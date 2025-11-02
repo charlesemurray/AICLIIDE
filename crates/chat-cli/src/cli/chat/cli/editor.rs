@@ -1,9 +1,15 @@
 use clap::Args;
 use crossterm::execute;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 use uuid::Uuid;
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::theme::StyledText;
 use crate::util::env_var::get_editor;
 

@@ -1,14 +1,23 @@
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 use chrono::Utc;
 use clap::Args;
 use crossterm::execute;
-use crossterm::style::{self};
+use crossterm::style::{
+    self,
+};
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::theme::StyledText;
 use crate::util::paths::logs_dir;
 

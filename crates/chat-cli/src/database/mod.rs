@@ -10,17 +10,35 @@ use aws_sdk_cognitoidentity::types::Credentials;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::FromSql;
-use rusqlite::{Connection, Error, ToSql, params};
+use rusqlite::{
+    Connection,
+    Error,
+    ToSql,
+    params,
+};
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::{
+    Map,
+    Value,
+};
 use settings::Settings;
 use thiserror::Error;
-use tracing::{error, info, trace};
+use tracing::{
+    error,
+    info,
+    trace,
+};
 use uuid::Uuid;
 
 use crate::cli::ConversationState;
-use crate::util::paths::{DirectoryError, GlobalPaths};
+use crate::util::paths::{
+    DirectoryError,
+    GlobalPaths,
+};
 
 macro_rules! migrations {
     ($($name:expr),*) => {{
@@ -223,18 +241,14 @@ impl Database {
 
     /// Set cognito credentials used by toolkit telemetry.
     pub fn set_credentials_entry(&mut self, credentials: &Credentials) -> Result<usize, DatabaseError> {
-        self.set_json_entry(
-            Table::State,
-            CREDENTIALS_KEY,
-            CredentialsJson {
-                access_key_id: credentials.access_key_id.clone(),
-                secret_key: credentials.secret_key.clone(),
-                session_token: credentials.session_token.clone(),
-                expiration: credentials
-                    .expiration
-                    .and_then(|t| t.fmt(DateTimeFormat::DateTime).ok()),
-            },
-        )
+        self.set_json_entry(Table::State, CREDENTIALS_KEY, CredentialsJson {
+            access_key_id: credentials.access_key_id.clone(),
+            secret_key: credentials.secret_key.clone(),
+            session_token: credentials.session_token.clone(),
+            expiration: credentials
+                .expiration
+                .and_then(|t| t.fmt(DateTimeFormat::DateTime).ok()),
+        })
     }
 
     /// Get the current user profile used to determine API endpoints.

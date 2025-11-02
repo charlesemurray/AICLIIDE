@@ -7,7 +7,11 @@ use aws_config::profile::ProfileFileCredentialsProvider;
 use aws_config::provider_config::ProviderConfig;
 use aws_config::web_identity_token::WebIdentityTokenCredentialsProvider;
 use aws_credential_types::Credentials;
-use aws_credential_types::provider::{self, ProvideCredentials, future};
+use aws_credential_types::provider::{
+    self,
+    ProvideCredentials,
+    future,
+};
 use tracing::Instrument;
 
 #[derive(Debug)]

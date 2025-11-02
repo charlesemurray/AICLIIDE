@@ -4,10 +4,16 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::os::Os;
 
 #[derive(Debug, Clone)]
@@ -67,6 +73,22 @@ impl SkillTool {
             _ => Err(eyre::eyre!("Skill does not have a script implementation")),
         }
     }
+
+    pub fn build_env_vars(&self, params: &HashMap<String, Value>) -> HashMap<String, String> {
+        params
+            .iter()
+            .map(|(key, value)| {
+                let value_str = match value {
+                    Value::String(s) => s.clone(),
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => b.to_string(),
+                    Value::Null => "null".to_string(),
+                    _ => value.to_string(),
+                };
+                (format!("SKILL_PARAM_{}", key), value_str)
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -104,7 +126,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_tool_eval_perm() {
-        use crate::cli::agent::{Agent, PermissionEvalResult};
+        use crate::cli::agent::{
+            Agent,
+            PermissionEvalResult,
+        };
         use crate::os::Os;
 
         let skill = SkillTool::new("test-skill".to_string(), "Test".to_string());
@@ -193,5 +218,24 @@ mod tests {
             },
             _ => panic!("Expected Command implementation"),
         }
+    }
+
+    #[test]
+    fn test_build_env_vars() {
+        use std::collections::HashMap;
+
+        use serde_json::json;
+
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+        let mut params = HashMap::new();
+        params.insert("name".to_string(), json!("Alice"));
+        params.insert("age".to_string(), json!(30));
+        params.insert("active".to_string(), json!(true));
+
+        let env_vars = skill.build_env_vars(&params);
+
+        assert_eq!(env_vars.get("SKILL_PARAM_name"), Some(&"Alice".to_string()));
+        assert_eq!(env_vars.get("SKILL_PARAM_age"), Some(&"30".to_string()));
+        assert_eq!(env_vars.get("SKILL_PARAM_active"), Some(&"true".to_string()));
     }
 }

@@ -7,7 +7,10 @@ use aws_sdk_ssooidc::error::SdkError;
 use aws_sdk_ssooidc::operation::create_token::CreateTokenError;
 use aws_sdk_ssooidc::operation::register_client::RegisterClientError;
 use aws_sdk_ssooidc::operation::start_device_authorization::StartDeviceAuthorizationError;
-pub use builder_id::{is_logged_in, logout};
+pub use builder_id::{
+    is_logged_in,
+    logout,
+};
 pub use consts::START_URL;
 use thiserror::Error;
 

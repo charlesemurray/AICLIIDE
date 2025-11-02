@@ -1,6 +1,9 @@
 use amzn_codewhisperer_client::types::Customization as CodewhispererCustomization;
 use amzn_consolas_client::types::CustomizationSummary as ConsolasCustomization;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

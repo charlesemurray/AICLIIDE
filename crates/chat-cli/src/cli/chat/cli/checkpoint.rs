@@ -1,13 +1,31 @@
 use std::io::Write;
 
 use clap::Subcommand;
-use crossterm::style::{Attribute, StyledContent, Stylize};
-use crossterm::{execute, style};
+use crossterm::style::{
+    Attribute,
+    StyledContent,
+    Stylize,
+};
+use crossterm::{
+    execute,
+    style,
+};
 use dialoguer::Select;
 
-use crate::cli::chat::checkpoint::{Checkpoint, CheckpointManager, FileStats};
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
-use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
+use crate::cli::chat::checkpoint::{
+    Checkpoint,
+    CheckpointManager,
+    FileStats,
+};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
+use crate::cli::experiment::experiment_manager::{
+    ExperimentManager,
+    ExperimentName,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::paths::PathResolver;

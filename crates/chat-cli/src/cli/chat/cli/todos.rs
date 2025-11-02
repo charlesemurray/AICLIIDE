@@ -1,11 +1,23 @@
 use clap::Subcommand;
 use crossterm::execute;
-use crossterm::style::{self, Stylize};
+use crossterm::style::{
+    self,
+    Stylize,
+};
 use dialoguer::Select;
 use eyre::Result;
 
-use crate::cli::chat::tools::todo::{TodoList, TodoListState, delete_todo, get_all_todos};
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::tools::todo::{
+    TodoList,
+    TodoListState,
+    delete_todo,
+    get_all_todos,
+};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 

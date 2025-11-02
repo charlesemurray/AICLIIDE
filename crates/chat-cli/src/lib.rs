@@ -7,6 +7,7 @@ pub mod auth;
 pub mod aws_common;
 pub mod cli;
 pub mod constants;
+pub mod conversation_modes;
 pub mod database;
 pub mod git;
 pub mod logging;

@@ -289,10 +289,11 @@ mod tests {
         assert!(bool_param.validate("maybe").is_err());
 
         // Test enum parameter
-        let enum_param = CommandParameter::enum_param(
-            "environment".to_string(),
-            vec!["dev".to_string(), "staging".to_string(), "prod".to_string()],
-        );
+        let enum_param = CommandParameter::enum_param("environment".to_string(), vec![
+            "dev".to_string(),
+            "staging".to_string(),
+            "prod".to_string(),
+        ]);
         assert!(enum_param.validate("dev").is_ok());
         assert!(enum_param.validate("staging").is_ok());
         assert!(enum_param.validate("prod").is_ok());
@@ -325,10 +326,11 @@ mod tests {
         );
 
         cmd.add_parameter(
-            CommandParameter::enum_param(
-                "env".to_string(),
-                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()],
-            )
+            CommandParameter::enum_param("env".to_string(), vec![
+                "dev".to_string(),
+                "staging".to_string(),
+                "prod".to_string(),
+            ])
             .with_description("Environment parameter".to_string()),
         );
 
@@ -451,10 +453,11 @@ mod tests {
         );
 
         cmd.add_parameter(
-            CommandParameter::enum_param(
-                "env".to_string(),
-                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()],
-            )
+            CommandParameter::enum_param("env".to_string(), vec![
+                "dev".to_string(),
+                "staging".to_string(),
+                "prod".to_string(),
+            ])
             .with_description("Environment".to_string()),
         );
 
@@ -498,10 +501,11 @@ mod tests {
         assert!(error_msg.contains("Invalid characters detected"));
 
         // Test enum validation error message
-        let enum_param = CommandParameter::enum_param(
-            "env".to_string(),
-            vec!["dev".to_string(), "staging".to_string(), "prod".to_string()],
-        );
+        let enum_param = CommandParameter::enum_param("env".to_string(), vec![
+            "dev".to_string(),
+            "staging".to_string(),
+            "prod".to_string(),
+        ]);
         let result = enum_param.validate("production");
         assert!(result.is_err());
         let error_msg = result.unwrap_err();
@@ -541,10 +545,11 @@ mod tests {
         );
 
         cmd.add_parameter(
-            CommandParameter::enum_param(
-                "env".to_string(),
-                vec!["dev".to_string(), "staging".to_string(), "prod".to_string()],
-            )
+            CommandParameter::enum_param("env".to_string(), vec![
+                "dev".to_string(),
+                "staging".to_string(),
+                "prod".to_string(),
+            ])
             .with_description("Environment".to_string()),
         );
 

@@ -1,7 +1,12 @@
 use std::collections::HashMap;
 use std::process::Command;
 
-use super::types::{CommandError, CommandExecution, CommandHandler, CustomCommand};
+use super::types::{
+    CommandError,
+    CommandExecution,
+    CommandHandler,
+    CustomCommand,
+};
 
 pub struct CommandExecutor;
 

@@ -1,11 +1,15 @@
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use async_trait::async_trait;
 use time::OffsetDateTime;
 
 // Forward declarations for types we'll define in other modules
 use super::error::SessionError;
-use super::metadata::{SessionMetadata, SessionStatus};
+use super::metadata::{
+    SessionMetadata,
+    SessionStatus,
+};
 
 /// Filter criteria for listing sessions
 #[derive(Default, Clone)]

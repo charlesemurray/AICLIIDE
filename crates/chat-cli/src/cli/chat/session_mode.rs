@@ -2,7 +2,10 @@
 
 use std::sync::Arc;
 
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{
+    Mutex,
+    mpsc,
+};
 
 use crate::cli::chat::managed_session::OutputBuffer;
 

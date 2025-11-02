@@ -3,7 +3,10 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 
-use crate::cli::skills::{SkillResult, SkillUI};
+use crate::cli::skills::{
+    SkillResult,
+    SkillUI,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SecurityError {

@@ -1,15 +1,39 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{ArgAction, Args, ValueEnum};
-use crossterm::{execute, style};
-use eyre::{Result, bail};
+use clap::{
+    ArgAction,
+    Args,
+    ValueEnum,
+};
+use crossterm::{
+    execute,
+    style,
+};
+use eyre::{
+    Result,
+    bail,
+};
 
-use super::agent::{Agent, Agents, DEFAULT_AGENT_NAME, McpServerConfig};
-use crate::cli::chat::tool_manager::{global_mcp_config_path, workspace_mcp_config_path};
-use crate::cli::chat::tools::custom_tool::{CustomToolConfig, default_timeout};
+use super::agent::{
+    Agent,
+    Agents,
+    DEFAULT_AGENT_NAME,
+    McpServerConfig,
+};
+use crate::cli::chat::tool_manager::{
+    global_mcp_config_path,
+    workspace_mcp_config_path,
+};
+use crate::cli::chat::tools::custom_tool::{
+    CustomToolConfig,
+    default_timeout,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::paths::PathResolver;

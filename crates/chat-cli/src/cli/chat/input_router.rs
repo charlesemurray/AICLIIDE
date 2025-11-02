@@ -1,6 +1,9 @@
 //! Input routing for multi-session support
 
-use eyre::{Result, bail};
+use eyre::{
+    Result,
+    bail,
+};
 
 use crate::theme::session::SessionType;
 
@@ -64,13 +67,13 @@ impl InputRouter {
                 }
 
                 Ok(Some(SessionCommand::List { all, waiting }))
-            }
+            },
             "/switch" | "/s" => {
                 if parts.len() < 2 {
                     bail!("Usage: /switch <session-name>");
                 }
                 Ok(Some(SessionCommand::Switch(parts[1].to_string())))
-            }
+            },
             "/new" => {
                 let mut session_type = None;
                 let mut name = None;
@@ -86,7 +89,7 @@ impl InputRouter {
                             // Not a type, treat as name
                             name = Some(parts[1].to_string());
                             None
-                        }
+                        },
                     };
 
                     // If we parsed a type and there's another part, it's the name
@@ -96,25 +99,25 @@ impl InputRouter {
                 }
 
                 Ok(Some(SessionCommand::New { session_type, name }))
-            }
+            },
             "/close" => {
                 let name = parts.get(1).map(|s| s.to_string());
                 Ok(Some(SessionCommand::Close(name)))
-            }
+            },
             "/rename" => {
                 if parts.len() < 2 {
                     bail!("Usage: /rename <new-name>");
                 }
                 Ok(Some(SessionCommand::Rename(parts[1].to_string())))
-            }
+            },
             "/session-name" => {
                 let name = parts.get(1).map(|s| s.to_string());
                 Ok(Some(SessionCommand::SessionName(name)))
-            }
+            },
             _ => {
                 // Not a session command, let it pass through
                 Ok(None)
-            }
+            },
         }
     }
 
@@ -129,10 +132,7 @@ impl InputRouter {
         }
 
         // Check for valid characters (alphanumeric, dash, underscore)
-        if !name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-        {
+        if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
             bail!("Session name can only contain letters, numbers, dashes, and underscores");
         }
 
@@ -261,10 +261,7 @@ mod tests {
     #[test]
     fn test_parse_close_with_name() {
         let result = InputRouter::parse("/close my-session").unwrap();
-        assert_eq!(
-            result,
-            Some(SessionCommand::Close(Some("my-session".to_string())))
-        );
+        assert_eq!(result, Some(SessionCommand::Close(Some("my-session".to_string()))));
     }
 
     #[test]
@@ -288,10 +285,7 @@ mod tests {
     #[test]
     fn test_parse_session_name_set() {
         let result = InputRouter::parse("/session-name new-name").unwrap();
-        assert_eq!(
-            result,
-            Some(SessionCommand::SessionName(Some("new-name".to_string())))
-        );
+        assert_eq!(result, Some(SessionCommand::SessionName(Some("new-name".to_string()))));
     }
 
     #[test]

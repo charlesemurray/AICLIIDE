@@ -4,10 +4,23 @@ use async_trait::async_trait;
 
 use crate::cli::chat::tools::ToolSpec;
 use crate::cli::skills::registry::SkillInfo;
-use crate::cli::skills::toolspec_conversion::{ConversionError, ToToolSpec};
-use crate::cli::skills::types::{JsonSkill as EnhancedJsonSkill, SkillType};
+use crate::cli::skills::toolspec_conversion::{
+    ConversionError,
+    ToToolSpec,
+};
+use crate::cli::skills::types::{
+    JsonSkill as EnhancedJsonSkill,
+    SkillType,
+};
 use crate::cli::skills::{
-    ResourceLimits, Result, Skill, SkillError, SkillResult, SkillUI, UIElement, execute_with_timeout,
+    ResourceLimits,
+    Result,
+    Skill,
+    SkillError,
+    SkillResult,
+    SkillUI,
+    UIElement,
+    execute_with_timeout,
 };
 
 pub struct JsonSkill {

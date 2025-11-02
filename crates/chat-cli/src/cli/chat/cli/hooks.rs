@@ -1,21 +1,48 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::process::Stdio;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use bstr::ByteSlice;
 use clap::Args;
-use crossterm::style::{self, Stylize};
-use crossterm::{cursor, execute, queue, terminal};
-use eyre::{Result, eyre};
-use futures::stream::{FuturesUnordered, StreamExt};
-use spinners::{Spinner, Spinners};
+use crossterm::style::{
+    self,
+    Stylize,
+};
+use crossterm::{
+    cursor,
+    execute,
+    queue,
+    terminal,
+};
+use eyre::{
+    Result,
+    eyre,
+};
+use futures::stream::{
+    FuturesUnordered,
+    StreamExt,
+};
+use spinners::{
+    Spinner,
+    Spinners,
+};
 
-use crate::cli::agent::hook::{Hook, HookTrigger};
+use crate::cli::agent::hook::{
+    Hook,
+    HookTrigger,
+};
 use crate::cli::agent::is_mcp_tool_ref;
 use crate::cli::chat::consts::AGENT_FORMAT_HOOKS_DOC_URL;
 use crate::cli::chat::util::truncate_safe;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::constants::help_text::hooks_long_help;
 use crate::theme::StyledText;
 use crate::util::MCP_SERVER_TOOL_DELIMITER;
@@ -220,21 +247,16 @@ impl HookExecutor {
             if *exit_code != 0 {
                 continue; // Only cache successful hooks
             }
-            self.cache.insert(
-                (*trigger, hook.clone()),
-                CachedHook {
-                    output: output.clone(),
-                    expiry: match trigger {
-                        HookTrigger::AgentSpawn => None,
-                        HookTrigger::UserPromptSubmit => {
-                            Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds))
-                        },
-                        HookTrigger::PreToolUse => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
-                        HookTrigger::PostToolUse => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
-                        HookTrigger::Stop => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
-                    },
+            self.cache.insert((*trigger, hook.clone()), CachedHook {
+                output: output.clone(),
+                expiry: match trigger {
+                    HookTrigger::AgentSpawn => None,
+                    HookTrigger::UserPromptSubmit => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
+                    HookTrigger::PreToolUse => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
+                    HookTrigger::PostToolUse => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
+                    HookTrigger::Stop => Some(Instant::now() + Duration::from_secs(hook.cache_ttl_seconds)),
                 },
-            );
+            });
         }
 
         results.append(&mut cached);
@@ -419,7 +441,10 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::cli::agent::hook::{Hook, HookTrigger};
+    use crate::cli::agent::hook::{
+        Hook,
+        HookTrigger,
+    };
 
     #[test]
     fn test_hook_matches_tool() {

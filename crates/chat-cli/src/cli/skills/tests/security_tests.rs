@@ -1,7 +1,10 @@
 #[cfg(test)]
 mod security_tests {
     use std::fs;
-    use std::time::{Duration, Instant};
+    use std::time::{
+        Duration,
+        Instant,
+    };
 
     use serde_json::json;
     use tempfile::TempDir;

@@ -15,7 +15,12 @@ use amzn_codewhisperer_client::Client as CodewhispererClient;
 use amzn_codewhisperer_client::operation::create_subscription_token::CreateSubscriptionTokenOutput;
 use amzn_codewhisperer_client::types::Origin::Cli;
 use amzn_codewhisperer_client::types::{
-    Model, OptInFeatureToggle, OptOutPreference, SubscriptionStatus, TelemetryEvent, UserContext,
+    Model,
+    OptInFeatureToggle,
+    OptOutPreference,
+    SubscriptionStatus,
+    TelemetryEvent,
+    UserContext,
 };
 use amzn_codewhisperer_streaming_client::Client as CodewhispererStreamingClient;
 use amzn_qdeveloper_streaming_client::Client as QDeveloperStreamingClient;
@@ -32,18 +37,34 @@ use parking_lot::Mutex;
 pub use profile::list_available_profiles;
 use serde_json::Map;
 use tokio::sync::RwLock;
-use tracing::{debug, error};
+use tracing::{
+    debug,
+    error,
+};
 
 use crate::api_client::credentials::CredentialsChain;
 use crate::api_client::delay_interceptor::DelayTrackingInterceptor;
-use crate::api_client::model::{ChatResponseStream, ConversationState};
+use crate::api_client::model::{
+    ChatResponseStream,
+    ConversationState,
+};
 use crate::api_client::opt_out::OptOutInterceptor;
 use crate::api_client::send_message_output::SendMessageOutput;
 use crate::auth::builder_id::BearerResolver;
-use crate::aws_common::{UserAgentOverrideInterceptor, app_name, behavior_version};
+use crate::aws_common::{
+    UserAgentOverrideInterceptor,
+    app_name,
+    behavior_version,
+};
 use crate::database::settings::Setting;
-use crate::database::{AuthProfile, Database};
-use crate::os::{Env, Fs};
+use crate::database::{
+    AuthProfile,
+    Database,
+};
+use crate::os::{
+    Env,
+    Fs,
+};
 
 // Opt out constants
 pub const X_AMZN_CODEWHISPERER_OPT_OUT_HEADER: &str = "x-amzn-codewhisperer-optout";
@@ -653,7 +674,11 @@ fn split_tool_use_event(value: &Map<String, serde_json::Value>) -> Vec<ChatRespo
 
 #[cfg(test)]
 mod tests {
-    use amzn_codewhisperer_client::types::{ChatAddMessageEvent, IdeCategory, OperatingSystem};
+    use amzn_codewhisperer_client::types::{
+        ChatAddMessageEvent,
+        IdeCategory,
+        OperatingSystem,
+    };
 
     use super::*;
     use crate::api_client::model::UserInputMessage;

@@ -1,26 +1,49 @@
 use std::fmt::Debug;
-use std::time::{Duration, SystemTime};
+use std::time::{
+    Duration,
+    SystemTime,
+};
 
 pub use amzn_toolkit_telemetry_client::types::MetricDatum;
-use strum::{Display, EnumString};
+use strum::{
+    Display,
+    EnumString,
+};
 
 use super::definitions::metrics::CodewhispererterminalRecordUserTurnCompletion;
 use super::definitions::types::CodewhispererterminalChatConversationType;
 use crate::telemetry::definitions::IntoMetricDatum;
 use crate::telemetry::definitions::metrics::{
-    AmazonqDidSelectProfile, AmazonqEndChat, AmazonqMessageResponseError, AmazonqProfileState, AmazonqStartChat,
-    AmazonqcliDailyHeartbeat, CodewhispererterminalAddChatMessage, CodewhispererterminalAgentConfigInit,
-    CodewhispererterminalAgentContribution, CodewhispererterminalAuthFailed,
-    CodewhispererterminalChatSlashCommandExecuted, CodewhispererterminalCliSubcommandExecuted,
-    CodewhispererterminalMcpServerInit, CodewhispererterminalRefreshCredentials, CodewhispererterminalToolUseSuggested,
+    AmazonqDidSelectProfile,
+    AmazonqEndChat,
+    AmazonqMessageResponseError,
+    AmazonqProfileState,
+    AmazonqStartChat,
+    AmazonqcliDailyHeartbeat,
+    CodewhispererterminalAddChatMessage,
+    CodewhispererterminalAgentConfigInit,
+    CodewhispererterminalAgentContribution,
+    CodewhispererterminalAuthFailed,
+    CodewhispererterminalChatSlashCommandExecuted,
+    CodewhispererterminalCliSubcommandExecuted,
+    CodewhispererterminalMcpServerInit,
+    CodewhispererterminalRefreshCredentials,
+    CodewhispererterminalToolUseSuggested,
     CodewhispererterminalUserLoggedIn,
 };
 use crate::telemetry::definitions::types::{
-    CodewhispererterminalCustomToolInputTokenSize, CodewhispererterminalCustomToolLatency,
-    CodewhispererterminalCustomToolOutputTokenSize, CodewhispererterminalIsToolValid,
-    CodewhispererterminalMcpServerAllToolsCount, CodewhispererterminalMcpServerInitFailureReason,
-    CodewhispererterminalToolName, CodewhispererterminalToolUseId, CodewhispererterminalToolUseIsSuccess,
-    CodewhispererterminalToolsPerMcpServer, CodewhispererterminalUserInputId, CodewhispererterminalUtteranceId,
+    CodewhispererterminalCustomToolInputTokenSize,
+    CodewhispererterminalCustomToolLatency,
+    CodewhispererterminalCustomToolOutputTokenSize,
+    CodewhispererterminalIsToolValid,
+    CodewhispererterminalMcpServerAllToolsCount,
+    CodewhispererterminalMcpServerInitFailureReason,
+    CodewhispererterminalToolName,
+    CodewhispererterminalToolUseId,
+    CodewhispererterminalToolUseIsSuccess,
+    CodewhispererterminalToolsPerMcpServer,
+    CodewhispererterminalUserInputId,
+    CodewhispererterminalUtteranceId,
 };
 
 /// A serializable telemetry event that can be sent or queued.

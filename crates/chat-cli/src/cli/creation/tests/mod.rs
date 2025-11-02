@@ -18,7 +18,10 @@ use tempfile::TempDir;
 pub use unit::*;
 pub use ux::*;
 
-use crate::cli::creation::types::{SemanticColor, TerminalUI};
+use crate::cli::creation::types::{
+    SemanticColor,
+    TerminalUI,
+};
 use crate::cli::creation::*;
 
 /// Test utilities and fixtures

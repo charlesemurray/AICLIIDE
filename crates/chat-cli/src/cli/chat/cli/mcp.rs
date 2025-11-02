@@ -1,10 +1,17 @@
 use std::io::Write;
 
 use clap::Args;
-use crossterm::{queue, style};
+use crossterm::{
+    queue,
+    style,
+};
 
 use crate::cli::chat::tool_manager::LoadingRecord;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::theme::StyledText;
 
 /// Arguments for the MCP (Model Context Protocol) command.

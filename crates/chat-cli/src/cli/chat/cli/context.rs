@@ -2,14 +2,27 @@ use std::collections::HashSet;
 
 use clap::Subcommand;
 use crossterm::style::Attribute;
-use crossterm::{execute, style};
+use crossterm::{
+    execute,
+    style,
+};
 
 use crate::cli::chat::consts::AGENT_FORMAT_HOOKS_DOC_URL;
-use crate::cli::chat::context::{ContextFilePath, calc_max_context_files_size};
+use crate::cli::chat::context::{
+    ContextFilePath,
+    calc_max_context_files_size,
+};
 use crate::cli::chat::token_counter::TokenCounter;
 use crate::cli::chat::util::drop_matched_context_files;
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
-use crate::constants::help_text::{CONTEXT_DESCRIPTION, context_long_help};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
+use crate::constants::help_text::{
+    CONTEXT_DESCRIPTION,
+    context_long_help,
+};
 use crate::os::Os;
 use crate::theme::StyledText;
 

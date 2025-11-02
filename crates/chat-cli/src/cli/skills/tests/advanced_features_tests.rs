@@ -3,7 +3,14 @@ mod advanced_features_tests {
     use serde_json::json;
     use tempfile::TempDir;
 
-    use crate::cli::skills::{Skill, SkillError, SkillRegistry, SkillResult, SkillUI, UIElement};
+    use crate::cli::skills::{
+        Skill,
+        SkillError,
+        SkillRegistry,
+        SkillResult,
+        SkillUI,
+        UIElement,
+    };
 
     struct MockSkillWithAliases {
         name: String,

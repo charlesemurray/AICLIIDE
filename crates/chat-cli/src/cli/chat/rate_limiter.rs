@@ -1,7 +1,10 @@
 //! API rate limiting for multi-session support
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use tokio::sync::Semaphore;
 
@@ -29,11 +32,11 @@ impl ApiRateLimiter {
     /// Returns a guard that releases the permit when dropped
     pub async fn acquire(&self) -> RateLimitGuard {
         let permit = self.semaphore.clone().acquire_owned().await.expect("Semaphore closed");
-        
+
         // Track active calls
         let mut active = self.active_calls.lock().await;
         *active += 1;
-        
+
         RateLimitGuard {
             _permit: permit,
             active_calls: self.active_calls.clone(),
@@ -120,13 +123,13 @@ mod tests {
     #[tokio::test]
     async fn test_acquire_and_release() {
         let limiter = ApiRateLimiter::new(2);
-        
+
         let _guard1 = limiter.acquire().await;
         assert_eq!(limiter.available_permits(), 1);
-        
+
         let _guard2 = limiter.acquire().await;
         assert_eq!(limiter.available_permits(), 0);
-        
+
         drop(_guard1);
         tokio::time::sleep(Duration::from_millis(10)).await;
         assert_eq!(limiter.available_permits(), 1);
@@ -135,10 +138,10 @@ mod tests {
     #[tokio::test]
     async fn test_try_acquire() {
         let limiter = ApiRateLimiter::new(1);
-        
+
         let _guard1 = limiter.try_acquire();
         assert!(_guard1.is_some());
-        
+
         let guard2 = limiter.try_acquire();
         assert!(guard2.is_none());
     }
@@ -146,11 +149,11 @@ mod tests {
     #[tokio::test]
     async fn test_active_count() {
         let limiter = ApiRateLimiter::new(5);
-        
+
         let _guard1 = limiter.acquire().await;
         tokio::time::sleep(Duration::from_millis(10)).await;
         assert_eq!(limiter.active_count().await, 1);
-        
+
         let _guard2 = limiter.acquire().await;
         tokio::time::sleep(Duration::from_millis(10)).await;
         assert_eq!(limiter.active_count().await, 2);
@@ -160,9 +163,9 @@ mod tests {
     async fn test_guard_duration() {
         let limiter = ApiRateLimiter::new(1);
         let guard = limiter.acquire().await;
-        
+
         tokio::time::sleep(Duration::from_millis(50)).await;
-        
+
         let duration = guard.duration();
         assert!(duration >= Duration::from_millis(50));
     }
@@ -170,28 +173,28 @@ mod tests {
     #[tokio::test]
     async fn test_concurrent_limit() {
         let limiter = ApiRateLimiter::new(2);
-        
+
         let guard1 = limiter.acquire().await;
         let guard2 = limiter.acquire().await;
-        
+
         // Third acquire should wait
         let limiter_clone = limiter.clone();
         let handle = tokio::spawn(async move {
             let _guard3 = limiter_clone.acquire().await;
             "acquired"
         });
-        
+
         // Give it time to try
         tokio::time::sleep(Duration::from_millis(10)).await;
         assert!(!handle.is_finished());
-        
+
         // Release one
         drop(guard1);
-        
+
         // Now it should complete
         let result = tokio::time::timeout(Duration::from_millis(100), handle).await;
         assert!(result.is_ok());
-        
+
         drop(guard2);
     }
 
@@ -199,7 +202,7 @@ mod tests {
     async fn test_clone() {
         let limiter = ApiRateLimiter::new(3);
         let limiter_clone = limiter.clone();
-        
+
         let _guard1 = limiter.acquire().await;
         assert_eq!(limiter_clone.available_permits(), 2);
     }

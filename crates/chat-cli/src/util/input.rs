@@ -1,11 +1,25 @@
 //! Input utilities for interactive prompts, building on existing Q CLI patterns
 
-use std::io::{self, Write};
+use std::io::{
+    self,
+    Write,
+};
 
-use crossterm::cursor::{MoveToColumn, MoveUp};
+use crossterm::cursor::{
+    MoveToColumn,
+    MoveUp,
+};
 use crossterm::execute;
-use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
-use crossterm::terminal::{Clear, ClearType};
+use crossterm::style::{
+    Color,
+    Print,
+    ResetColor,
+    SetForegroundColor,
+};
+use crossterm::terminal::{
+    Clear,
+    ClearType,
+};
 use eyre::Result;
 
 /// Get user input with a prompt, following existing Q CLI patterns
