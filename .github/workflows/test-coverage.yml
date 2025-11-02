@@ -75,7 +75,7 @@ jobs:
         fail_ci_if_error: false
         
     - name: Upload coverage HTML report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: coverage-report
         path: coverage-report/
@@ -84,7 +84,7 @@ jobs:
       run: python3 scripts/test_coverage.py
       
     - name: Upload test report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: test-coverage-report
         path: test_coverage_report.md
@@ -123,7 +123,7 @@ jobs:
       run: cargo bench --workspace
       
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: benchmark-results
         path: target/criterion/
