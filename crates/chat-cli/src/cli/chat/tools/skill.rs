@@ -128,6 +128,28 @@ impl SkillTool {
             Err(eyre::eyre!("Script execution failed: {}", stderr))
         }
     }
+
+    pub fn parse_command_template(
+        &self,
+        template: &str,
+        params: &HashMap<String, Value>,
+    ) -> Result<String> {
+        let mut result = template.to_string();
+
+        for (key, value) in params {
+            let placeholder = format!("{{{{{}}}}}", key);
+            let value_str = match value {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                Value::Bool(b) => b.to_string(),
+                Value::Null => "null".to_string(),
+                _ => value.to_string(),
+            };
+            result = result.replace(&placeholder, &value_str);
+        }
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
@@ -454,5 +476,23 @@ mod tests {
         assert!(result.is_err());
         // Verify the error indicates script failure
         assert!(result.unwrap_err().to_string().contains("failed"));
+    }
+
+    #[test]
+    fn test_parse_command_template() {
+        use std::collections::HashMap;
+
+        use serde_json::json;
+
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+        let mut params = HashMap::new();
+        params.insert("name".to_string(), json!("Alice"));
+        params.insert("age".to_string(), json!(30));
+
+        let template = "echo 'Hello {{name}}, you are {{age}} years old'";
+        let result = skill.parse_command_template(template, &params);
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "echo 'Hello Alice, you are 30 years old'");
     }
 }
