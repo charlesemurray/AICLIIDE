@@ -1,5 +1,7 @@
 //! Skill tool implementation
 
+use eyre::Result;
+
 #[derive(Debug, Clone)]
 pub struct SkillTool {
     pub name: String,
@@ -9,6 +11,13 @@ pub struct SkillTool {
 impl SkillTool {
     pub fn new(name: String, description: String) -> Self {
         Self { name, description }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.name.is_empty() {
+            return Err(eyre::eyre!("Skill name cannot be empty"));
+        }
+        Ok(())
     }
 }
 
@@ -29,5 +38,19 @@ mod tests {
         let cloned = skill.clone();
         assert_eq!(cloned.name, skill.name);
         assert_eq!(cloned.description, skill.description);
+    }
+
+    #[test]
+    fn test_skill_tool_validate_success() {
+        let skill = SkillTool::new("valid-skill".to_string(), "Description".to_string());
+        assert!(skill.validate().is_ok());
+    }
+
+    #[test]
+    fn test_skill_tool_validate_empty_name() {
+        let skill = SkillTool::new("".to_string(), "Description".to_string());
+        let result = skill.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("empty"));
     }
 }

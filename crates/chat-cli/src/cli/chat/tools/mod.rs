@@ -276,8 +276,8 @@ impl Tool {
             Tool::Thinking(think) => think.validate(os).await,
             Tool::Todo(todo) => todo.validate(os).await,
             Tool::Delegate(_) => Ok(()),
-            Tool::Skill(_) => Ok(()),    // Skills are validated by the registry
-            Tool::SkillNew(_) => Ok(()), // Validation not yet implemented
+            Tool::Skill(_) => Ok(()), // Skills are validated by the registry
+            Tool::SkillNew(skill) => skill.validate(),
         }
     }
 
@@ -744,5 +744,15 @@ mod tests {
         let skill = skill::SkillTool::new("my-skill".to_string(), "Test skill".to_string());
         let tool = Tool::SkillNew(skill);
         assert_eq!(tool.display_name(), "my-skill");
+    }
+
+    #[tokio::test]
+    async fn test_tool_skill_validate() {
+        let os = Os::new().await.unwrap();
+        let skill = skill::SkillTool::new("test-skill".to_string(), "Test skill".to_string());
+        let mut tool = Tool::SkillNew(skill);
+
+        let result = tool.validate(&os).await;
+        assert!(result.is_ok());
     }
 }
