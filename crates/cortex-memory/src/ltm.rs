@@ -18,7 +18,6 @@ use crate::{
 pub struct LongTermMemory {
     conn: Connection,
     hnsw: HnswWrapper,
-    dimensionality: usize,
 }
 
 impl LongTermMemory {
@@ -39,11 +38,7 @@ impl LongTermMemory {
 
         let hnsw = HnswWrapper::new(dimensionality, 10000)?;
 
-        Ok(Self {
-            conn,
-            hnsw,
-            dimensionality,
-        })
+        Ok(Self { conn, hnsw })
     }
 
     pub fn add(&mut self, note: MemoryNote, embedding: Vec<f32>) -> Result<()> {
