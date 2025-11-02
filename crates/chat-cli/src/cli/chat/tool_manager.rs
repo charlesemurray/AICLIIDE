@@ -2078,6 +2078,36 @@ fn queue_prompts_load_error_message(name: &str, msg: &eyre::Report, output: &mut
     )?)
 }
 
+impl ToolManager {
+    pub async fn register_skills(&mut self, os: &Os) -> eyre::Result<()> {
+        let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
+            .await
+            .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
+
+        let toolspecs = registry.get_all_toolspecs();
+
+        for toolspec in toolspecs {
+            let model_name = toolspec.name.clone();
+            self.tn_map.insert(model_name.clone(), ToolInfo {
+                server_name: match &toolspec.tool_origin {
+                    crate::cli::chat::tools::ToolOrigin::Skill(name) => name.clone(),
+                    _ => "skill".to_string(),
+                },
+                host_tool_name: toolspec.name.clone(),
+            });
+            self.schema.insert(model_name, toolspec);
+        }
+
+        Ok(())
+    }
+
+    pub async fn new_with_skills(os: &Os) -> eyre::Result<Self> {
+        let mut manager = Self::default();
+        manager.register_skills(os).await?;
+        Ok(manager)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2207,5 +2237,34 @@ mod tests {
             serde_json::Value::String("test_value".to_string()),
         );
         assert_eq!(result, Some(expected_map));
+    }
+
+    #[tokio::test]
+    async fn test_skills_registered_in_tool_manager() {
+        let os = Os::new().await.unwrap();
+        let manager = ToolManager::new_with_skills(&os).await.unwrap();
+
+        // Verify skills are available in schema
+        assert!(!manager.schema.is_empty(), "Schema should contain skills");
+
+        // Verify calculator skill is registered
+        let calc_key = "calculator".to_string();
+        assert!(manager.schema.contains_key(&calc_key), "Calculator should be in schema");
+    }
+
+    #[tokio::test]
+    async fn test_skill_toolspec_retrievable() {
+        let os = Os::new().await.unwrap();
+        let manager = ToolManager::new_with_skills(&os).await.unwrap();
+
+        // Verify we can retrieve a skill's toolspec
+        let calc_key = "calculator".to_string();
+        let toolspec = manager.schema.get(&calc_key);
+        assert!(toolspec.is_some(), "Should be able to retrieve calculator toolspec");
+
+        if let Some(ts) = toolspec {
+            assert_eq!(ts.name, "calculator");
+            assert!(matches!(ts.tool_origin, crate::cli::chat::tools::ToolOrigin::Skill(_)));
+        }
     }
 }

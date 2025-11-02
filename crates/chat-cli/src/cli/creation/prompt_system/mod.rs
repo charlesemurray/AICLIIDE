@@ -39,6 +39,9 @@ mod interactive_tests;
 #[cfg(test)]
 mod e2e_test;
 
+#[cfg(test)]
+mod persistence_test;
+
 pub use command_builder::{
     CommandBuilder,
     CommandConfig,

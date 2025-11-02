@@ -180,7 +180,39 @@ impl CreateArgs {
                 println!("  Capabilities: {}", template.capabilities.len());
                 println!("  Saved to: {}", path.display());
 
-                // TODO: Save to .q-skills/ directory
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ListAssistants => {
+                use crate::cli::creation::prompt_system::{
+                    list_templates,
+                    load_template,
+                };
+
+                let templates = list_templates()?;
+
+                if templates.is_empty() {
+                    println!("No assistants found. Create one with: q create assistant");
+                    return Ok(ExitCode::SUCCESS);
+                }
+
+                println!("Saved assistants:\n");
+                for id in templates {
+                    if let Ok(template) = load_template(&id) {
+                        println!("  {} - {}", id, template.name);
+                        println!(
+                            "    Category: {:?}, Difficulty: {:?}",
+                            template.category, template.difficulty
+                        );
+                    }
+                }
+
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::DeleteAssistant { id } => {
+                use crate::cli::creation::prompt_system::delete_template;
+
+                delete_template(&id)?;
+                println!("✓ Deleted assistant: {}", id);
 
                 Ok(ExitCode::SUCCESS)
             },
@@ -262,6 +294,14 @@ impl CreateArgs {
 
                 let flow = AgentCreationFlow::new(name, creation_mode)?;
                 CreationAssistant::new(flow).run().await
+            },
+            CreateCommand::ListAssistants => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::DeleteAssistant { id: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
             },
         }
     }
