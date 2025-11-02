@@ -3,6 +3,7 @@ use std::path::Path;
 
 use rusqlite::{
     Connection,
+    OptionalExtension,
     params,
 };
 use serde_json::Value;
