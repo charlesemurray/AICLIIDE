@@ -118,6 +118,41 @@ See example skills in [`examples/skills/`](examples/skills/) and integration tes
 - `natural_language_skill_invocation.rs` - Natural language usage
 - `skill_workflow_error_handling.rs` - Error handling patterns
 
+## Session Management
+
+Amazon Q CLI automatically creates isolated workspaces for each conversation, keeping your analysis and planning documents separate from your code.
+
+### Quick Start
+
+```bash
+# List active sessions
+/sessions list
+
+# Name a session
+/sessions name abc123 "My Feature Work"
+
+# View session history
+/sessions history --search "authentication"
+
+# Archive completed sessions
+/sessions archive abc123
+```
+
+### Session Workspaces
+
+Each session gets its own directory at `.amazonq/sessions/{conversation_id}/` for:
+- Analysis documents
+- Research notes
+- Planning drafts
+- Design documents
+
+Your code stays in the repository, keeping it clean and organized.
+
+### Documentation
+
+- [User Guide](docs/SESSION_USER_GUIDE.md) - Complete command reference and best practices
+- [Architecture](docs/SESSION_MANAGEMENT_DESIGN_V2.md) - Technical design details
+
 ## Security
 
 For security related concerns, see [here](SECURITY.md).
