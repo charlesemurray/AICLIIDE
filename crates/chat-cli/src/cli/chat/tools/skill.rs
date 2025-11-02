@@ -150,6 +150,38 @@ impl SkillTool {
 
         Ok(result)
     }
+
+    pub fn execute_command(
+        &self,
+        definition: &SkillDefinition,
+        params: &HashMap<String, Value>,
+    ) -> Result<String> {
+        match &definition.implementation {
+            Some(SkillImplementation::Command { command }) => {
+                let parsed_command = self.parse_command_template(command, params)?;
+
+                #[cfg(unix)]
+                let output = std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(&parsed_command)
+                    .output()?;
+
+                #[cfg(windows)]
+                let output = std::process::Command::new("cmd")
+                    .arg("/C")
+                    .arg(&parsed_command)
+                    .output()?;
+
+                if output.status.success() {
+                    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    Err(eyre::eyre!("Command execution failed: {}", stderr))
+                }
+            },
+            _ => Err(eyre::eyre!("Skill does not have a command implementation")),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -494,5 +526,32 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "echo 'Hello Alice, you are 30 years old'");
+    }
+
+    #[test]
+    fn test_execute_command() {
+        use std::collections::HashMap;
+
+        use serde_json::json;
+
+        let definition = SkillDefinition {
+            name: "echo".to_string(),
+            description: "Echo command".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Command {
+                command: "echo {{message}}".to_string(),
+            }),
+        };
+
+        let skill = SkillTool::new("echo".to_string(), "Echo".to_string());
+        let mut params = HashMap::new();
+        params.insert("message".to_string(), json!("Hello World"));
+
+        let result = skill.execute_command(&definition, &params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("Hello World"));
     }
 }
