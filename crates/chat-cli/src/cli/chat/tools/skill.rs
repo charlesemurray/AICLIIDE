@@ -365,4 +365,49 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("timeout"));
     }
+
+    #[test]
+    fn test_capture_stderr() {
+        use std::collections::HashMap;
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let script_path = dir.path().join("error.sh");
+
+        #[cfg(unix)]
+        let script_content = "#!/bin/bash\necho 'Error message' >&2\nexit 1";
+        #[cfg(windows)]
+        let script_content = "@echo off\necho Error message 1>&2\nexit /b 1";
+
+        fs::write(&script_path, script_content).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&script_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms).unwrap();
+        }
+
+        let definition = SkillDefinition {
+            name: "error".to_string(),
+            description: "Error script".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Script {
+                path: script_path.to_string_lossy().to_string(),
+            }),
+        };
+
+        let skill = SkillTool::new("error".to_string(), "Error".to_string());
+        let params = HashMap::new();
+
+        let result = skill.execute_script(&definition, &params);
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Error message"));
+    }
 }
