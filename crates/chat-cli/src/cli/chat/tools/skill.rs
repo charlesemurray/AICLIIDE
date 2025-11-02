@@ -10,6 +10,8 @@ use serde_json::Value;
 use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::os::Os;
 
+const MAX_OUTPUT_SIZE: usize = 100_000;
+
 #[derive(Debug, Clone)]
 pub struct SkillTool {
     pub name: String,
@@ -243,6 +245,20 @@ impl SkillTool {
         }
 
         output
+    }
+
+    pub fn truncate_output(&self, output: String) -> String {
+        if output.len() <= MAX_OUTPUT_SIZE {
+            output
+        } else {
+            let truncated = &output[..MAX_OUTPUT_SIZE];
+            format!(
+                "{}\n\n... (output truncated, {} bytes total, showing first {} bytes)",
+                truncated,
+                output.len(),
+                MAX_OUTPUT_SIZE
+            )
+        }
     }
 }
 
@@ -665,5 +681,19 @@ mod tests {
         assert!(result.contains("Line 2"));
         // stderr should be included if present
         assert!(result.contains("Warning message"));
+    }
+
+    #[test]
+    fn test_truncate_output() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        // Create output larger than max size
+        let large_output = "x".repeat(150_000);
+
+        let result = skill.truncate_output(large_output);
+
+        // Should be truncated
+        assert!(result.len() < 150_000);
+        assert!(result.contains("truncated"));
     }
 }
