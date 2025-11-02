@@ -97,6 +97,18 @@ pub enum Setting {
     MultiSessionBufferSizeMb,
     #[strum(message = "Specify UI variant to use (string)")]
     UiMode,
+    #[strum(message = "Enable memory system (boolean)")]
+    MemoryEnabled,
+    #[strum(message = "Memory retention period in days (number, 0 = unlimited)")]
+    MemoryRetentionDays,
+    #[strum(message = "Maximum memory storage size in MB (number)")]
+    MemoryMaxSizeMb,
+    #[strum(message = "Enable cross-session memory recall (boolean)")]
+    MemoryCrossSession,
+    #[strum(message = "Auto-promote memories to long-term storage (boolean)")]
+    MemoryAutoPromote,
+    #[strum(message = "Warn when memory usage reaches percentage (number, 0-100)")]
+    MemoryWarnThreshold,
 }
 
 impl AsRef<str> for Setting {
@@ -142,6 +154,12 @@ impl AsRef<str> for Setting {
             Self::MultiSessionMaxActive => "multiSession.maxActive",
             Self::MultiSessionBufferSizeMb => "multiSession.bufferSizeMb",
             Self::UiMode => "chat.uiMode",
+            Self::MemoryEnabled => "memory.enabled",
+            Self::MemoryRetentionDays => "memory.retentionDays",
+            Self::MemoryMaxSizeMb => "memory.maxSizeMb",
+            Self::MemoryCrossSession => "memory.crossSession",
+            Self::MemoryAutoPromote => "memory.autoPromote",
+            Self::MemoryWarnThreshold => "memory.warnThreshold",
         }
     }
 }
@@ -196,6 +214,12 @@ impl TryFrom<&str> for Setting {
             "multiSession.maxActive" => Ok(Self::MultiSessionMaxActive),
             "multiSession.bufferSizeMb" => Ok(Self::MultiSessionBufferSizeMb),
             "chat.uiMode" => Ok(Self::UiMode),
+            "memory.enabled" => Ok(Self::MemoryEnabled),
+            "memory.retentionDays" => Ok(Self::MemoryRetentionDays),
+            "memory.maxSizeMb" => Ok(Self::MemoryMaxSizeMb),
+            "memory.crossSession" => Ok(Self::MemoryCrossSession),
+            "memory.autoPromote" => Ok(Self::MemoryAutoPromote),
+            "memory.warnThreshold" => Ok(Self::MemoryWarnThreshold),
             _ => Err(DatabaseError::InvalidSetting(value.to_string())),
         }
     }
