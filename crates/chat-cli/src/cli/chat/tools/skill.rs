@@ -226,6 +226,24 @@ impl SkillTool {
             _ => Err(eyre::eyre!("Skill does not have a command implementation")),
         }
     }
+
+    pub fn format_output(&self, stdout: String, stderr: String) -> String {
+        let mut output = String::new();
+
+        if !stdout.is_empty() {
+            output.push_str(&stdout);
+        }
+
+        if !stderr.is_empty() {
+            if !output.is_empty() {
+                output.push_str("\n\n");
+            }
+            output.push_str("Warnings/Info:\n");
+            output.push_str(&stderr);
+        }
+
+        output
+    }
 }
 
 #[cfg(test)]
@@ -632,5 +650,20 @@ mod tests {
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("timeout"));
+    }
+
+    #[test]
+    fn test_format_output() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        let stdout = "Command output\nLine 2".to_string();
+        let stderr = "Warning message".to_string();
+
+        let result = skill.format_output(stdout, stderr);
+
+        assert!(result.contains("Command output"));
+        assert!(result.contains("Line 2"));
+        // stderr should be included if present
+        assert!(result.contains("Warning message"));
     }
 }
