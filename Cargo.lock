@@ -1937,8 +1937,10 @@ version = "1.19.3"
 dependencies = [
  "chrono",
  "hnswlib",
+ "rusqlite",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
 ]
 

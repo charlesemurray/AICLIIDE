@@ -21,8 +21,31 @@ pub struct SessionDisplay {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SessionStatus {
     Active,
+    WaitingForInput,
+    Processing,
     Paused,
     Completed,
+}
+
+impl SessionStatus {
+    /// Check if transition to new state is valid
+    pub fn can_transition_to(&self, new_state: &SessionStatus) -> bool {
+        use SessionStatus::*;
+        match (self, new_state) {
+            // Active can transition to any state
+            (Active, _) => true,
+            // WaitingForInput can become Active or Paused
+            (WaitingForInput, Active | Paused | Completed) => true,
+            // Processing can become WaitingForInput or Paused
+            (Processing, WaitingForInput | Paused | Completed) => true,
+            // Paused can become Active or Completed
+            (Paused, Active | Completed) => true,
+            // Completed is terminal
+            (Completed, _) => false,
+            // All other transitions invalid
+            _ => false,
+        }
+    }
 }
 
 /// Colors for different session types
@@ -105,6 +128,8 @@ impl SessionDisplay {
     pub fn format_list_entry(&self) -> String {
         let status_indicator = match self.status {
             SessionStatus::Active => "",
+            SessionStatus::WaitingForInput => " ⏎",
+            SessionStatus::Processing => " ⏳",
             SessionStatus::Paused => " (paused)",
             SessionStatus::Completed => " (completed)",
         };
@@ -127,6 +152,8 @@ impl SessionDisplay {
 
         match self.status {
             SessionStatus::Active => entry.with(color).to_string(),
+            SessionStatus::WaitingForInput => entry.with(color).bold().to_string(),
+            SessionStatus::Processing => entry.with(color).to_string(),
             SessionStatus::Paused | SessionStatus::Completed => entry.with(color).dim().to_string(),
         }
     }

@@ -186,6 +186,7 @@ impl<'a, T: TerminalUI> AssistantEditor<'a, T> {
 mod tests {
     use super::*;
     use crate::cli::creation::prompt_system::PromptBuilder;
+    use crate::cli::creation::prompt_system::creation_builder::CreationBuilder;
     use crate::cli::creation::ui::MockTerminalUI;
 
     #[test]

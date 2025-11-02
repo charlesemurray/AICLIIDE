@@ -89,6 +89,12 @@ pub enum Setting {
     EnabledCheckpoint,
     #[strum(message = "Enable the delegate tool for subagent management (boolean)")]
     EnabledDelegate,
+    #[strum(message = "Enable multi-session support (boolean)")]
+    MultiSessionEnabled,
+    #[strum(message = "Maximum number of active sessions (number)")]
+    MultiSessionMaxActive,
+    #[strum(message = "Output buffer size per session in MB (number)")]
+    MultiSessionBufferSizeMb,
     #[strum(message = "Specify UI variant to use (string)")]
     UiMode,
 }
@@ -132,6 +138,9 @@ impl AsRef<str> for Setting {
             Self::EnabledCheckpoint => "chat.enableCheckpoint",
             Self::EnabledContextUsageIndicator => "chat.enableContextUsageIndicator",
             Self::EnabledDelegate => "chat.enableDelegate",
+            Self::MultiSessionEnabled => "multiSession.enabled",
+            Self::MultiSessionMaxActive => "multiSession.maxActive",
+            Self::MultiSessionBufferSizeMb => "multiSession.bufferSizeMb",
             Self::UiMode => "chat.uiMode",
         }
     }
@@ -182,6 +191,10 @@ impl TryFrom<&str> for Setting {
             "chat.enableTodoList" => Ok(Self::EnabledTodoList),
             "chat.enableCheckpoint" => Ok(Self::EnabledCheckpoint),
             "chat.enableContextUsageIndicator" => Ok(Self::EnabledContextUsageIndicator),
+            "chat.enableDelegate" => Ok(Self::EnabledDelegate),
+            "multiSession.enabled" => Ok(Self::MultiSessionEnabled),
+            "multiSession.maxActive" => Ok(Self::MultiSessionMaxActive),
+            "multiSession.bufferSizeMb" => Ok(Self::MultiSessionBufferSizeMb),
             "chat.uiMode" => Ok(Self::UiMode),
             _ => Err(DatabaseError::InvalidSetting(value.to_string())),
         }

@@ -414,6 +414,74 @@ impl Database {
         self.delete_entry(Table::Auth, key)
     }
 
+    /// Save session metadata for a conversation
+    pub fn save_session_metadata(
+        &self,
+        conversation_id: &str,
+        session_name: &str,
+        session_type: &str,
+        session_status: &str,
+    ) -> Result<(), DatabaseError> {
+        let conn = self.pool.get()?;
+        let last_active = time::OffsetDateTime::now_utc().unix_timestamp();
+
+        conn.execute(
+            "UPDATE conversations 
+             SET session_name = ?1, 
+                 session_type = ?2, 
+                 session_status = ?3,
+                 last_active = ?4
+             WHERE key = ?5",
+            rusqlite::params![session_name, session_type, session_status, last_active, conversation_id],
+        )?;
+
+        Ok(())
+    }
+
+    /// Load session metadata for a conversation
+    pub fn load_session_metadata(
+        &self,
+        conversation_id: &str,
+    ) -> Result<Option<(String, String, String)>, DatabaseError> {
+        let conn = self.pool.get()?;
+
+        let result = conn.query_row(
+            "SELECT session_name, session_type, session_status 
+             FROM conversations 
+             WHERE key = ?1",
+            rusqlite::params![conversation_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        );
+
+        match result {
+            Ok(data) => Ok(Some(data)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Get all sessions with a specific status
+    pub fn get_sessions_by_status(&self, status: &str) -> Result<Vec<String>, DatabaseError> {
+        let conn = self.pool.get()?;
+        let mut stmt =
+            conn.prepare("SELECT key FROM conversations WHERE session_status = ?1 ORDER BY last_active DESC")?;
+
+        let rows = stmt.query_map(rusqlite::params![status], |row| row.get(0))?;
+
+        let mut conversation_ids = Vec::new();
+        for row in rows {
+            conversation_ids.push(row?);
+        }
+
+        Ok(conversation_ids)
+    }
+
     // Private functions. Do not expose.
 
     fn migrate(self) -> Result<Self, DatabaseError> {

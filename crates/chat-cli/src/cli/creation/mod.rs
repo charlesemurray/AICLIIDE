@@ -385,7 +385,23 @@ impl CreateArgs {
                 // Not implemented in tests yet
                 Ok(ExitCode::SUCCESS)
             },
+            CreateCommand::EditAssistant { id: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
             CreateCommand::DeleteAssistant { id: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ExportAssistant { id: _, output: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ExportAssistants { output: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
+            CreateCommand::ImportAssistant { path: _, strategy: _ } => {
                 // Not implemented in tests yet
                 Ok(ExitCode::SUCCESS)
             },

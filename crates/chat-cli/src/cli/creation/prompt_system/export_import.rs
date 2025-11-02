@@ -109,6 +109,7 @@ mod tests {
 
     use super::*;
     use crate::cli::creation::prompt_system::PromptBuilder;
+    use crate::cli::creation::prompt_system::creation_builder::CreationBuilder;
 
     #[test]
     fn test_export_import_roundtrip() -> Result<()> {

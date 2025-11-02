@@ -12,6 +12,7 @@ mod consts;
 pub mod context;
 mod conversation;
 mod input_source;
+pub mod managed_session;
 mod message;
 mod parse;
 use std::path::MAIN_SEPARATOR;
@@ -22,6 +23,7 @@ mod prompt;
 mod prompt_parser;
 pub mod server_messenger;
 pub mod skill_registry;
+pub mod workflow_registry;
 use crate::cli::chat::checkpoint::CHECKPOINT_MESSAGE_MAX_LENGTH;
 use crate::constants::ui_text;
 #[cfg(unix)]
@@ -4325,6 +4327,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()
@@ -4421,6 +4425,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()
@@ -4495,6 +4501,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()
@@ -4545,6 +4553,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()
@@ -4652,6 +4662,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()
@@ -4782,6 +4794,8 @@ mod tests {
             true,
             false,
             None,
+            None,
+            false,
         )
         .await
         .unwrap()

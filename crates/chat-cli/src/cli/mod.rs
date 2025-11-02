@@ -540,6 +540,8 @@ mod test {
                 trust_all_tools: true,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
