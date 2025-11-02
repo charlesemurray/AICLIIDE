@@ -1,11 +1,16 @@
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+
     use tempfile::TempDir;
     use time::OffsetDateTime;
 
     use crate::os::Os;
-    use crate::session::{SessionManager, SessionMetadata, SessionStatus};
+    use crate::session::{
+        SessionManager,
+        SessionMetadata,
+        SessionStatus,
+    };
 
     fn create_test_os(temp_dir: &TempDir) -> Os {
         let mut os = Os::default();
@@ -183,7 +188,7 @@ mod tests {
         let os = create_test_os(&temp_dir);
 
         let session_id = "persistent-session";
-        
+
         // Create and save in first manager instance
         {
             let manager = SessionManager::new(&os);

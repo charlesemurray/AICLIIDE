@@ -4,10 +4,16 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::os::Os;
 
 const MAX_OUTPUT_SIZE: usize = 100_000;
@@ -113,11 +119,7 @@ impl SkillTool {
 
         let output = tokio::time::timeout(
             timeout_duration,
-            tokio::task::spawn_blocking(move || {
-                std::process::Command::new(&script_path)
-                    .envs(&env_vars)
-                    .output()
-            }),
+            tokio::task::spawn_blocking(move || std::process::Command::new(&script_path).envs(&env_vars).output()),
         )
         .await
         .map_err(|_| eyre::eyre!("Script execution timeout after {} seconds", timeout_secs))?
@@ -131,11 +133,7 @@ impl SkillTool {
         }
     }
 
-    pub fn parse_command_template(
-        &self,
-        template: &str,
-        params: &HashMap<String, Value>,
-    ) -> Result<String> {
+    pub fn parse_command_template(&self, template: &str, params: &HashMap<String, Value>) -> Result<String> {
         let mut result = template.to_string();
 
         for (key, value) in params {
@@ -153,11 +151,7 @@ impl SkillTool {
         Ok(result)
     }
 
-    pub fn execute_command(
-        &self,
-        definition: &SkillDefinition,
-        params: &HashMap<String, Value>,
-    ) -> Result<String> {
+    pub fn execute_command(&self, definition: &SkillDefinition, params: &HashMap<String, Value>) -> Result<String> {
         match &definition.implementation {
             Some(SkillImplementation::Command { command }) => {
                 let parsed_command = self.parse_command_template(command, params)?;
@@ -200,10 +194,7 @@ impl SkillTool {
                     timeout_duration,
                     tokio::task::spawn_blocking(move || {
                         #[cfg(unix)]
-                        let result = std::process::Command::new("sh")
-                            .arg("-c")
-                            .arg(&parsed_command)
-                            .output();
+                        let result = std::process::Command::new("sh").arg("-c").arg(&parsed_command).output();
 
                         #[cfg(windows)]
                         let result = std::process::Command::new("cmd")
@@ -301,7 +292,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_tool_eval_perm() {
-        use crate::cli::agent::{Agent, PermissionEvalResult};
+        use crate::cli::agent::{
+            Agent,
+            PermissionEvalResult,
+        };
         use crate::os::Os;
 
         let skill = SkillTool::new("test-skill".to_string(), "Test".to_string());

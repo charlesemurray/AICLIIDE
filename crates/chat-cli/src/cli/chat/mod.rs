@@ -2439,7 +2439,7 @@ impl ChatSession {
         if let Some(new_mode) = crate::conversation_modes::ConversationMode::from_user_input(input) {
             let old_mode = self.conversation_mode.clone();
             self.conversation_mode = new_mode.clone();
-            
+
             // Log mode transition for analytics
             if let Some(session_id) = self.analytics_session_id() {
                 let event = crate::analytics::ConversationAnalyticsEvent::mode_transition(
@@ -2450,15 +2450,17 @@ impl ChatSession {
                 );
                 self.log_analytics_event(event);
             }
-            
+
             execute!(
                 self.stderr,
                 StyledText::success_fg(),
                 style::Print(format!("✓ Switched to {:?} mode\n", new_mode)),
                 StyledText::reset(),
             )?;
-            
-            return Ok(ChatState::PromptUser { skip_printing_tools: false });
+
+            return Ok(ChatState::PromptUser {
+                skip_printing_tools: false,
+            });
         }
 
         // Handle skill invocation with @skill_name syntax
@@ -2759,7 +2761,7 @@ impl ChatSession {
                     if detected_mode != self.conversation_mode {
                         let old_mode = self.conversation_mode.clone();
                         self.conversation_mode = detected_mode.clone();
-                        
+
                         // Log mode transition for analytics
                         if let Some(session_id) = self.analytics_session_id() {
                             let event = crate::analytics::ConversationAnalyticsEvent::mode_transition(
@@ -2772,7 +2774,7 @@ impl ChatSession {
                         }
                     }
                 }
-                
+
                 let enhanced_input = self.apply_conversation_mode(user_input);
                 self.conversation.set_next_user_message(enhanced_input).await;
             }

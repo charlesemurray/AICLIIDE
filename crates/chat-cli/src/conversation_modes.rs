@@ -12,8 +12,12 @@ impl ConversationMode {
     pub fn system_prompt_suffix(&self) -> &'static str {
         match self {
             ConversationMode::Interactive => "",
-            ConversationMode::ExecutePlan => "\n\nIMPORTANT: Execute the entire plan without asking for step-by-step confirmation. Only ask questions if you need clarification about requirements. Report what you've done after completion.",
-            ConversationMode::Review => "\n\nIMPORTANT: Analyze and provide detailed feedback on the request. Do not execute any tools or make changes. Focus on reviewing, suggesting improvements, and identifying potential issues.",
+            ConversationMode::ExecutePlan => {
+                "\n\nIMPORTANT: Execute the entire plan without asking for step-by-step confirmation. Only ask questions if you need clarification about requirements. Report what you've done after completion."
+            },
+            ConversationMode::Review => {
+                "\n\nIMPORTANT: Analyze and provide detailed feedback on the request. Do not execute any tools or make changes. Focus on reviewing, suggesting improvements, and identifying potential issues."
+            },
         }
     }
 
@@ -29,17 +33,19 @@ impl ConversationMode {
 
     pub fn detect_from_context(input: &str) -> Self {
         let input = input.to_lowercase();
-        
+
         // Look for plan execution indicators
-        if input.contains("implement") && (input.contains("entire") || input.contains("complete") || input.contains("full")) {
+        if input.contains("implement")
+            && (input.contains("entire") || input.contains("complete") || input.contains("full"))
+        {
             return ConversationMode::ExecutePlan;
         }
-        
-        // Look for review indicators  
+
+        // Look for review indicators
         if input.contains("review") || input.contains("analyze") || input.contains("feedback") {
             return ConversationMode::Review;
         }
-        
+
         // Default to interactive
         ConversationMode::Interactive
     }
