@@ -4,6 +4,7 @@ pub mod error;
 pub mod hnsw_wrapper;
 pub mod id_mapper;
 pub mod ltm;
+pub mod memory_manager;
 pub mod memory_note;
 pub mod stm;
 
@@ -14,6 +15,7 @@ pub use error::{
 pub use hnsw_wrapper::HnswWrapper;
 pub use id_mapper::IdMapper;
 pub use ltm::LongTermMemory;
+pub use memory_manager::MemoryManager;
 pub use memory_note::MemoryNote;
 pub use stm::ShortTermMemory;
 
