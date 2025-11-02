@@ -482,11 +482,332 @@ impl ChatSession {
 }
 ```
 
-### Step 6: Add Settings Commands
+### Step 6: Add In-Chat Commands
 
-**File**: `crates/chat-cli/src/cli/settings.rs`
+**File**: `crates/chat-cli/src/cli/chat/cli/mod.rs`
 
-Add memory-specific commands:
+Add to `SlashCommand` enum:
+
+```rust
+#[derive(Debug, PartialEq, Parser)]
+pub enum SlashCommand {
+    // ... existing commands ...
+    
+    /// Recall memories from current or other sessions
+    Recall {
+        /// Search query
+        query: String,
+        
+        /// Search all sessions instead of current only
+        #[arg(long, short)]
+        global: bool,
+        
+        /// Search specific session by ID or name
+        #[arg(long, short)]
+        session: Option<String>,
+        
+        /// List sessions with memories
+        #[arg(long)]
+        list_sessions: bool,
+        
+        /// Maximum results to return
+        #[arg(long, short, default_value = "5")]
+        limit: usize,
+    },
+    
+    /// Manage memory settings and data
+    #[command(subcommand)]
+    Memory(MemorySubcommand),
+}
+```
+
+**File**: `crates/chat-cli/src/cli/chat/cli/memory.rs` (new file)
+
+```rust
+use clap::Subcommand;
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::os::Os;
+use crate::database::settings::Setting;
+use serde_json::Value;
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum MemorySubcommand {
+    /// Show current memory configuration
+    Config,
+    
+    /// Set memory configuration
+    Set {
+        #[command(subcommand)]
+        setting: MemorySetting,
+    },
+    
+    /// List recent memories
+    List {
+        /// Maximum memories to show
+        #[arg(long, short, default_value = "10")]
+        limit: usize,
+        
+        /// Filter by session ID
+        #[arg(long, short)]
+        session: Option<String>,
+    },
+    
+    /// Search memories
+    Search {
+        /// Search query
+        query: String,
+        
+        /// Maximum results
+        #[arg(long, short, default_value = "5")]
+        limit: usize,
+    },
+    
+    /// Show memory statistics
+    Stats {
+        /// Show per-session breakdown
+        #[arg(long)]
+        by_session: bool,
+    },
+    
+    /// Clean up old memories
+    Cleanup {
+        /// Force cleanup without confirmation
+        #[arg(long, short)]
+        force: bool,
+    },
+    
+    /// Enable or disable memory
+    Toggle {
+        /// Disable memory
+        #[arg(long)]
+        disable: bool,
+    },
+}
+
+#[derive(Debug, PartialEq, Subcommand)]
+pub enum MemorySetting {
+    /// Set retention period in days (0 = unlimited)
+    Retention { days: u32 },
+    
+    /// Set maximum storage size in MB
+    MaxSize { mb: u32 },
+    
+    /// Enable/disable cross-session recall
+    CrossSession { 
+        #[arg(long)]
+        disable: bool 
+    },
+}
+
+impl MemorySubcommand {
+    pub async fn execute(
+        self,
+        os: &Os,
+        session: &mut ChatSession,
+    ) -> Result<ChatState, ChatError> {
+        match self {
+            Self::Config => {
+                let config = cortex_memory::MemoryConfig::from_q_settings(&os.database.settings);
+                println!("\n📊 Memory Configuration:");
+                println!("  Enabled: {}", if config.enabled { "✓" } else { "✗" });
+                println!("  Retention: {} days", config.retention_days);
+                println!("  Max Size: {} MB", config.max_size_mb);
+                println!("  Cross-Session: {}", if config.cross_session { "✓" } else { "✗" });
+                println!("  Auto-Promote: {}", if config.auto_promote { "✓" } else { "✗" });
+                println!("  Warn Threshold: {}%\n", config.warn_threshold);
+            }
+            Self::Set { setting } => {
+                match setting {
+                    MemorySetting::Retention { days } => {
+                        os.database.settings.set(
+                            Setting::MemoryRetentionDays,
+                            Value::Number(days.into())
+                        )?;
+                        println!("✓ Memory retention set to {} days", days);
+                    }
+                    MemorySetting::MaxSize { mb } => {
+                        os.database.settings.set(
+                            Setting::MemoryMaxSizeMb,
+                            Value::Number(mb.into())
+                        )?;
+                        println!("✓ Memory max size set to {} MB", mb);
+                    }
+                    MemorySetting::CrossSession { disable } => {
+                        os.database.settings.set(
+                            Setting::MemoryCrossSession,
+                            Value::Bool(!disable)
+                        )?;
+                        if disable {
+                            println!("✓ Cross-session recall disabled");
+                        } else {
+                            println!("✓ Cross-session recall enabled");
+                        }
+                    }
+                }
+            }
+            Self::List { limit, session } => {
+                // Implementation in Phase 2
+                println!("📝 Recent memories (limit: {}):", limit);
+                if let Some(sid) = session {
+                    println!("   Filtered by session: {}", sid);
+                }
+                // TODO: List memories from cortex
+            }
+            Self::Search { query, limit } => {
+                // Implementation in Phase 2
+                println!("🔍 Searching for: \"{}\" (limit: {})", query, limit);
+                // TODO: Search memories from cortex
+            }
+            Self::Stats { by_session } => {
+                // Implementation in Phase 2
+                println!("📊 Memory Statistics:");
+                if by_session {
+                    println!("   (per-session breakdown)");
+                }
+                // TODO: Get stats from cortex
+            }
+            Self::Cleanup { force } => {
+                if !force {
+                    println!("⚠️  This will delete old memories. Use --force to confirm.");
+                } else {
+                    println!("🧹 Cleaning up old memories...");
+                    // TODO: Cleanup from cortex
+                }
+            }
+            Self::Toggle { disable } => {
+                os.database.settings.set(
+                    Setting::MemoryEnabled,
+                    Value::Bool(!disable)
+                )?;
+                if disable {
+                    println!("✓ Memory disabled");
+                } else {
+                    println!("✓ Memory enabled");
+                }
+            }
+        }
+        
+        Ok(ChatState::PromptUser {
+            skip_printing_tools: true,
+        })
+    }
+}
+```
+
+### In-Chat Usage Examples
+
+**View configuration**:
+```bash
+You: /memory config
+📊 Memory Configuration:
+  Enabled: ✓
+  Retention: 30 days
+  Max Size: 100 MB
+  Cross-Session: ✗
+  Auto-Promote: ✓
+  Warn Threshold: 80%
+```
+
+**Change settings**:
+```bash
+You: /memory set retention 90
+✓ Memory retention set to 90 days
+
+You: /memory set max-size 200
+✓ Memory max size set to 200 MB
+
+You: /memory set cross-session
+✓ Cross-session recall enabled
+```
+
+**Recall memories**:
+```bash
+You: /recall Lambda deployment
+[searches current session]
+
+You: /recall --global Lambda deployment
+[searches all sessions]
+
+You: /recall --session abc123 that bug fix
+[searches specific session]
+
+You: /recall --list-sessions
+Sessions with memories:
+1. session-abc123 (Today) - "AWS Lambda deployment"
+2. session-xyz789 (Yesterday) - "React patterns"
+```
+
+**List and search**:
+```bash
+You: /memory list
+📝 Recent memories (limit: 10):
+1. [2 min ago] Discussion about Rust structs
+2. [5 min ago] AWS Lambda deployment
+
+You: /memory search "rust structs"
+🔍 Searching for: "rust structs"
+Found 3 relevant memories...
+```
+
+**Statistics and cleanup**:
+```bash
+You: /memory stats
+📊 Memory Statistics:
+- Total memories: 1,247
+- Storage: 45.2 MB / 100 MB (45%)
+
+You: /memory cleanup --force
+🧹 Cleaning up old memories...
+Deleted 127 memories older than 30 days
+```
+
+**Toggle memory**:
+```bash
+You: /memory toggle --disable
+✓ Memory disabled
+
+You: /memory toggle
+✓ Memory enabled
+```
+
+---
+
+## Command Availability
+
+**All commands work in chat**:
+- ✅ `/memory config` - View settings
+- ✅ `/memory set <setting>` - Change settings
+- ✅ `/memory list` - List memories
+- ✅ `/memory search <query>` - Search memories
+- ✅ `/memory stats` - View statistics
+- ✅ `/memory cleanup` - Clean old memories
+- ✅ `/memory toggle` - Enable/disable
+- ✅ `/recall <query>` - Quick recall with options
+
+**No need to exit chat** - all configuration and management happens in-chat with slash commands.
+
+---
+
+## Implementation Priority
+
+**Phase 1** (Core):
+- ✅ `/memory config` - View settings
+- ✅ `/memory set` - Change settings
+- ✅ `/memory toggle` - Enable/disable
+- ✅ `/recall` - Basic recall
+
+**Phase 2** (Management):
+- `/memory list` - List memories
+- `/memory search` - Search memories
+- `/memory stats` - Statistics
+- `/memory cleanup` - Cleanup
+
+**Phase 3** (Advanced):
+- `/recall --list-sessions` - Session discovery
+- `/recall --session <id>` - Session-specific recall
+- `/memory stats --by-session` - Per-session stats
+
+---
 
 ```rust
 #[derive(Debug, Subcommand)]
