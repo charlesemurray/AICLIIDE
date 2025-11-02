@@ -437,7 +437,7 @@ impl ToolManagerBuilder {
             }
         }
 
-        Ok(ToolManager {
+        let mut tool_manager = ToolManager {
             conversation_id,
             clients,
             pending_clients: pending,
@@ -460,7 +460,15 @@ impl ToolManagerBuilder {
             messenger_builder: Some(messenger_builder),
             is_first_launch: self.is_first_launch,
             ..Default::default()
-        })
+        };
+
+        // Load skills from default directory if it exists
+        let skills_dir = os.env.home().unwrap_or_default().join(".q").join("skills");
+        if skills_dir.exists() {
+            let _ = tool_manager.skill_registry.load_from_directory(&skills_dir).await;
+        }
+
+        Ok(tool_manager)
     }
 }
 
@@ -2292,6 +2300,7 @@ mod tests {
     #[tokio::test]
     async fn test_tool_manager_loads_skills() {
         use std::fs;
+
         use tempfile::tempdir;
 
         let os = Os::new().await.unwrap();

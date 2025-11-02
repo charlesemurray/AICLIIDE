@@ -142,6 +142,7 @@ criterion.workspace = true
 mockito.workspace = true
 paste.workspace = true
 predicates.workspace = true
+tempfile.workspace = true
 tracing-test.workspace = true
 
 [build-dependencies]

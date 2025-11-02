@@ -11,6 +11,7 @@ pub mod cli;
 mod consts;
 pub mod context;
 mod conversation;
+pub mod coordinator;
 mod input_source;
 pub mod managed_session;
 mod message;
