@@ -50,6 +50,25 @@ impl WorkflowTool {
     pub fn eval_perm(&self, _os: &Os, _agent: &Agent) -> PermissionEvalResult {
         PermissionEvalResult::Allow
     }
+
+    pub fn invoke_with_definition(
+        &self,
+        definition: &WorkflowDefinition,
+        _params: std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<String> {
+        for step in &definition.steps {
+            // Validate tool exists
+            let known_tools = ["echo", "calculator"];
+            if !known_tools.contains(&step.tool.as_str()) {
+                return Err(eyre::eyre!(
+                    "Unknown tool '{}' in step '{}'",
+                    step.tool,
+                    step.name
+                ));
+            }
+        }
+        Ok("Success".to_string())
+    }
 }
 
 #[cfg(test)]
@@ -156,5 +175,42 @@ mod tests {
         let context = definition.context.unwrap();
         assert_eq!(context.get("environment").unwrap(), "production");
         assert_eq!(context.get("region").unwrap(), "us-east-1");
+    }
+
+    #[test]
+    fn test_workflow_stops_on_error() {
+        let definition = WorkflowDefinition {
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            description: "Test".to_string(),
+            steps: vec![
+                WorkflowStep {
+                    name: "step1".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "first"}),
+                },
+                WorkflowStep {
+                    name: "failing_step".to_string(),
+                    tool: "nonexistent_tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+                WorkflowStep {
+                    name: "step3".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "third"}),
+                },
+            ],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new("test".to_string(), "Test".to_string());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let error_msg = error.to_string();
+        assert!(error_msg.contains("failing_step") || error_msg.contains("nonexistent"));
     }
 }

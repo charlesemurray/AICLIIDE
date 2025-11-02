@@ -19,6 +19,8 @@ pub mod memory_monitor;
 mod message;
 mod parse;
 pub mod rate_limiter;
+pub mod session_autocomplete;
+pub mod session_commands;
 pub mod session_mode;
 pub mod terminal_state;
 use std::path::MAIN_SEPARATOR;

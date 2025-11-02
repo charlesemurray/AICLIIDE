@@ -17,10 +17,10 @@ fn create_test_repo() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path();
 
-    // Initialize git repo
+    // Initialize git repo with main branch
     Command::new("git")
         .current_dir(repo_path)
-        .args(&["init"])
+        .args(&["init", "-b", "main"])
         .output()
         .unwrap();
 

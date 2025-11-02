@@ -1,5 +1,7 @@
 //! Cortex Memory System - Advanced memory for AI agents
 
+pub mod config;
+pub mod embedder;
 pub mod error;
 pub mod hnsw_wrapper;
 pub mod id_mapper;
@@ -8,6 +10,8 @@ pub mod memory_manager;
 pub mod memory_note;
 pub mod stm;
 
+pub use config::MemoryConfig;
+pub use embedder::CortexEmbedder;
 pub use error::{
     CortexError,
     Result,
