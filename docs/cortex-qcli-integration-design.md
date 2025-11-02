@@ -200,21 +200,75 @@ pub trait EmbeddingService: Send + Sync {
 
 ### Embedding Service Implementation
 
+**✅ DECISION: Use Q CLI's existing `CandleTextEmbedder`**
+
+Q CLI already has a complete embedding system in `semantic-search-client` crate:
+- Model: all-MiniLM-L6-v2 (384 dimensions)
+- Framework: Candle (Rust ML)
+- Quality: Production-proven for knowledge search
+- Performance: ~10-50ms per embedding
+- Works offline, no external API needed
+
 ```rust
-// Use Q's existing LLM for embeddings
-pub struct QLlmEmbeddingService {
-    // Use Q's LLM client
+use semantic_search_client::embedding::{EmbeddingType, TextEmbedderTrait};
+use semantic_search_client::client::embedder_factory::create_embedder;
+
+pub struct CortexMemory {
+    manager: MemoryManager,
+    embedder: Box<dyn TextEmbedderTrait>,
 }
 
-#[async_trait::async_trait]
-impl EmbeddingService for QLlmEmbeddingService {
-    async fn embed(&self, text: &str) -> Result<Vec<f32>> {
-        // Call Q's LLM with embedding request
-        // For now, use simple hash-based embeddings as placeholder
-        todo!("Integrate with Q's LLM")
+impl CortexMemory {
+    pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self> {
+        // Use Q CLI's existing embedder - 384 dimensions matches our HNSW setup!
+        let embedder = create_embedder(EmbeddingType::Best)?;
+        let manager = MemoryManager::new(db_path, 384, 100)?;
+        Ok(Self { manager, embedder })
+    }
+    
+    pub async fn store_interaction(
+        &mut self,
+        user_message: &str,
+        assistant_response: &str,
+        metadata: InteractionMetadata,
+    ) -> Result<String> {
+        let content = format!("User: {}\nAssistant: {}", user_message, assistant_response);
+        let embedding = self.embedder.embed(&content)?;
+        
+        let note = MemoryNote::new(
+            uuid::Uuid::new_v4().to_string(),
+            content,
+            metadata.into_map(),
+        );
+        
+        self.manager.add(note, embedding)?;
+        Ok(note.id)
+    }
+    
+    pub async fn recall_context(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<ContextItem>> {
+        let query_embedding = self.embedder.embed(query)?;
+        let results = self.manager.search(&query_embedding, limit);
+        
+        Ok(results
+            .into_iter()
+            .map(|(id, score)| {
+                let note = self.manager.get(&id).unwrap().unwrap();
+                ContextItem {
+                    content: note.content,
+                    relevance: score,
+                    timestamp: note.created_at,
+                }
+            })
+            .collect())
     }
 }
 ```
+
+**See**: `docs/cortex-embedding-research.md` for detailed research findings.
 
 ---
 
@@ -596,8 +650,9 @@ Imported 1,247 memories
 
 ## Open Questions
 
-1. **Embedding Model**: Use Q's LLM or separate lightweight model?
-   - **Recommendation**: Start with Q's LLM, optimize later
+1. **✅ Embedding Model**: ~~Use Q's LLM or separate lightweight model?~~
+   - **DECIDED**: Use Q CLI's existing `CandleTextEmbedder` (all-MiniLM-L6-v2, 384 dims)
+   - Already integrated, zero additional cost, production-proven
 
 2. **Memory Retention**: How long to keep memories?
    - **Recommendation**: 30 days default, configurable
