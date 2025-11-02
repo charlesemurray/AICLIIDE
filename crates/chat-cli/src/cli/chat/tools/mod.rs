@@ -108,6 +108,7 @@ pub enum Tool {
     Delegate(Delegate),
     Skill(skill_tool::SkillTool),
     SkillNew(skill::SkillTool),
+    WorkflowNew(workflow::WorkflowTool),
 }
 
 impl Tool {
@@ -130,6 +131,7 @@ impl Tool {
             Tool::Delegate(_) => "delegate",
             Tool::Skill(skill_tool) => &skill_tool.skill_name,
             Tool::SkillNew(skill) => &skill.name,
+            Tool::WorkflowNew(workflow) => &workflow.name,
         }
         .to_owned()
     }
@@ -150,6 +152,7 @@ impl Tool {
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
             Tool::SkillNew(skill) => skill.eval_perm(os, agent),
+            Tool::WorkflowNew(_) => PermissionEvalResult::Allow,
         }
     }
 
@@ -186,6 +189,12 @@ impl Tool {
                     output: OutputKind::Text("Skill execution not yet implemented".to_string()),
                 })
             },
+            Tool::WorkflowNew(_workflow) => {
+                // Minimal implementation - not yet functional
+                Ok(InvokeOutput {
+                    output: OutputKind::Text("Workflow execution not yet implemented".to_string()),
+                })
+            },
         }
     }
 
@@ -212,6 +221,10 @@ impl Tool {
                 },
                 Tool::SkillNew(skill) => {
                     writeln!(&mut buf, "Executing skill: {}", skill.name)?;
+                    Ok(())
+                },
+                Tool::WorkflowNew(workflow) => {
+                    writeln!(&mut buf, "Executing workflow: {}", workflow.name)?;
                     Ok(())
                 },
             }?;
@@ -255,6 +268,15 @@ impl Tool {
                     )?;
                     Ok(())
                 },
+                Tool::WorkflowNew(workflow) => {
+                    queue!(
+                        output,
+                        style::Print("Executing workflow: "),
+                        style::Print(&workflow.name),
+                        style::Print("\n")
+                    )?;
+                    Ok(())
+                },
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(output),
             }?;
@@ -279,6 +301,7 @@ impl Tool {
             Tool::Delegate(_) => Ok(()),
             Tool::Skill(_) => Ok(()), // Skills are validated by the registry
             Tool::SkillNew(skill) => skill.validate(),
+            Tool::WorkflowNew(_) => Ok(()),
         }
     }
 
@@ -755,5 +778,12 @@ mod tests {
 
         let result = tool.validate(&os).await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_tool_workflow_display_name() {
+        let workflow = workflow::WorkflowTool::new("my-workflow".to_string(), "Test workflow".to_string());
+        let tool = Tool::WorkflowNew(workflow);
+        assert_eq!(tool.display_name(), "my-workflow");
     }
 }
