@@ -1,8 +1,13 @@
-use cortex_memory::{MemoryManager, MemoryNote, ShortTermMemory};
-use serde::Deserialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
+
+use cortex_memory::{
+    MemoryManager,
+    MemoryNote,
+    ShortTermMemory,
+};
+use serde::Deserialize;
+use serde_json::Value;
 use tempfile::NamedTempFile;
 
 #[derive(Debug, Deserialize)]
@@ -52,8 +57,7 @@ struct TestFixture {
 
 fn load_fixtures(filename: &str) -> HashMap<String, TestFixture> {
     let path = format!("tests/fixtures/{}", filename);
-    let content = fs::read_to_string(&path)
-        .unwrap_or_else(|_| panic!("Failed to read fixture file: {}", path));
+    let content = fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read fixture file: {}", path));
     serde_json::from_str(&content).expect("Failed to parse fixture JSON")
 }
 
@@ -69,12 +73,12 @@ fn test_stm_basic_operations_fixture() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 stm.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "search" => {
                 let results = stm.search(&op.query_embedding, op.k);
                 let result_ids: Vec<String> = results.iter().map(|(id, _)| id.clone()).collect();
                 assert_eq!(result_ids, op.expected_order, "Search order mismatch");
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }
@@ -92,7 +96,7 @@ fn test_stm_lru_eviction_fixture() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 stm.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "get" => {
                 let result = stm.get(&op.id);
                 if let Some(expected) = &op.expected {
@@ -101,17 +105,14 @@ fn test_stm_lru_eviction_fixture() {
                             assert!(result.is_some(), "Expected to find id: {}", op.id);
                             let note = result.unwrap();
                             assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
-                            assert_eq!(
-                                note.content,
-                                map.get("content").unwrap().as_str().unwrap()
-                            );
-                        }
+                            assert_eq!(note.content, map.get("content").unwrap().as_str().unwrap());
+                        },
                         Expected::Bool(_) => panic!("Expected object, got bool"),
                     }
                 } else {
                     assert!(result.is_none(), "Expected id {} to be evicted", op.id);
                 }
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }
@@ -129,7 +130,7 @@ fn test_stm_lru_access_order_fixture() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 stm.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "get" => {
                 let result = stm.get(&op.id);
                 if let Some(expected) = &op.expected {
@@ -138,13 +139,13 @@ fn test_stm_lru_access_order_fixture() {
                             assert!(result.is_some(), "Expected to find id: {}", op.id);
                             let note = result.unwrap();
                             assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
-                        }
+                        },
                         Expected::Bool(_) => panic!("Expected object, got bool"),
                     }
                 } else {
                     assert!(result.is_none(), "Expected id {} to not exist", op.id);
                 }
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }
@@ -156,15 +157,14 @@ fn test_ltm_basic_operations_fixture() {
     let fixture = &fixtures["ltm_basic_operations"];
 
     let temp_file = NamedTempFile::new().unwrap();
-    let mut ltm =
-        cortex_memory::LongTermMemory::new(temp_file.path(), fixture.dimensionality).unwrap();
+    let mut ltm = cortex_memory::LongTermMemory::new(temp_file.path(), fixture.dimensionality).unwrap();
 
     for op in &fixture.operations {
         match op.op_type.as_str() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 ltm.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "get" => {
                 let result = ltm.get(&op.id).unwrap();
                 if let Some(expected) = &op.expected {
@@ -173,21 +173,18 @@ fn test_ltm_basic_operations_fixture() {
                             assert!(result.is_some(), "Expected to find id: {}", op.id);
                             let note = result.unwrap();
                             assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
-                            assert_eq!(
-                                note.content,
-                                map.get("content").unwrap().as_str().unwrap()
-                            );
-                        }
+                            assert_eq!(note.content, map.get("content").unwrap().as_str().unwrap());
+                        },
                         Expected::Bool(_) => panic!("Expected object, got bool"),
                     }
                 } else {
                     assert!(result.is_none(), "Expected id {} to not exist", op.id);
                 }
-            }
+            },
             "delete" => {
                 let result = ltm.delete(&op.id).unwrap();
                 assert!(result, "Expected delete to succeed");
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }
@@ -199,25 +196,20 @@ fn test_ltm_metadata_filtering_fixture() {
     let fixture = &fixtures["ltm_metadata_filtering"];
 
     let temp_file = NamedTempFile::new().unwrap();
-    let mut ltm =
-        cortex_memory::LongTermMemory::new(temp_file.path(), fixture.dimensionality).unwrap();
+    let mut ltm = cortex_memory::LongTermMemory::new(temp_file.path(), fixture.dimensionality).unwrap();
 
     for op in &fixture.operations {
         match op.op_type.as_str() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 ltm.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "search" => {
-                let filter = if !op.filter.is_empty() {
-                    Some(&op.filter)
-                } else {
-                    None
-                };
+                let filter = if !op.filter.is_empty() { Some(&op.filter) } else { None };
                 let results = ltm.search(&op.query_embedding, op.k, filter).unwrap();
                 let result_ids: Vec<String> = results.iter().map(|note| note.id.clone()).collect();
                 assert_eq!(result_ids, op.expected_ids, "Filtered search mismatch");
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }
@@ -229,23 +221,18 @@ fn test_manager_stm_to_ltm_promotion_fixture() {
     let fixture = &fixtures["manager_stm_to_ltm_promotion"];
 
     let temp_file = NamedTempFile::new().unwrap();
-    let mut manager = MemoryManager::new(
-        temp_file.path(),
-        fixture.dimensionality,
-        fixture.stm_capacity,
-    )
-    .unwrap();
+    let mut manager = MemoryManager::new(temp_file.path(), fixture.dimensionality, fixture.stm_capacity).unwrap();
 
     for op in &fixture.operations {
         match op.op_type.as_str() {
             "add" => {
                 let note = MemoryNote::new(op.id.clone(), op.content.clone(), op.metadata.clone());
                 manager.add(note, op.embedding.clone()).unwrap();
-            }
+            },
             "promote" => {
                 let result = manager.promote_to_ltm(&op.id, op.embedding.clone()).unwrap();
                 assert!(result, "Expected promotion to succeed");
-            }
+            },
             "get_from_ltm" => {
                 let result = manager.get_ltm().get(&op.id).unwrap();
                 if let Some(expected) = &op.expected {
@@ -254,15 +241,12 @@ fn test_manager_stm_to_ltm_promotion_fixture() {
                             assert!(result.is_some(), "Expected to find id in LTM: {}", op.id);
                             let note = result.unwrap();
                             assert_eq!(note.id, map.get("id").unwrap().as_str().unwrap());
-                            assert_eq!(
-                                note.content,
-                                map.get("content").unwrap().as_str().unwrap()
-                            );
-                        }
+                            assert_eq!(note.content, map.get("content").unwrap().as_str().unwrap());
+                        },
                         Expected::Bool(_) => panic!("Expected object, got bool"),
                     }
                 }
-            }
+            },
             _ => panic!("Unknown operation type: {}", op.op_type),
         }
     }

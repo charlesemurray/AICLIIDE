@@ -16,6 +16,7 @@ pub mod managed_session;
 mod message;
 mod parse;
 pub mod session_mode;
+pub mod terminal_state;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
@@ -633,6 +634,8 @@ pub struct ChatSession {
     pause_rx: Option<tokio::sync::mpsc::UnboundedReceiver<()>>,
     /// Resume signal for background sessions
     resume_tx: Option<tokio::sync::mpsc::UnboundedSender<()>>,
+    /// Saved terminal state for restoration
+    terminal_state: Option<terminal_state::TerminalState>,
 }
 
 impl ChatSession {
@@ -776,6 +779,7 @@ impl ChatSession {
             session_mode: session_mode::SessionMode::Foreground,
             pause_rx: None,
             resume_tx: None,
+            terminal_state: None,
         })
     }
 
@@ -806,17 +810,102 @@ impl ChatSession {
         buffer: std::sync::Arc<tokio::sync::Mutex<managed_session::OutputBuffer>>,
         state_tx: tokio::sync::mpsc::UnboundedSender<session_mode::SessionStateChange>,
     ) {
+        // Save terminal state before switching
+        self.terminal_state = terminal_state::TerminalState::capture().ok();
         self.session_mode = session_mode::SessionMode::Background { buffer, state_tx };
     }
 
     /// Switch session to foreground mode
-    pub fn switch_to_foreground(&mut self) {
+    pub fn switch_to_foreground(&mut self) -> Result<()> {
         self.session_mode = session_mode::SessionMode::Foreground;
+
+        // Restore terminal state if saved
+        if let Some(ref state) = self.terminal_state {
+            state.restore(&mut self.stderr)?;
+        }
+
+        Ok(())
     }
 
     /// Check if session is in background mode
     pub fn is_background(&self) -> bool {
         self.session_mode.is_background()
+    }
+
+    /// Write to stderr, buffering if in background mode
+    async fn write_stderr(&mut self, text: &str) -> Result<()> {
+        if let Some(buffer) = self.session_mode.buffer() {
+            let mut buf = buffer.lock().await;
+            buf.push(managed_session::OutputEvent::Text(text.to_string()));
+            Ok(())
+        } else {
+            execute!(self.stderr, style::Print(text))?;
+            Ok(())
+        }
+    }
+
+    /// Write styled text to stderr, buffering if in background mode
+    async fn write_stderr_styled(&mut self, text: &str, style_desc: &str) -> Result<()> {
+        if let Some(buffer) = self.session_mode.buffer() {
+            let mut buf = buffer.lock().await;
+            buf.push(managed_session::OutputEvent::StyledText(
+                text.to_string(),
+                style_desc.to_string(),
+            ));
+            Ok(())
+        } else {
+            execute!(self.stderr, style::Print(text))?;
+            Ok(())
+        }
+    }
+
+    /// Flush buffered output to stderr (when switching to foreground)
+    pub async fn flush_buffered_output(&mut self) -> Result<()> {
+        if let Some(buffer) = self.session_mode.buffer() {
+            let buf = buffer.lock().await;
+            if !buf.is_empty() {
+                execute!(
+                    self.stderr,
+                    style::Print("\n--- Buffered output from background session ---\n")
+                )?;
+
+                for event in buf.events() {
+                    match event {
+                        managed_session::OutputEvent::Text(text) => {
+                            execute!(self.stderr, style::Print(text))?;
+                        },
+                        managed_session::OutputEvent::StyledText(text, _style) => {
+                            // For now, just print text without style
+                            // TODO: Parse and apply style
+                            execute!(self.stderr, style::Print(text))?;
+                        },
+                        managed_session::OutputEvent::ToolStart(name) => {
+                            execute!(
+                                self.stderr,
+                                style::Print(format!("\n{} Starting tool: {}\n", TOOL_BULLET, name))
+                            )?;
+                        },
+                        managed_session::OutputEvent::ToolEnd(name, result) => {
+                            execute!(
+                                self.stderr,
+                                style::Print(format!("{} Tool {} completed: {}\n", SUCCESS_TICK, name, result))
+                            )?;
+                        },
+                        managed_session::OutputEvent::Error(err) => {
+                            execute!(
+                                self.stderr,
+                                StyledText::error_fg(),
+                                style::Print(format!("{} Error: {}\n", ERROR_EXCLAMATION, err)),
+                                StyledText::reset()
+                            )?;
+                        },
+                    }
+                }
+
+                execute!(self.stderr, style::Print("--- End buffered output ---\n\n"))?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn next(&mut self, os: &mut Os) -> Result<(), ChatError> {
