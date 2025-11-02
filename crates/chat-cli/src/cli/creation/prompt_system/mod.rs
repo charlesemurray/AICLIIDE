@@ -6,6 +6,7 @@ pub mod command_builder;
 pub mod creation_builder;
 pub mod examples;
 pub mod interactive;
+pub mod persistence;
 pub mod prompt_builder;
 pub mod storage;
 pub mod template_manager;
@@ -49,6 +50,13 @@ pub use creation_builder::{
     ValidationResult,
 };
 pub use interactive::InteractivePromptBuilder;
+pub use persistence::{
+    delete_template,
+    get_assistants_dir,
+    list_templates,
+    load_template,
+    save_template,
+};
 pub use prompt_builder::PromptBuilder;
 pub use template_manager::{
     DefaultTemplateManager,

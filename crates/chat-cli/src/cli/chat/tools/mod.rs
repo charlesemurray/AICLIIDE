@@ -106,6 +106,7 @@ pub enum Tool {
     Todo(TodoList),
     Delegate(Delegate),
     Skill(skill_tool::SkillTool),
+    SkillNew(skill::SkillTool),
 }
 
 impl Tool {
@@ -127,6 +128,7 @@ impl Tool {
             Tool::Todo(_) => "todo_list",
             Tool::Delegate(_) => "delegate",
             Tool::Skill(skill_tool) => &skill_tool.skill_name,
+            Tool::SkillNew(skill) => &skill.name,
         }
         .to_owned()
     }
@@ -146,6 +148,7 @@ impl Tool {
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
+            Tool::SkillNew(_) => PermissionEvalResult::Allow, // Permission eval not yet implemented
         }
     }
 
@@ -176,6 +179,12 @@ impl Tool {
                     .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
                 skill_tool.invoke(&registry, stdout).await
             },
+            Tool::SkillNew(_skill) => {
+                // Minimal implementation - not yet functional
+                Ok(InvokeOutput {
+                    output: OutputKind::Text("Skill execution not yet implemented".to_string()),
+                })
+            },
         }
     }
 
@@ -198,6 +207,10 @@ impl Tool {
                 Tool::Delegate(delegate) => delegate.queue_description(&mut buf),
                 Tool::Skill(skill_tool) => {
                     writeln!(&mut buf, "Executing skill: {}", skill_tool.skill_name)?;
+                    Ok(())
+                },
+                Tool::SkillNew(skill) => {
+                    writeln!(&mut buf, "Executing skill: {}", skill.name)?;
                     Ok(())
                 },
             }?;
@@ -232,6 +245,15 @@ impl Tool {
                     )?;
                     Ok(())
                 },
+                Tool::SkillNew(skill) => {
+                    queue!(
+                        output,
+                        style::Print("Executing skill: "),
+                        style::Print(&skill.name),
+                        style::Print("\n")
+                    )?;
+                    Ok(())
+                },
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(output),
             }?;
@@ -254,7 +276,8 @@ impl Tool {
             Tool::Thinking(think) => think.validate(os).await,
             Tool::Todo(todo) => todo.validate(os).await,
             Tool::Delegate(_) => Ok(()),
-            Tool::Skill(_) => Ok(()), // Skills are validated by the registry
+            Tool::Skill(_) => Ok(()),    // Skills are validated by the registry
+            Tool::SkillNew(_) => Ok(()), // Validation not yet implemented
         }
     }
 
@@ -714,5 +737,12 @@ mod tests {
 
         let result = tool.invoke(&os, &mut output, &mut line_tracker, &agents).await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_tool_skill_display_name() {
+        let skill = skill::SkillTool::new("my-skill".to_string(), "Test skill".to_string());
+        let tool = Tool::SkillNew(skill);
+        assert_eq!(tool.display_name(), "my-skill");
     }
 }

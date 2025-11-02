@@ -78,6 +78,13 @@ pub enum CreateCommand {
         #[command(subcommand)]
         mode: Option<AssistantMode>,
     },
+    /// List saved assistants
+    ListAssistants,
+    /// Delete an assistant
+    DeleteAssistant {
+        /// ID of the assistant to delete
+        id: String,
+    },
 }
 
 /// Assistant creation modes
@@ -151,7 +158,10 @@ impl CreateArgs {
 
         match self.command {
             CreateCommand::Assistant { mode } => {
-                use crate::cli::creation::prompt_system::InteractivePromptBuilder;
+                use crate::cli::creation::prompt_system::{
+                    InteractivePromptBuilder,
+                    save_template,
+                };
 
                 let mut ui = TerminalUIImpl::new();
                 let mut builder = InteractivePromptBuilder::new(&mut ui);
@@ -161,10 +171,14 @@ impl CreateArgs {
                     _ => builder.create_from_template()?,
                 };
 
+                // Save to disk
+                let path = save_template(&template)?;
+
                 println!("\n✓ Created assistant: {}", template.name);
                 println!("  Category: {:?}", template.category);
                 println!("  Difficulty: {:?}", template.difficulty);
                 println!("  Capabilities: {}", template.capabilities.len());
+                println!("  Saved to: {}", path.display());
 
                 // TODO: Save to .q-skills/ directory
 

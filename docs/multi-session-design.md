@@ -19,37 +19,96 @@ Add native multi-session support to Q CLI, allowing users to run multiple concur
 - Windows support (Q CLI doesn't officially support Windows yet)
 - Multi-user session sharing
 
+## Existing Session Infrastructure
+
+Q CLI already has session-related components that we can leverage:
+
+**Existing Components:**
+
+1. **`SessionManager`** (`theme/session_manager.rs`)
+   - Already manages multiple sessions
+   - Tracks session types: Debug, Planning, Development, CodeReview
+   - Handles session status: Active, Paused, Completed
+   - Provides session switching, pausing, resuming
+   - Message counting per session
+
+2. **`SessionDisplay`** (`theme/session.rs`)
+   - Session display information with colors
+   - Session type prefixes and formatting
+   - Colored list entries using crossterm
+
+3. **`ConversationState`** (`cli/chat/conversation.rs`)
+   - Already has `conversation_id` for each conversation
+   - Manages conversation history and state
+   - Persists to database
+
+4. **Session Path Resolution** (`util/session_paths.rs`)
+   - Resolves `@session/` prefixed paths
+   - Maps to `.amazonq/sessions/{conversation_id}/`
+
+**What's Missing:**
+
+- Integration between `SessionManager` and `ConversationState`
+- Multi-conversation concurrency support
+- Visual indicator for waiting sessions
+- Session name auto-generation
+- Commands to manage multiple concurrent sessions
+- `WaitingForInput` and `Processing` states
+
 ## Architecture
 
-### Phase 1: Foundation (ratatui integration)
+### Existing Session Infrastructure
 
-**Dependencies:**
-- Add `ratatui` (built on existing `crossterm` backend)
-- Keep existing `rustyline`, `dialoguer`, etc. for now
+Q CLI already has session-related components that we can leverage:
 
-**Core Components:**
+**Existing Components:**
 
-1. **Session Manager**
-   - Maintains list of active sessions
-   - Tracks session state: `Active`, `WaitingForInput`, `Processing`
-   - Generates and stores session names
-   - Handles session switching
+1. **`SessionManager`** (`theme/session_manager.rs`)
+   - Already manages multiple sessions
+   - Tracks session types: Debug, Planning, Development, CodeReview
+   - Handles session status: Active, Paused, Completed
+   - Provides session switching, pausing, resuming
+   - Message counting per session
 
-2. **Session State**
+2. **`SessionDisplay`** (`theme/session.rs`)
+   - Session display information with colors
+   - Session type prefixes and formatting
+   - Colored list entries using crossterm
+
+3. **`ConversationState`** (`cli/chat/conversation.rs`)
+   - Already has `conversation_id` for each conversation
+   - Manages conversation history and state
+   - Persists to database
+
+4. **Session Path Resolution** (`util/session_paths.rs`)
+   - Resolves `@session/` prefixed paths
+   - Maps to `.amazonq/sessions/{conversation_id}/`
+
+### Phase 1: Extend Existing Session Infrastructure
+
+**What We Need to Add:**
+
+1. **Multi-Session Coordination**
+   - Extend `SessionManager` to track multiple concurrent `ConversationState` instances
+   - Add `WaitingForInput` and `Processing` states to existing `SessionStatus` enum
+   - Link each `SessionDisplay` to its corresponding `ConversationState`
+
+2. **Enhanced Session State**
    ```rust
-   struct Session {
-       id: Uuid,
-       name: String,  // auto-generated or user-provided
-       state: SessionState,
-       conversation_history: Vec<Message>,
-       created_at: DateTime,
-       last_active: DateTime,
+   // Extend existing SessionStatus enum
+   enum SessionStatus {
+       Active,           // Currently displayed
+       WaitingForInput,  // NEW: Completed response, needs user input
+       Processing,       // NEW: Waiting for Q response
+       Paused,          // Existing
+       Completed,       // Existing
    }
    
-   enum SessionState {
-       Active,           // Currently displayed
-       WaitingForInput,  // Completed response, needs user input
-       Processing,       // Waiting for Q response
+   // New struct to link SessionDisplay with ConversationState
+   struct ManagedSession {
+       display: SessionDisplay,
+       conversation: ConversationState,
+       conversation_id: String,
    }
    ```
 
@@ -57,8 +116,9 @@ Add native multi-session support to Q CLI, allowing users to run multiple concur
    - Analyze first 2-3 user messages in conversation
    - Extract key topics/actions (e.g., "api", "refactor", "s3", "debug")
    - Generate short kebab-case name (max 20 chars)
-   - Fallback: `session-{number}` if generation fails
+   - Fallback: use existing session type prefix + number
    - Allow manual override via `/session-name` command
+   - Auto-detect session type (Debug, Planning, Development, CodeReview) from content
 
 ### Phase 2: TUI Layout
 
@@ -133,86 +193,119 @@ Add native multi-session support to Q CLI, allowing users to run multiple concur
 ### Phase 4: Session Persistence
 
 **Storage:**
-- Extend existing SQLite database schema
-- Store session metadata and conversation history per session
-- Auto-save on session state changes
+- Extend existing SQLite database schema (already has conversations table)
+- Add session metadata columns to existing conversations table
+- Leverage existing conversation_id for session tracking
 
-**Schema:**
+**Schema Extension:**
 ```sql
-CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    state TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    last_active INTEGER NOT NULL
-);
+-- Extend existing conversations table (migration 008)
+ALTER TABLE conversations ADD COLUMN session_name TEXT;
+ALTER TABLE conversations ADD COLUMN session_type TEXT; -- 'Debug', 'Planning', 'Development', 'CodeReview'
+ALTER TABLE conversations ADD COLUMN session_status TEXT; -- 'Active', 'WaitingForInput', 'Processing', 'Paused', 'Completed'
+ALTER TABLE conversations ADD COLUMN last_active INTEGER;
 
--- Extend existing messages table
-ALTER TABLE messages ADD COLUMN session_id TEXT REFERENCES sessions(id);
+-- Create index for faster session queries
+CREATE INDEX idx_conversations_session_status ON conversations(session_status);
 ```
 
 **Behavior:**
-- Sessions persist across Q CLI restarts
+- Sessions persist across Q CLI restarts (leverage existing conversation persistence)
 - `/sessions --all` shows historical sessions
 - Auto-cleanup of old inactive sessions (configurable)
+- Use existing `ConversationState::save()` and database methods
 
 ## Implementation Plan
 
-### Step 1: Session Manager Core
-- Create session manager module
-- Implement session state tracking
-- Add basic session switching (no UI yet)
-- Store sessions in memory
+### Step 1: Extend SessionManager for Multi-Conversation Support
+- Add `WaitingForInput` and `Processing` to existing `SessionStatus` enum
+- Create `ManagedSession` struct linking `SessionDisplay` with `ConversationState`
+- Extend `SessionManager` to manage multiple `ConversationState` instances
+- Add async task spawning for concurrent conversation processing
+- Store sessions in memory with conversation_id as key
 
 ### Step 2: Session Name Generation
-- Implement conversation analysis
+- Implement conversation analysis using existing `ConversationState` history
 - Generate descriptive names from context
-- Add manual override capability
+- Auto-detect session type from conversation content
+- Add manual override capability via new command
+- Update `SessionDisplay` name when generated
 
-### Step 3: ratatui Integration
-- Add ratatui dependency
-- Create basic layout with main area + indicator
-- Render session indicator in top-right corner
-- Maintain existing input/output flow
+### Step 3: ratatui Integration for Visual Indicator
+- Add ratatui dependency (uses existing crossterm backend)
+- Create TUI component for top-right corner indicator
+- Render sessions with `WaitingForInput` status
+- Use existing `SessionDisplay::colored_list_entry()` for formatting
+- Maintain existing input/output flow with rustyline
 
-### Step 4: Session Commands
-- Implement `/sessions`, `/switch`, `/new` commands
+### Step 4: Session Management Commands
+- Implement `/sessions` - list all sessions (extend existing list functionality)
+- Implement `/switch <name>` - switch active conversation
+- Implement `/new [type] [name]` - create new session (leverage existing session types)
+- Implement `/session-name [name]` - view/set name
 - Add command autocomplete for session names
 - Update help text
 
-### Step 5: Session Persistence
-- Extend database schema
-- Implement session save/load
+### Step 5: Enhanced Session Persistence
+- Extend existing database schema (already has conversations table)
+- Add session metadata columns to conversations table
+- Store session type, name, and status
+- Link existing conversation_id to session metadata
+- Implement session save/load using existing database methods
 - Add session cleanup logic
 
 ### Step 6: Polish
-- Add colors and styling
-- Improve session name generation
-- Add configuration options
+- Use existing `SessionColors` for styling
+- Improve session name generation algorithm
+- Add configuration options to existing settings
 - Update documentation
+- Test over SSH
 
 ## Technical Considerations
+
+### Leveraging Existing Code
+
+**Session Management:**
+- Build on existing `SessionManager` and `SessionDisplay` in `theme/` module
+- Extend existing `SessionStatus` enum rather than creating new state types
+- Use existing session type system (Debug, Planning, Development, CodeReview)
+- Leverage existing colored formatting with `SessionColors`
+
+**Conversation Management:**
+- Each session wraps an existing `ConversationState` instance
+- Use existing `conversation_id` for session identification
+- Leverage existing conversation persistence in database
+- Use existing `@session/` path resolution for session-scoped files
+
+**Database:**
+- Extend existing conversations table rather than creating new tables
+- Use existing database connection pool and migration system
+- Leverage existing `Os::database` methods for persistence
 
 ### Terminal Compatibility
 - Use `crossterm` backend for ratatui (already in dependencies)
 - Test over SSH connections
 - Handle terminal resize events
 - Graceful degradation if terminal too small
+- Existing crossterm utilities in `theme/crossterm_ext.rs`
 
 ### Performance
 - Lazy load conversation history for inactive sessions
 - Limit in-memory sessions (e.g., max 10 active)
 - Efficient rendering updates (only redraw changed components)
+- Leverage existing conversation state caching
 
 ### Concurrency
 - Each session runs in its own async task
 - Session manager coordinates state updates
-- Thread-safe session access with `Arc<Mutex<Session>>`
+- Thread-safe session access with `Arc<Mutex<ManagedSession>>`
+- Use existing tokio runtime
 
 ### Backward Compatibility
 - Single-session mode remains default behavior
+- Existing conversations automatically become default session
 - Multi-session features opt-in via commands
-- Existing conversation history migrates to default session
+- Existing conversation history migrates seamlessly
 
 ## Future Enhancements
 
