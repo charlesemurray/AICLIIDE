@@ -1,6 +1,7 @@
 use eyre::Result;
 use crate::cli::creation::{CreationType, TerminalUI, SemanticColor};
 use crate::cli::creation::template_loader::SimpleTemplateLoader;
+use crate::cli::creation::enhanced_prompts::EnhancedPrompts;
 use std::collections::HashMap;
 
 pub struct InteractiveCreationFlow<T: TerminalUI> {
@@ -27,9 +28,9 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
     async fn create_skill(&mut self) -> Result<String> {
         self.ui.show_message("🎯 Creating a new skill...\n", SemanticColor::Info);
         
-        let name = self.ui.prompt_required("Skill name")?;
-        let description = self.ui.prompt_optional("Description", None)?;
-        let command = self.ui.prompt_required("Command to execute")?;
+        let name = EnhancedPrompts::prompt_skill_name(&mut self.ui)?;
+        let description = EnhancedPrompts::prompt_description(&mut self.ui, "skill")?;
+        let command = EnhancedPrompts::prompt_command(&mut self.ui)?;
         
         let mut params = HashMap::new();
         params.insert("name".to_string(), name.clone());
@@ -38,16 +39,20 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
         
         let rendered = self.template_loader.render_template("skill_basic", &params)?;
         
-        self.ui.show_message(&format!("✅ Created skill: {}\n", name), SemanticColor::Success);
-        Ok(rendered)
+        if EnhancedPrompts::show_preview(&mut self.ui, &rendered, "skill")? {
+            self.ui.show_message(&format!("✅ Created skill: {}\n", name), SemanticColor::Success);
+            Ok(rendered)
+        } else {
+            Err(eyre::eyre!("Creation cancelled by user"))
+        }
     }
 
     async fn create_command(&mut self) -> Result<String> {
         self.ui.show_message("⚡ Creating a new command...\n", SemanticColor::Info);
         
-        let name = self.ui.prompt_required("Command name")?;
-        let description = self.ui.prompt_optional("Description", None)?;
-        let command = self.ui.prompt_required("Command to execute")?;
+        let name = EnhancedPrompts::prompt_skill_name(&mut self.ui)?; // Reuse skill name validation
+        let description = EnhancedPrompts::prompt_description(&mut self.ui, "command")?;
+        let command = EnhancedPrompts::prompt_command(&mut self.ui)?;
         let args = self.ui.prompt_optional("Arguments (JSON array)", Some("[]"))?;
         
         let mut params = HashMap::new();
@@ -58,17 +63,21 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
         
         let rendered = self.template_loader.render_template("command_basic", &params)?;
         
-        self.ui.show_message(&format!("✅ Created command: {}\n", name), SemanticColor::Success);
-        Ok(rendered)
+        if EnhancedPrompts::show_preview(&mut self.ui, &rendered, "command")? {
+            self.ui.show_message(&format!("✅ Created command: {}\n", name), SemanticColor::Success);
+            Ok(rendered)
+        } else {
+            Err(eyre::eyre!("Creation cancelled by user"))
+        }
     }
 
     async fn create_agent(&mut self) -> Result<String> {
         self.ui.show_message("🤖 Creating a new agent...\n", SemanticColor::Info);
         
-        let name = self.ui.prompt_required("Agent name")?;
-        let description = self.ui.prompt_optional("Description", None)?;
-        let role = self.ui.prompt_required("Agent role")?;
-        let capabilities = self.ui.prompt_optional("Capabilities (comma-separated)", None)?;
+        let name = EnhancedPrompts::prompt_skill_name(&mut self.ui)?; // Reuse skill name validation
+        let description = EnhancedPrompts::prompt_description(&mut self.ui, "agent")?;
+        let role = EnhancedPrompts::prompt_agent_role(&mut self.ui)?;
+        let capabilities = EnhancedPrompts::prompt_capabilities(&mut self.ui)?;
         
         let mut params = HashMap::new();
         params.insert("name".to_string(), name.clone());
@@ -88,8 +97,12 @@ impl<T: TerminalUI> InteractiveCreationFlow<T> {
         
         let rendered = self.template_loader.render_template("agent_basic", &params)?;
         
-        self.ui.show_message(&format!("✅ Created agent: {}\n", name), SemanticColor::Success);
-        Ok(rendered)
+        if EnhancedPrompts::show_preview(&mut self.ui, &rendered, "agent")? {
+            self.ui.show_message(&format!("✅ Created agent: {}\n", name), SemanticColor::Success);
+            Ok(rendered)
+        } else {
+            Err(eyre::eyre!("Creation cancelled by user"))
+        }
     }
 }
 
@@ -106,52 +119,70 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_skill_creation_flow() {
+    async fn test_skill_creation_with_preview_accept() {
         let ui = MockTerminalUI::new(vec![
-            "test_skill".to_string(),
+            "test-skill".to_string(),
             "A test skill".to_string(),
             "echo hello".to_string(),
+            "y".to_string(), // Accept preview
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
         
         let result = flow.run(CreationType::Skill).await;
         assert!(result.is_ok());
         let output = result.unwrap();
-        assert!(output.contains("test_skill"));
+        assert!(output.contains("test-skill"));
         assert!(output.contains("echo hello"));
+    }
+
+    #[tokio::test]
+    async fn test_skill_creation_with_preview_reject() {
+        let ui = MockTerminalUI::new(vec![
+            "test-skill".to_string(),
+            "A test skill".to_string(),
+            "echo hello".to_string(),
+            "n".to_string(), // Reject preview
+        ]);
+        let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
+        
+        let result = flow.run(CreationType::Skill).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("cancelled"));
     }
 
     #[tokio::test]
     async fn test_command_creation_flow() {
         let ui = MockTerminalUI::new(vec![
-            "test_command".to_string(),
+            "test-command".to_string(),
             "A test command".to_string(),
             "ls -la".to_string(),
             "[\"--color\"]".to_string(),
+            "y".to_string(), // Accept preview
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
         
         let result = flow.run(CreationType::CustomCommand).await;
         assert!(result.is_ok());
         let output = result.unwrap();
-        assert!(output.contains("test_command"));
+        assert!(output.contains("test-command"));
         assert!(output.contains("ls -la"));
     }
 
     #[tokio::test]
     async fn test_agent_creation_flow() {
         let ui = MockTerminalUI::new(vec![
-            "test_agent".to_string(),
+            "test-agent".to_string(),
             "A test agent".to_string(),
             "assistant".to_string(),
             "help, analyze, suggest".to_string(),
+            "y".to_string(), // Accept preview
         ]);
         let mut flow = InteractiveCreationFlow::new(ui).await.unwrap();
         
         let result = flow.run(CreationType::Agent).await;
         assert!(result.is_ok());
         let output = result.unwrap();
-        assert!(output.contains("test_agent"));
+        assert!(output.contains("test-agent"));
         assert!(output.contains("assistant"));
     }
 }

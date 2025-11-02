@@ -294,25 +294,223 @@ Detailed implementation plan for adding skills and workflows natural language in
 
 ## Testing Strategy
 
-### Unit Tests
-- [ ] Skill/workflow loading and parsing
-- [ ] Tool spec conversion
-- [ ] Parameter validation
-- [ ] Execution logic
+### Unit Tests (Per Phase)
+**Phase 1:**
+- [ ] `ToolOrigin` serialization/deserialization
+- [ ] `SkillTool` and `WorkflowTool` struct creation
+- [ ] Skill registry loading from JSON
+- [ ] Workflow registry loading from JSON
+- [ ] Tool spec conversion accuracy
+- [ ] Invalid JSON handling
+
+**Phase 2:**
+- [ ] Skill script execution with parameters
+- [ ] Skill command execution with parameters
+- [ ] Workflow step execution
+- [ ] Error propagation
+- [ ] Timeout handling
+- [ ] Output formatting
+
+**Phase 3:**
+- [ ] CLI command parsing
+- [ ] Skill add/remove operations
+- [ ] Workflow add/remove operations
+- [ ] Validation error messages
+- [ ] File system operations
+
+**Phase 4:**
+- [ ] Template generation
+- [ ] Parameter type validation
+- [ ] Workflow dependency resolution
+- [ ] Progress event emission
+
+**Estimated Time**: 8 hours
 
 ### Integration Tests
-- [ ] End-to-end skill execution
-- [ ] End-to-end workflow execution
-- [ ] CLI command execution
-- [ ] Error scenarios
+- [ ] End-to-end skill execution from chat
+- [ ] End-to-end workflow execution from chat
+- [ ] CLI command execution with real files
+- [ ] Error scenarios (missing files, invalid JSON, execution failures)
+- [ ] Permission checks
+- [ ] Multi-step workflow execution
+- [ ] Skill/workflow interaction with other tools
 
-### LLM Tests
-- [ ] LLM can discover skills
+**Estimated Time**: 6 hours
+
+### LLM Interaction Tests
+- [ ] LLM can discover skills from schema
 - [ ] LLM can invoke skills with correct parameters
+- [ ] LLM can handle skill errors gracefully
 - [ ] LLM can chain multiple skills
 - [ ] LLM can execute workflows
+- [ ] LLM parameter mapping accuracy
+- [ ] LLM handles missing required parameters
 
-**Testing Time**: ~16 hours (2 days)
+**Estimated Time**: 4 hours
+
+### Performance Tests
+- [ ] Skill loading time (<100ms for 100 skills)
+- [ ] Workflow loading time (<100ms for 100 workflows)
+- [ ] Execution overhead (<50ms)
+- [ ] Memory usage (no leaks)
+- [ ] Concurrent skill execution
+
+**Estimated Time**: 2 hours
+
+**Total Testing Time**: ~20 hours (2.5 days)
+
+---
+
+## Analysis and Validation
+
+### Phase 1 Analysis (End of Week 2)
+**Deliverable**: Analysis Report 1
+
+- [ ] **Code Review**
+  - [ ] All types properly defined
+  - [ ] Error handling comprehensive
+  - [ ] Code follows Q CLI patterns
+  - [ ] Documentation complete
+
+- [ ] **Functionality Verification**
+  - [ ] Skills load from filesystem
+  - [ ] Workflows load from filesystem
+  - [ ] Tool specs generated correctly
+  - [ ] ToolManager integration works
+
+- [ ] **Test Coverage**
+  - [ ] Unit test coverage >80%
+  - [ ] All error paths tested
+  - [ ] Edge cases covered
+
+- [ ] **Performance Baseline**
+  - [ ] Measure loading time
+  - [ ] Measure memory usage
+  - [ ] Document baseline metrics
+
+**Estimated Time**: 4 hours
+
+### Phase 2 Analysis (End of Week 3)
+**Deliverable**: Analysis Report 2
+
+- [ ] **Code Review**
+  - [ ] Execution logic secure
+  - [ ] Error handling robust
+  - [ ] Output formatting correct
+  - [ ] Telemetry implemented
+
+- [ ] **Functionality Verification**
+  - [ ] Skills execute successfully
+  - [ ] Workflows execute successfully
+  - [ ] Parameters passed correctly
+  - [ ] Output captured properly
+
+- [ ] **Test Coverage**
+  - [ ] Integration tests passing
+  - [ ] Error scenarios covered
+  - [ ] Timeout handling verified
+
+- [ ] **Security Analysis**
+  - [ ] Path traversal prevented
+  - [ ] Command injection prevented
+  - [ ] Resource limits enforced
+  - [ ] Permissions checked
+
+- [ ] **Performance Analysis**
+  - [ ] Execution overhead measured
+  - [ ] Compare to baseline
+  - [ ] Identify bottlenecks
+
+**Estimated Time**: 6 hours
+
+### Phase 3 Analysis (End of Week 4)
+**Deliverable**: Analysis Report 3
+
+- [ ] **Code Review**
+  - [ ] CLI commands intuitive
+  - [ ] Validation comprehensive
+  - [ ] Error messages helpful
+  - [ ] Documentation clear
+
+- [ ] **Usability Testing**
+  - [ ] Test with sample users
+  - [ ] Collect feedback
+  - [ ] Identify pain points
+  - [ ] Document improvements
+
+- [ ] **Functionality Verification**
+  - [ ] All CLI commands work
+  - [ ] Validation catches errors
+  - [ ] Help text accurate
+  - [ ] Examples work
+
+- [ ] **Documentation Review**
+  - [ ] User guide complete
+  - [ ] Examples clear
+  - [ ] API docs accurate
+  - [ ] Troubleshooting section
+
+**Estimated Time**: 6 hours
+
+### Phase 4 Analysis (End of Week 6)
+**Deliverable**: Analysis Report 4 + Final Report
+
+- [ ] **Code Review**
+  - [ ] Advanced features stable
+  - [ ] No regressions
+  - [ ] Code quality maintained
+  - [ ] Technical debt minimal
+
+- [ ] **Functionality Verification**
+  - [ ] Templates work
+  - [ ] Validation comprehensive
+  - [ ] Dependencies resolve correctly
+  - [ ] Progress tracking accurate
+
+- [ ] **Performance Analysis**
+  - [ ] Final performance metrics
+  - [ ] Compare to baseline
+  - [ ] Optimization opportunities
+  - [ ] Resource usage acceptable
+
+- [ ] **LLM Effectiveness Analysis**
+  - [ ] Success rate of skill invocation
+  - [ ] Parameter mapping accuracy
+  - [ ] Error recovery effectiveness
+  - [ ] User satisfaction metrics
+
+**Estimated Time**: 8 hours
+
+### Final Analysis (End of Week 6)
+**Deliverable**: Comprehensive Final Report
+
+- [ ] **Feature Completeness**
+  - [ ] All planned features implemented
+  - [ ] All acceptance criteria met
+  - [ ] No critical bugs
+  - [ ] Documentation complete
+
+- [ ] **Quality Metrics**
+  - [ ] Test coverage >85%
+  - [ ] All tests passing
+  - [ ] No security vulnerabilities
+  - [ ] Performance targets met
+
+- [ ] **User Readiness**
+  - [ ] Documentation reviewed
+  - [ ] Examples tested
+  - [ ] Migration guide (if needed)
+  - [ ] Support plan
+
+- [ ] **Recommendations**
+  - [ ] Future enhancements prioritized
+  - [ ] Known limitations documented
+  - [ ] Maintenance plan
+  - [ ] Monitoring strategy
+
+**Estimated Time**: 4 hours
+
+**Total Analysis Time**: ~28 hours (3.5 days)
 
 ---
 
@@ -350,11 +548,12 @@ Detailed implementation plan for adding skills and workflows natural language in
 - **Phase 2**: 22 hours (2.75 days)
 - **Phase 3**: 28 hours (3.5 days)
 - **Phase 4**: 30 hours (3.75 days)
-- **Testing**: 16 hours (2 days)
+- **Testing**: 20 hours (2.5 days)
+- **Analysis**: 28 hours (3.5 days)
 
-**Total**: ~124 hours (~15.5 days of development)
+**Total**: ~156 hours (~19.5 days of development)
 
-With buffer for code review, bug fixes, and iteration: **~20 days (4 weeks)**
+With buffer for code review, bug fixes, and iteration: **~25 days (5 weeks)**
 
 ---
 

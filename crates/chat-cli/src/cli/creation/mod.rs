@@ -11,6 +11,7 @@ mod flows;
 mod context;
 mod templates;
 mod template_loader;
+mod enhanced_prompts;
 mod prompt_system;
 
 #[cfg(test)]
