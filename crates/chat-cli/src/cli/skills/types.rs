@@ -5,6 +5,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
+
+use crate::cli::chat::tools::{InputSchema, ToolOrigin, ToolSpec};
+use crate::cli::skills::toolspec_conversion::{ConversionError, ToToolSpec};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SkillType {
@@ -213,5 +217,202 @@ impl JsonSkill {
 impl JsonSkill {
     pub fn security_config(&self) -> Option<&SecurityConfig> {
         self.security.as_ref()
+    }
+}
+
+impl ToToolSpec for JsonSkill {
+    fn to_toolspec(&self) -> Result<ToolSpec, ConversionError> {
+        let input_schema = self.build_input_schema()?;
+        
+        Ok(ToolSpec {
+            name: self.name.clone(),
+            description: self.description.clone()
+                .unwrap_or_else(|| format!("Execute {} skill", self.name)),
+            input_schema: InputSchema(input_schema),
+            tool_origin: ToolOrigin::Skill(self.name.clone()),
+        })
+    }
+}
+
+impl JsonSkill {
+    fn build_input_schema(&self) -> Result<serde_json::Value, ConversionError> {
+        let mut properties = serde_json::Map::new();
+        let mut required = Vec::new();
+        
+        if let Some(params) = &self.parameters {
+            for param in params {
+                properties.insert(
+                    param.name.clone(),
+                    self.param_to_schema(param)
+                );
+                if param.required.unwrap_or(false) {
+                    required.push(param.name.clone());
+                }
+            }
+        }
+        
+        Ok(json!({
+            "type": "object",
+            "properties": properties,
+            "required": required
+        }))
+    }
+    
+    fn param_to_schema(&self, param: &Parameter) -> serde_json::Value {
+        let mut schema = json!({
+            "type": param.param_type.clone()
+        });
+        
+        if let Some(values) = &param.values {
+            schema["enum"] = json!(values);
+        }
+        
+        if let Some(pattern) = &param.pattern {
+            schema["pattern"] = json!(pattern);
+        }
+        
+        schema
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_skill_to_toolspec() {
+        let skill = JsonSkill {
+            name: "test-skill".to_string(),
+            description: Some("Test description".to_string()),
+            skill_type: SkillType::Command,
+            command: Some("echo".to_string()),
+            args: None,
+            timeout: None,
+            security: None,
+            session_config: None,
+            prompt_template: None,
+            context_files: None,
+            parameters: None,
+            extra: HashMap::new(),
+        };
+        
+        let toolspec = skill.to_toolspec().unwrap();
+        assert_eq!(toolspec.name, "test-skill");
+        assert_eq!(toolspec.description, "Test description");
+        assert!(matches!(toolspec.tool_origin, ToolOrigin::Skill(_)));
+    }
+    
+    #[test]
+    fn test_skill_with_parameters() {
+        let skill = JsonSkill {
+            name: "param-skill".to_string(),
+            description: Some("Skill with params".to_string()),
+            skill_type: SkillType::Command,
+            command: Some("echo".to_string()),
+            args: None,
+            timeout: None,
+            security: None,
+            session_config: None,
+            prompt_template: None,
+            context_files: None,
+            parameters: Some(vec![
+                Parameter {
+                    name: "input".to_string(),
+                    param_type: "string".to_string(),
+                    required: Some(true),
+                    values: None,
+                    pattern: None,
+                }
+            ]),
+            extra: HashMap::new(),
+        };
+        
+        let toolspec = skill.to_toolspec().unwrap();
+        let schema = toolspec.input_schema.0;
+        assert!(schema["required"].as_array().unwrap().contains(&json!("input")));
+        assert_eq!(schema["properties"]["input"]["type"], "string");
+    }
+    
+    #[test]
+    fn test_skill_with_enum_values() {
+        let skill = JsonSkill {
+            name: "enum-skill".to_string(),
+            description: Some("Skill with enum".to_string()),
+            skill_type: SkillType::Command,
+            command: Some("echo".to_string()),
+            args: None,
+            timeout: None,
+            security: None,
+            session_config: None,
+            prompt_template: None,
+            context_files: None,
+            parameters: Some(vec![
+                Parameter {
+                    name: "option".to_string(),
+                    param_type: "string".to_string(),
+                    required: Some(false),
+                    values: Some(vec!["a".to_string(), "b".to_string()]),
+                    pattern: None,
+                }
+            ]),
+            extra: HashMap::new(),
+        };
+        
+        let toolspec = skill.to_toolspec().unwrap();
+        let schema = toolspec.input_schema.0;
+        let enum_values = schema["properties"]["option"]["enum"].as_array().unwrap();
+        assert_eq!(enum_values.len(), 2);
+        assert!(enum_values.contains(&json!("a")));
+    }
+    
+    #[test]
+    fn test_skill_with_pattern() {
+        let skill = JsonSkill {
+            name: "pattern-skill".to_string(),
+            description: Some("Skill with pattern".to_string()),
+            skill_type: SkillType::Command,
+            command: Some("echo".to_string()),
+            args: None,
+            timeout: None,
+            security: None,
+            session_config: None,
+            prompt_template: None,
+            context_files: None,
+            parameters: Some(vec![
+                Parameter {
+                    name: "email".to_string(),
+                    param_type: "string".to_string(),
+                    required: Some(true),
+                    values: None,
+                    pattern: Some("^[a-z]+@[a-z]+\\.[a-z]+$".to_string()),
+                }
+            ]),
+            extra: HashMap::new(),
+        };
+        
+        let toolspec = skill.to_toolspec().unwrap();
+        let schema = toolspec.input_schema.0;
+        assert_eq!(schema["properties"]["email"]["pattern"], "^[a-z]+@[a-z]+\\.[a-z]+$");
+    }
+    
+    #[test]
+    fn test_skill_without_description() {
+        let skill = JsonSkill {
+            name: "no-desc".to_string(),
+            description: None,
+            skill_type: SkillType::Command,
+            command: Some("echo".to_string()),
+            args: None,
+            timeout: None,
+            security: None,
+            session_config: None,
+            prompt_template: None,
+            context_files: None,
+            parameters: None,
+            extra: HashMap::new(),
+        };
+        
+        let toolspec = skill.to_toolspec().unwrap();
+        assert_eq!(toolspec.description, "Execute no-desc skill");
     }
 }

@@ -54,6 +54,19 @@ git commit -m "msg"   # Commit
 - **Prefer 30-45 minutes** for most iterations
 - Each iteration = 1 focused change
 
+### Test-Driven Development (STRICT)
+- **Write tests FIRST** before any implementation
+- Run tests - they should **FAIL**
+- Implement minimal code to make tests **PASS**
+- Run tests again - they should **PASS**
+- This ensures tests are actually testing something
+
+**TDD Cycle:**
+1. Write test (RED - fails)
+2. Implement code (GREEN - passes)
+3. Refactor if needed (REFACTOR)
+4. Commit
+
 ### Compilation Rule (STRICT)
 - Code **MUST compile** after every iteration
 - **NO `todo!()`, `unimplemented!()`, or placeholders** in committed code
@@ -72,9 +85,19 @@ git commit -m "msg"   # Commit
 
 ### Quality Checks (Before Every Commit)
 ```bash
+# 1. Write tests FIRST (before implementation)
+# 2. Run tests - should FAIL
+cargo test <test_name>
+# 3. Implement code
+# 4. Run tests - should PASS
+cargo test <test_name>
+# 5. Format
 cargo +nightly fmt
+# 6. Lint
 cargo clippy
+# 7. All tests
 cargo test
+# 8. Commit
 git add -A
 git commit -m "Clear, specific message"
 ```
@@ -96,10 +119,13 @@ git commit -m "Clear, specific message"
 #### Iteration 1.1.1: Add Skill variant (30 min)
 **Files**: `crates/chat-cli/src/cli/chat/tools/mod.rs`
 
+- [ ] **Write test first**: `test_tool_origin_skill_display()`
+- [ ] **Write test first**: `test_tool_origin_skill_serialization()`
+- [ ] Run tests - should **FAIL**
 - [ ] Add `Skill(String)` variant to `ToolOrigin` enum
 - [ ] Update `Display` implementation for `ToolOrigin`
-- [ ] Add test: `test_tool_origin_skill_display()`
-- [ ] Add test: `test_tool_origin_skill_serialization()`
+- [ ] Update `Hash`, `Borrow`, `Serialize`, `Deserialize` implementations
+- [ ] Run tests - should **PASS**
 - [ ] ✅ **Compile + Test + Commit**: "Add Skill variant to ToolOrigin"
 
 #### Iteration 1.1.2: Add Workflow variant (30 min)

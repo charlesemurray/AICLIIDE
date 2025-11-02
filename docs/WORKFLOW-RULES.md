@@ -7,7 +7,29 @@
 - One focused change per iteration
 - If it takes longer, break it down more
 
-### 2. NO PLACEHOLDERS (STRICT)
+### 2. TEST-DRIVEN DEVELOPMENT (STRICT)
+**Write tests FIRST, then implement:**
+```rust
+// 1. Write the test (it will FAIL)
+#[test]
+fn test_new_feature() {
+    let result = new_feature();
+    assert_eq!(result, expected);
+}
+
+// 2. Run test - it FAILS ✅
+// 3. Implement minimal code to make it PASS
+// 4. Run test - it PASSES ✅
+```
+
+**Order:**
+1. Write test(s) first
+2. Run tests (they should FAIL)
+3. Implement code
+4. Run tests (they should PASS)
+5. Format, lint, commit
+
+### 3. NO PLACEHOLDERS (STRICT)
 ```rust
 // ❌ NEVER DO THIS
 fn my_function() {
@@ -65,22 +87,33 @@ Examples:
 ## Before Every Commit Checklist
 
 ```bash
-# 1. Format
+# 1. Write tests FIRST
+# Add test(s) to appropriate test module
+
+# 2. Run tests (should FAIL initially)
+cargo test <test_name>
+
+# 3. Implement code to make tests pass
+
+# 4. Run tests again (should PASS)
+cargo test <test_name>
+
+# 5. Format
 cargo +nightly fmt
 
-# 2. Lint
+# 6. Lint
 cargo clippy
 
-# 3. Test
+# 7. Run all tests
 cargo test
 
-# 4. Stage
+# 8. Stage
 git add -A
 
-# 5. Commit
+# 9. Commit
 git commit -m "Clear, specific message"
 
-# 6. Push (every 3-4 commits)
+# 10. Push (every 3-4 commits)
 git push
 ```
 
@@ -155,22 +188,27 @@ Track your progress in the implementation plan:
 
 Mark the commit hash next to completed iterations.
 
-## Example Iteration
+## Example Iteration (TDD)
 
 **Iteration 1.1.1: Add Skill variant (30 min)**
 
 1. Open `crates/chat-cli/src/cli/chat/tools/mod.rs`
-2. Add `Skill(String)` to `ToolOrigin` enum
-3. Update `Display` impl
-4. Add test: `test_tool_origin_skill_display()`
-5. Run: `cargo +nightly fmt`
-6. Run: `cargo clippy`
-7. Run: `cargo test`
-8. Commit: "Add Skill variant to ToolOrigin"
-9. ✅ Done in 30 minutes
+2. **Write test first**: `test_tool_origin_skill_display()`
+3. **Write test first**: `test_tool_origin_skill_serialization()`
+4. Run: `cargo test test_tool_origin_skill` - **FAILS** ✅
+5. Add `Skill(String)` to `ToolOrigin` enum
+6. Update `Display` impl
+7. Update `Hash`, `Borrow`, `Serialize`, `Deserialize` impls
+8. Run: `cargo test test_tool_origin_skill` - **PASSES** ✅
+9. Run: `cargo +nightly fmt`
+10. Run: `cargo clippy`
+11. Run: `cargo test` (all tests)
+12. Commit: "Add Skill variant to ToolOrigin"
+13. ✅ Done in 30 minutes
 
 ## Red Flags
 
+🚩 "I'll write tests after implementing" → NO, write tests FIRST
 🚩 "I'll fix the tests later" → NO, fix them now
 🚩 "I'll add the implementation later" → NO, add minimal version now
 🚩 "This is just temporary" → NO, make it work properly

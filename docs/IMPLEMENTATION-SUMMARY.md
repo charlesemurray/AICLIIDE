@@ -94,15 +94,23 @@ See [WORKFLOW-RULES.md](./WORKFLOW-RULES.md) for detailed rules.
 
 **Quick summary:**
 1. Max 2 hours per iteration
-2. No placeholders (use minimal implementations)
-3. Must compile before commit
-4. Must test before commit
-5. Commit after every iteration
+2. **Write tests FIRST (TDD)** - tests fail, then implement, tests pass
+3. No placeholders (use minimal implementations)
+4. Must compile before commit
+5. Must test before commit
+6. Commit after every iteration
 
 ## Quality Checks
 
 ### Before Every Commit
 ```bash
+# 1. Write tests FIRST
+# 2. Run tests (should FAIL)
+cargo test <test_name>
+# 3. Implement code
+# 4. Run tests (should PASS)
+cargo test <test_name>
+# 5. Format & lint
 cargo +nightly fmt
 cargo clippy
 cargo test
