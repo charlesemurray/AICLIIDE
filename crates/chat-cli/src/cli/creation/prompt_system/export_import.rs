@@ -97,12 +97,10 @@ pub enum ConflictStrategy {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    use tempfile::TempDir;
-
     use super::*;
-    use crate::cli::creation::prompt_system::PromptBuilder;
+    use crate::cli::creation::prompt_system::{PromptBuilder, CreationBuilder};
+    use tempfile::TempDir;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn unique_name(prefix: &str) -> String {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();

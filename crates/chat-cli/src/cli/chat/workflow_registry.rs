@@ -7,6 +7,7 @@ use eyre::Result;
 
 use crate::cli::chat::tools::workflow::WorkflowDefinition;
 
+#[derive(Clone, Debug)]
 pub struct WorkflowRegistry {
     workflows: HashMap<String, WorkflowDefinition>,
 }

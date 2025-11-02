@@ -577,6 +577,8 @@ pub struct ToolManager {
     is_first_launch: bool,
 
     pub skill_registry: crate::cli::chat::skill_registry::SkillRegistry,
+
+    pub workflow_registry: crate::cli::chat::workflow_registry::WorkflowRegistry,
 }
 
 impl Clone for ToolManager {
@@ -591,6 +593,7 @@ impl Clone for ToolManager {
             mcp_load_record: self.mcp_load_record.clone(),
             disabled_servers: self.disabled_servers.clone(),
             skill_registry: self.skill_registry.clone(),
+            workflow_registry: self.workflow_registry.clone(),
             ..Default::default()
         }
     }
