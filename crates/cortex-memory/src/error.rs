@@ -15,7 +15,7 @@ pub enum CortexError {
 
     /// Error in the underlying HNSW storage
     #[error("Storage error: {0}")]
-    StorageError(#[from] hnswlib::HnswError),
+    StorageError(String),
 
     /// Invalid input provided
     #[error("Invalid input: {0}")]
@@ -24,6 +24,18 @@ pub enum CortexError {
     /// LLM processing error
     #[error("LLM error: {0}")]
     LlmError(String),
+}
+
+impl From<hnswlib::HnswError> for CortexError {
+    fn from(err: hnswlib::HnswError) -> Self {
+        CortexError::StorageError(err.to_string())
+    }
+}
+
+impl From<hnswlib::HnswInitError> for CortexError {
+    fn from(err: hnswlib::HnswInitError) -> Self {
+        CortexError::StorageError(err.to_string())
+    }
 }
 
 /// Result type for Cortex operations

@@ -82,13 +82,7 @@ impl HnswWrapper {
             vec![]
         };
 
-        let allowed_slice = if numeric_allowed.is_empty() {
-            &[]
-        } else {
-            &numeric_allowed
-        };
-
-        let (ids, distances) = self.index.query(query, k, allowed_slice, &[])?;
+        let (ids, distances) = self.index.query(query, k, &numeric_allowed, &[])?;
 
         let results: Vec<(String, f32)> = ids
             .iter()
