@@ -5,12 +5,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use tracing::warn;
 
 use super::{
     Skill,
     SkillError,
     SkillResult,
 };
+use crate::cli::chat::tools::ToolSpec;
 use crate::cli::skills::builtin::PlaceholderSkill;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -320,5 +322,58 @@ impl SkillRegistry {
         if let Ok(calculator) = crate::cli::skills::builtin::calculator::Calculator::new() {
             let _ = self.register_with_aliases(Box::new(calculator));
         }
+    }
+
+    pub fn get_all_toolspecs(&self) -> Vec<ToolSpec> {
+        self.skills
+            .values()
+            .filter_map(|skill| {
+                skill
+                    .to_toolspec()
+                    .map_err(|e| {
+                        warn!("Failed to convert skill {} to toolspec: {}", skill.name(), e);
+                        e
+                    })
+                    .ok()
+            })
+            .collect()
+    }
+
+    pub fn get_toolspec(&self, name: &str) -> Option<ToolSpec> {
+        self.get(name).and_then(|skill| skill.to_toolspec().ok())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_registry_exports_toolspecs() {
+        let registry = SkillRegistry::with_builtins();
+        let toolspecs = registry.get_all_toolspecs();
+
+        // Should have at least the calculator skill
+        assert!(!toolspecs.is_empty(), "Registry should export at least one toolspec");
+    }
+
+    #[tokio::test]
+    async fn test_get_specific_toolspec() {
+        let registry = SkillRegistry::with_builtins();
+
+        // Calculator should be available
+        let toolspec = registry.get_toolspec("calculator");
+        assert!(toolspec.is_some(), "Calculator toolspec should be available");
+
+        if let Some(ts) = toolspec {
+            assert_eq!(ts.name, "calculator");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_nonexistent_toolspec() {
+        let registry = SkillRegistry::with_builtins();
+        let toolspec = registry.get_toolspec("nonexistent-skill");
+        assert!(toolspec.is_none(), "Nonexistent skill should return None");
     }
 }

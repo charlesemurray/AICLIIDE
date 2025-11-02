@@ -7,6 +7,8 @@ use serde::{
 };
 use tokio::time::timeout;
 
+use crate::cli::chat::tools::ToolSpec;
+
 pub mod builtin;
 pub mod creation_assistant;
 pub mod platform;
@@ -88,6 +90,11 @@ pub trait Skill: Send + Sync {
     async fn render_ui(&self) -> Result<SkillUI>;
     fn supports_interactive(&self) -> bool {
         false
+    }
+    fn to_toolspec(&self) -> std::result::Result<ToolSpec, toolspec_conversion::ConversionError> {
+        Err(toolspec_conversion::ConversionError::InvalidSchema(
+            "Skill does not support ToolSpec conversion".to_string(),
+        ))
     }
 }
 

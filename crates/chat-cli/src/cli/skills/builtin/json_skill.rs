@@ -2,7 +2,12 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
+use crate::cli::chat::tools::ToolSpec;
 use crate::cli::skills::registry::SkillInfo;
+use crate::cli::skills::toolspec_conversion::{
+    ConversionError,
+    ToToolSpec,
+};
 use crate::cli::skills::types::{
     JsonSkill as EnhancedJsonSkill,
     SkillType,
@@ -118,5 +123,9 @@ impl Skill for JsonSkill {
             elements,
             interactive: false,
         })
+    }
+
+    fn to_toolspec(&self) -> std::result::Result<ToolSpec, ConversionError> {
+        self.enhanced_skill.to_toolspec()
     }
 }

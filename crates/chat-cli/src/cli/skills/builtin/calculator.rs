@@ -1,6 +1,15 @@
 use async_trait::async_trait;
-use serde_json::Value;
+use serde_json::{
+    Value,
+    json,
+};
 
+use crate::cli::chat::tools::{
+    InputSchema,
+    ToolOrigin,
+    ToolSpec,
+};
+use crate::cli::skills::toolspec_conversion::ConversionError;
 use crate::cli::skills::{
     Result,
     Skill,
@@ -90,5 +99,32 @@ impl Skill for Calculator {
 
     fn supports_interactive(&self) -> bool {
         true
+    }
+
+    fn to_toolspec(&self) -> std::result::Result<ToolSpec, ConversionError> {
+        Ok(ToolSpec {
+            name: self.name().to_string(),
+            description: self.description().to_string(),
+            input_schema: InputSchema(json!({
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "First operand"
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "Second operand"
+                    },
+                    "op": {
+                        "type": "string",
+                        "enum": ["add", "subtract", "multiply", "divide"],
+                        "description": "Operation to perform"
+                    }
+                },
+                "required": ["a", "b"]
+            })),
+            tool_origin: ToolOrigin::Skill(self.name().to_string()),
+        })
     }
 }
