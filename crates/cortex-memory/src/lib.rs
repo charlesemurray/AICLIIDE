@@ -4,6 +4,7 @@ pub mod error;
 pub mod hnsw_wrapper;
 pub mod id_mapper;
 pub mod memory_note;
+pub mod stm;
 
 pub use error::{
     CortexError,
@@ -12,6 +13,7 @@ pub use error::{
 pub use hnsw_wrapper::HnswWrapper;
 pub use id_mapper::IdMapper;
 pub use memory_note::MemoryNote;
+pub use stm::ShortTermMemory;
 
 #[cfg(test)]
 mod tests {
