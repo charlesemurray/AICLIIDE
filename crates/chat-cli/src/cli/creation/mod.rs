@@ -73,6 +73,20 @@ pub enum CreateCommand {
         #[command(subcommand)]
         mode: Option<AgentMode>,
     },
+    /// Create an AI assistant (interactive prompt builder)
+    Assistant {
+        #[command(subcommand)]
+        mode: Option<AssistantMode>,
+    },
+}
+
+/// Assistant creation modes
+#[derive(Debug, Subcommand, PartialEq)]
+pub enum AssistantMode {
+    /// Use a pre-built template
+    Template,
+    /// Build from scratch
+    Custom,
 }
 
 /// Skill creation modes
@@ -135,21 +149,44 @@ impl CreateArgs {
         use crate::cli::creation::TerminalUIImpl;
         use crate::cli::creation::flows::InteractiveCreationFlow;
 
-        let ui = TerminalUIImpl::new();
-        let mut flow = InteractiveCreationFlow::new(ui).await?;
-
         match self.command {
+            CreateCommand::Assistant { mode } => {
+                use crate::cli::creation::prompt_system::InteractivePromptBuilder;
+
+                let mut ui = TerminalUIImpl::new();
+                let mut builder = InteractivePromptBuilder::new(&mut ui);
+
+                let template = match mode {
+                    Some(AssistantMode::Custom) => builder.create_custom()?,
+                    _ => builder.create_from_template()?,
+                };
+
+                println!("\n✓ Created assistant: {}", template.name);
+                println!("  Category: {:?}", template.category);
+                println!("  Difficulty: {:?}", template.difficulty);
+                println!("  Capabilities: {}", template.capabilities.len());
+
+                // TODO: Save to .q-skills/ directory
+
+                Ok(ExitCode::SUCCESS)
+            },
             CreateCommand::Skill { name: _, mode: _ } => {
+                let ui = TerminalUIImpl::new();
+                let mut flow = InteractiveCreationFlow::new(ui).await?;
                 let result = flow.run(CreationType::Skill).await?;
                 println!("Created skill:\n{}", result);
                 Ok(ExitCode::SUCCESS)
             },
             CreateCommand::Command { name: _, mode: _ } => {
+                let ui = TerminalUIImpl::new();
+                let mut flow = InteractiveCreationFlow::new(ui).await?;
                 let result = flow.run(CreationType::CustomCommand).await?;
                 println!("Created command:\n{}", result);
                 Ok(ExitCode::SUCCESS)
             },
             CreateCommand::Agent { name: _, mode: _ } => {
+                let ui = TerminalUIImpl::new();
+                let mut flow = InteractiveCreationFlow::new(ui).await?;
                 let result = flow.run(CreationType::Agent).await?;
                 println!("Created agent:\n{}", result);
                 Ok(ExitCode::SUCCESS)
@@ -161,6 +198,10 @@ impl CreateArgs {
     pub async fn execute_test(self) -> Result<ExitCode> {
         // Test version that doesn't require Os parameter
         match self.command {
+            CreateCommand::Assistant { mode: _ } => {
+                // Not implemented in tests yet
+                Ok(ExitCode::SUCCESS)
+            },
             CreateCommand::Skill { name, mode } => {
                 let creation_mode = mode
                     .map(|m| match m {

@@ -98,8 +98,13 @@ impl ToolsArgs {
             (_, ToolOrigin::Native) => std::cmp::Ordering::Greater,
             (ToolOrigin::McpServer(name_a), ToolOrigin::McpServer(name_b)) => name_a.cmp(name_b),
             (ToolOrigin::Skill(name_a), ToolOrigin::Skill(name_b)) => name_a.cmp(name_b),
+            (ToolOrigin::Workflow(name_a), ToolOrigin::Workflow(name_b)) => name_a.cmp(name_b),
             (ToolOrigin::McpServer(_), ToolOrigin::Skill(_)) => std::cmp::Ordering::Less,
+            (ToolOrigin::McpServer(_), ToolOrigin::Workflow(_)) => std::cmp::Ordering::Less,
             (ToolOrigin::Skill(_), ToolOrigin::McpServer(_)) => std::cmp::Ordering::Greater,
+            (ToolOrigin::Skill(_), ToolOrigin::Workflow(_)) => std::cmp::Ordering::Less,
+            (ToolOrigin::Workflow(_), ToolOrigin::McpServer(_)) => std::cmp::Ordering::Greater,
+            (ToolOrigin::Workflow(_), ToolOrigin::Skill(_)) => std::cmp::Ordering::Greater,
         });
 
         for (origin, tools) in origin_tools.iter() {

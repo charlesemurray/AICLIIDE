@@ -708,7 +708,7 @@ impl ConversationState {
                 });
                 true
             },
-            ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) => false,
+            ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) | ToolOrigin::Workflow(_) => false,
         });
 
         enforce_conversation_invariants(&mut history, &mut summary_message, &tools);
@@ -770,7 +770,7 @@ Return only the JSON configuration, no additional text.",
                 });
                 true
             },
-            ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) => false,
+            ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) | ToolOrigin::Workflow(_) => false,
         });
 
         Ok(FigConversationState {

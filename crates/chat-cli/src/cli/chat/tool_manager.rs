@@ -872,6 +872,12 @@ impl ToolManager {
             "execute_bash" => {
                 Tool::ExecuteCommand(serde_json::from_value::<ExecuteCommand>(value.args).map_err(map_err)?)
             },
+            #[cfg(not(windows))]
+            "execute_bash_readonly" => {
+                let mut cmd = serde_json::from_value::<ExecuteCommand>(value.args).map_err(map_err)?;
+                cmd.is_readonly = true;
+                Tool::ExecuteCommand(cmd)
+            },
             "use_aws" => Tool::UseAws(serde_json::from_value::<UseAws>(value.args).map_err(map_err)?),
             "report_issue" => Tool::GhIssue(serde_json::from_value::<GhIssue>(value.args).map_err(map_err)?),
             "introspect" => Tool::Introspect(serde_json::from_value::<Introspect>(value.args).map_err(map_err)?),

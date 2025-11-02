@@ -24,13 +24,33 @@
   },
   "execute_bash": {
     "name": "execute_bash",
-    "description": "Execute the specified bash command.",
+    "description": "Execute the specified bash command that may modify the system state.",
     "input_schema": {
       "type": "object",
       "properties": {
         "command": {
           "type": "string",
           "description": "Bash command to execute"
+        },
+        "summary": {
+          "type": "string",
+          "description": "A brief explanation of what the command does"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  "execute_bash_readonly": {
+    "name": "execute_bash_readonly",
+    "description": "Execute read-only bash commands for safe inspection and analysis. Use this for viewing, listing, searching, and checking system state without modifications. Examples: ls, cat, grep, find, head, tail, pwd, which, echo.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Read-only bash command to execute"
         },
         "summary": {
           "type": "string",

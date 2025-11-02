@@ -6,6 +6,7 @@ pub mod fs_write;
 pub mod gh_issue;
 pub mod introspect;
 pub mod knowledge;
+pub mod skill_tool;
 pub mod thinking;
 pub mod todo;
 pub mod use_aws;
@@ -71,13 +72,15 @@ use crate::theme::{
 };
 
 pub const DEFAULT_APPROVE: [&str; 0] = [];
-pub const NATIVE_TOOLS: [&str; 9] = [
+pub const NATIVE_TOOLS: [&str; 10] = [
     "fs_read",
     "fs_write",
     #[cfg(windows)]
     "execute_cmd",
     #[cfg(not(windows))]
     "execute_bash",
+    #[cfg(not(windows))]
+    "execute_bash_readonly",
     "use_aws",
     "gh_issue",
     "knowledge",
@@ -268,6 +271,7 @@ pub enum ToolOrigin {
     Native,
     McpServer(String),
     Skill(String),
+    Workflow(String),
 }
 
 impl std::hash::Hash for ToolOrigin {
@@ -277,6 +281,7 @@ impl std::hash::Hash for ToolOrigin {
             Self::Native => {},
             Self::McpServer(name) => name.hash(state),
             Self::Skill(name) => name.hash(state),
+            Self::Workflow(name) => name.hash(state),
         }
     }
 }
@@ -287,6 +292,7 @@ impl Borrow<str> for ToolOrigin {
             Self::McpServer(name) => name.as_str(),
             Self::Native => "native",
             Self::Skill(name) => name.as_str(),
+            Self::Workflow(name) => name.as_str(),
         }
     }
 }
@@ -301,6 +307,8 @@ impl<'de> Deserialize<'de> for ToolOrigin {
             Ok(ToolOrigin::Native)
         } else if s.starts_with("skill___") {
             Ok(ToolOrigin::Skill(s.strip_prefix("skill___").unwrap().to_string()))
+        } else if s.starts_with("workflow___") {
+            Ok(ToolOrigin::Workflow(s.strip_prefix("workflow___").unwrap().to_string()))
         } else {
             Ok(ToolOrigin::McpServer(s))
         }
@@ -316,6 +324,7 @@ impl Serialize for ToolOrigin {
             ToolOrigin::Native => serializer.serialize_str("native___"),
             ToolOrigin::McpServer(server) => serializer.serialize_str(server),
             ToolOrigin::Skill(name) => serializer.serialize_str(&format!("skill___{}", name)),
+            ToolOrigin::Workflow(name) => serializer.serialize_str(&format!("workflow___{}", name)),
         }
     }
 }
@@ -326,6 +335,7 @@ impl std::fmt::Display for ToolOrigin {
             ToolOrigin::Native => write!(f, "Built-in"),
             ToolOrigin::McpServer(server) => write!(f, "{} (MCP)", server),
             ToolOrigin::Skill(name) => write!(f, "{} (Skill)", name),
+            ToolOrigin::Workflow(name) => write!(f, "{} (Workflow)", name),
         }
     }
 }
@@ -637,5 +647,21 @@ mod tests {
 
         let deserialized: ToolOrigin = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, skill_origin);
+    }
+
+    #[test]
+    fn test_tool_origin_workflow_display() {
+        let workflow_origin = ToolOrigin::Workflow("my-workflow".to_string());
+        assert_eq!(format!("{}", workflow_origin), "my-workflow (Workflow)");
+    }
+
+    #[test]
+    fn test_tool_origin_workflow_serialization() {
+        let workflow_origin = ToolOrigin::Workflow("test-workflow".to_string());
+        let serialized = serde_json::to_string(&workflow_origin).unwrap();
+        assert_eq!(serialized, "\"workflow___test-workflow\"");
+
+        let deserialized: ToolOrigin = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, workflow_origin);
     }
 }

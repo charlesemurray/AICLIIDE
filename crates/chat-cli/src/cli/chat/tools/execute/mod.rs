@@ -45,6 +45,8 @@ pub const READONLY_COMMANDS: &[&str] = &[
 pub struct ExecuteCommand {
     pub command: String,
     pub summary: Option<String>,
+    #[serde(skip, default)]
+    pub is_readonly: bool,
 }
 
 impl ExecuteCommand {
@@ -244,7 +246,7 @@ impl ExecuteCommand {
 
                 if is_in_allowlist {
                     PermissionEvalResult::Allow
-                } else if self.requires_acceptance(Some(&allowed_commands), auto_allow_readonly) {
+                } else if self.requires_acceptance(Some(&allowed_commands), auto_allow_readonly || self.is_readonly) {
                     if deny_by_default {
                         PermissionEvalResult::Deny(vec!["not in allowed commands list".to_string()])
                     } else {
@@ -256,7 +258,7 @@ impl ExecuteCommand {
             },
             None if is_in_allowlist => PermissionEvalResult::Allow,
             _ => {
-                if self.requires_acceptance(None, default_allow_read_only()) {
+                if self.requires_acceptance(None, self.is_readonly) {
                     PermissionEvalResult::Ask
                 } else {
                     PermissionEvalResult::Allow

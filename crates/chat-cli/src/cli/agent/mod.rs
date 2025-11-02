@@ -836,7 +836,9 @@ impl Agents {
         let tool_trusted = self.get_active().is_some_and(|a| {
             let server_name = match origin {
                 ToolOrigin::Native => None,
-                ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) => Some(<ToolOrigin as Borrow<str>>::borrow(origin)),
+                ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) | ToolOrigin::Workflow(_) => {
+                    Some(<ToolOrigin as Borrow<str>>::borrow(origin))
+                },
             };
             is_tool_in_allowlist(&a.allowed_tools, tool_name, server_name)
         });
