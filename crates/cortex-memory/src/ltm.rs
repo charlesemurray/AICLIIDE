@@ -1,19 +1,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use rusqlite::{
-    Connection,
-    OptionalExtension,
-    params,
-};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
-use crate::{
-    CortexError,
-    HnswWrapper,
-    MemoryNote,
-    Result,
-};
+use crate::{CortexError, HnswWrapper, MemoryNote, Result};
 
 pub struct LongTermMemory {
     conn: Connection,

@@ -1,15 +1,9 @@
 //! Hierarchical path management for the application
 
 use std::env::VarError;
-use std::path::{
-    PathBuf,
-    StripPrefixError,
-};
+use std::path::{PathBuf, StripPrefixError};
 
-use globset::{
-    Glob,
-    GlobSetBuilder,
-};
+use globset::{Glob, GlobSetBuilder};
 use thiserror::Error;
 
 use crate::os::Os;

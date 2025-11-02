@@ -3,10 +3,7 @@
 //! This module provides standardized utilities for benchmarking embedding models
 //! to ensure fair and consistent comparisons between different implementations.
 
-use std::time::{
-    Duration,
-    Instant,
-};
+use std::time::{Duration, Instant};
 
 use tracing::info;
 

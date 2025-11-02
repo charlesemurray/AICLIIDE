@@ -1,22 +1,12 @@
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::FromSql;
-use rusqlite::{
-    Error,
-    ToSql,
-    params,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use rusqlite::{Error, ToSql, params};
+use serde::{Deserialize, Serialize};
 use tracing::trace;
 
 use crate::agent::util::directories::database_path;
-use crate::agent::util::error::{
-    ErrorContext,
-    UtilError,
-};
+use crate::agent::util::error::{ErrorContext, UtilError};
 use crate::agent::util::is_integ_test;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

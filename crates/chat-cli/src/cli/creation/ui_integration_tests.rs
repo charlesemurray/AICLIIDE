@@ -1,9 +1,6 @@
 //! Integration tests for enhanced creation UI using existing Q CLI patterns
 
-use std::io::{
-    self,
-    Write,
-};
+use std::io::{self, Write};
 
 use crossterm::style::Color;
 use eyre::Result;

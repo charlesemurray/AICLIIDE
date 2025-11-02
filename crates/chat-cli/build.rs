@@ -1,11 +1,5 @@
-use convert_case::{
-    Case,
-    Casing,
-};
-use quote::{
-    format_ident,
-    quote,
-};
+use convert_case::{Case, Casing};
+use quote::{format_ident, quote};
 
 // TODO(brandonskiser): update bundle identifier for signed builds
 #[cfg(target_os = "macos")]

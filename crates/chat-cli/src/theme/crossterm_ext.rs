@@ -1,12 +1,6 @@
 //! Crossterm extensions for the theme system
 use chat_cli_ui::legacy_ui_util::ThemeSource;
-use crossterm::style::{
-    Attribute,
-    Color,
-    ResetColor,
-    SetAttribute,
-    SetForegroundColor,
-};
+use crossterm::style::{Attribute, Color, ResetColor, SetAttribute, SetForegroundColor};
 
 use crate::theme::theme;
 

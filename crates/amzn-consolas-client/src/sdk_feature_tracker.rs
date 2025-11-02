@@ -45,14 +45,8 @@ pub(crate) mod paginator {
     use aws_smithy_runtime::client::sdk_feature::SmithySdkFeature;
     use aws_smithy_runtime_api::box_error::BoxError;
     use aws_smithy_runtime_api::client::interceptors::context::BeforeSerializationInterceptorContextMut;
-    use aws_smithy_runtime_api::client::interceptors::{
-        Intercept,
-        SharedInterceptor,
-    };
-    use aws_smithy_runtime_api::client::runtime_components::{
-        RuntimeComponents,
-        RuntimeComponentsBuilder,
-    };
+    use aws_smithy_runtime_api::client::interceptors::{Intercept, SharedInterceptor};
+    use aws_smithy_runtime_api::client::runtime_components::{RuntimeComponents, RuntimeComponentsBuilder};
     use aws_smithy_runtime_api::client::runtime_plugin::RuntimePlugin;
     use aws_smithy_types::config_bag::ConfigBag;
 
@@ -110,14 +104,8 @@ pub(crate) mod waiter {
     use aws_smithy_runtime::client::sdk_feature::SmithySdkFeature;
     use aws_smithy_runtime_api::box_error::BoxError;
     use aws_smithy_runtime_api::client::interceptors::context::BeforeSerializationInterceptorContextMut;
-    use aws_smithy_runtime_api::client::interceptors::{
-        Intercept,
-        SharedInterceptor,
-    };
-    use aws_smithy_runtime_api::client::runtime_components::{
-        RuntimeComponents,
-        RuntimeComponentsBuilder,
-    };
+    use aws_smithy_runtime_api::client::interceptors::{Intercept, SharedInterceptor};
+    use aws_smithy_runtime_api::client::runtime_components::{RuntimeComponents, RuntimeComponentsBuilder};
     use aws_smithy_runtime_api::client::runtime_plugin::RuntimePlugin;
     use aws_smithy_types::config_bag::ConfigBag;
 
@@ -176,10 +164,7 @@ pub(crate) mod retry_mode {
     use aws_smithy_runtime_api::client::interceptors::context::BeforeSerializationInterceptorContextRef;
     use aws_smithy_runtime_api::client::runtime_components::RuntimeComponents;
     use aws_smithy_types::config_bag::ConfigBag;
-    use aws_smithy_types::retry::{
-        RetryConfig,
-        RetryMode,
-    };
+    use aws_smithy_types::retry::{RetryConfig, RetryMode};
 
     #[derive(Debug)]
     pub(crate) struct RetryModeFeatureTrackerInterceptor;

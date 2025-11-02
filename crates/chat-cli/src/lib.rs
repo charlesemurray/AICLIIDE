@@ -8,6 +8,7 @@ pub mod aws_common;
 pub mod cli;
 pub mod constants;
 pub mod database;
+pub mod git;
 pub mod logging;
 pub mod mcp_client;
 pub mod os;

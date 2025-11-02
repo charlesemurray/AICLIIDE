@@ -8,10 +8,7 @@ pub mod ui;
 use std::io::Write;
 use std::time::Duration;
 
-use aws_smithy_types::{
-    Document,
-    Number as SmithyNumber,
-};
+use aws_smithy_types::{Document, Number as SmithyNumber};
 use eyre::Result;
 
 use super::ChatError;

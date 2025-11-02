@@ -40,61 +40,53 @@ impl SessionError {
                      Use '/sessions list' to see available sessions.",
                     id
                 )
-            }
+            },
             SessionError::AlreadyExists(id) => {
                 format!(
                     "Session '{}' already exists.\n\
                      Use '/sessions list' to see existing sessions.",
                     id
                 )
-            }
+            },
             SessionError::InvalidMetadata(msg) => {
                 format!("Invalid session data: {}", msg)
-            }
+            },
             SessionError::Corrupted(id) => {
                 format!(
                     "Session '{}' data is corrupted.\n\
                      Attempting automatic recovery...",
                     id
                 )
-            }
-            SessionError::ConcurrentModification => {
-                "Another process is modifying this session.\n\
+            },
+            SessionError::ConcurrentModification => "Another process is modifying this session.\n\
                  Please try again in a moment."
-                    .to_string()
-            }
+                .to_string(),
             SessionError::PermissionDenied(path) => {
                 format!(
                     "Permission denied accessing: {}\n\
                      Check file permissions in .amazonq/sessions/",
                     path
                 )
-            }
+            },
             SessionError::Storage(e) => {
-                format!(
-                    "Storage error: {}\nPlease check disk space and permissions.",
-                    e
-                )
-            }
+                format!("Storage error: {}\nPlease check disk space and permissions.", e)
+            },
             SessionError::Serialization(e) => {
                 format!("Data format error: {}", e)
-            }
+            },
             SessionError::InvalidName(msg) => {
                 format!(
                     "Invalid session name: {}\n\
                      Names must be 1-100 characters, alphanumeric with dash/underscore only.",
                     msg
                 )
-            }
+            },
         }
     }
 
     /// Check if error is recoverable
     pub fn is_recoverable(&self) -> bool {
-        matches!(
-            self,
-            SessionError::ConcurrentModification | SessionError::Corrupted(_)
-        )
+        matches!(self, SessionError::ConcurrentModification | SessionError::Corrupted(_))
     }
 }
 
@@ -116,7 +108,10 @@ mod tests {
         let session_err = SessionError::from(io_err);
 
         assert!(matches!(session_err, SessionError::Storage(_)));
-        assert!(session_err.user_message().contains("Permission denied") || session_err.user_message().contains("Storage error"));
+        assert!(
+            session_err.user_message().contains("Permission denied")
+                || session_err.user_message().contains("Storage error")
+        );
     }
 
     #[test]

@@ -2,10 +2,7 @@
 mod skill_types_tests {
     use serde_json::json;
 
-    use crate::cli::skills::types::{
-        JsonSkill,
-        SkillType,
-    };
+    use crate::cli::skills::types::{JsonSkill, SkillType};
 
     #[test]
     fn test_code_inline_skill_deserialization() {

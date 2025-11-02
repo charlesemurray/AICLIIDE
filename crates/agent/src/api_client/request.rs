@@ -1,14 +1,8 @@
 use std::env::current_exe;
-use std::sync::{
-    Arc,
-    LazyLock,
-};
+use std::sync::{Arc, LazyLock};
 
 use reqwest::Client;
-use rustls::{
-    ClientConfig,
-    RootCertStore,
-};
+use rustls::{ClientConfig, RootCertStore};
 use thiserror::Error;
 use url::ParseError;
 

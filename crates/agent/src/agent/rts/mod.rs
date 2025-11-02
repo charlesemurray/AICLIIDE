@@ -3,76 +3,34 @@ pub mod util;
 
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::{
-    Duration,
-    Instant,
-};
+use std::time::{Duration, Instant};
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use eyre::Result;
 use futures::Stream;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
-use tracing::{
-    debug,
-    error,
-    info,
-    trace,
-    warn,
-};
+use tracing::{debug, error, info, trace, warn};
 use util::serde_value_to_document;
 use uuid::Uuid;
 
 use super::agent_loop::model::Model;
 use super::agent_loop::protocol::StreamResult;
-use super::agent_loop::types::{
-    StreamError,
-    StreamEvent,
-};
+use super::agent_loop::types::{StreamError, StreamEvent};
 use crate::agent::agent_loop::types::{
-    ContentBlockDelta,
-    ContentBlockDeltaEvent,
-    ContentBlockStart,
-    ContentBlockStartEvent,
-    ContentBlockStopEvent,
-    Message,
-    MessageStopEvent,
-    MetadataEvent,
-    MetadataMetrics,
-    MetadataService,
-    Role,
-    StopReason,
-    StreamErrorKind,
-    ToolSpec,
-    ToolUseBlockDelta,
-    ToolUseBlockStart,
+    ContentBlockDelta, ContentBlockDeltaEvent, ContentBlockStart, ContentBlockStartEvent, ContentBlockStopEvent,
+    Message, MessageStopEvent, MetadataEvent, MetadataMetrics, MetadataService, Role, StopReason, StreamErrorKind,
+    ToolSpec, ToolUseBlockDelta, ToolUseBlockStart,
 };
 use crate::agent_loop::types::MessageStartEvent;
-use crate::api_client::error::{
-    ApiClientError,
-    ConverseStreamError,
-    ConverseStreamErrorKind,
-};
+use crate::api_client::error::{ApiClientError, ConverseStreamError, ConverseStreamErrorKind};
 use crate::api_client::model::{
-    ChatResponseStream,
-    ConversationState,
-    ToolSpecification,
-    UserInputMessage,
-    UserInputMessageContext,
+    ChatResponseStream, ConversationState, ToolSpecification, UserInputMessage, UserInputMessageContext,
 };
 use crate::api_client::send_message_output::SendMessageOutput;
-use crate::api_client::{
-    ApiClient,
-    model as rts,
-};
+use crate::api_client::{ApiClient, model as rts};
 
 /// A [Model] implementation using the RTS backend.
 #[derive(Debug, Clone)]
@@ -280,10 +238,7 @@ impl RtsModel {
 /// Annoyingly, the RTS API doesn't allow images as tool use results, so we have to extract tool
 /// results and image content separately.
 fn extract_tool_results_and_images(message: &Message) -> (Option<Vec<rts::ToolResult>>, Option<Vec<rts::ImageBlock>>) {
-    use crate::agent::agent_loop::types::{
-        ContentBlock,
-        ToolResultContentBlock,
-    };
+    use crate::agent::agent_loop::types::{ContentBlock, ToolResultContentBlock};
 
     let mut images = Vec::new();
     let mut tool_results = Vec::new();

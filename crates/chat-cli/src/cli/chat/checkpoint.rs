@@ -1,30 +1,11 @@
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
-use std::path::{
-    Path,
-    PathBuf,
-};
-use std::process::{
-    Command,
-    Output,
-};
+use std::collections::{HashMap, VecDeque};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 
-use chrono::{
-    DateTime,
-    Local,
-};
+use chrono::{DateTime, Local};
 use crossterm::style::Stylize;
-use eyre::{
-    Result,
-    bail,
-    eyre,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use eyre::{Result, bail, eyre};
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use super::util::truncate_safe;
@@ -209,9 +190,11 @@ impl CheckpointManager {
 
         if hard {
             // Hard: reset the whole work-tree to the tag
-            let output = run_git(&self.shadow_repo_path, Some(&self.work_tree_path), &[
-                "reset", "--hard", tag,
-            ])?;
+            let output = run_git(
+                &self.shadow_repo_path,
+                Some(&self.work_tree_path),
+                &["reset", "--hard", tag],
+            )?;
             if !output.status.success() {
                 bail!(
                     "Failed to restore checkpoint: {}",
@@ -226,9 +209,11 @@ impl CheckpointManager {
                 return Ok(());
             }
             // Use checkout against work-tree
-            let output = run_git(&self.shadow_repo_path, Some(&self.work_tree_path), &[
-                "checkout", tag, "--", ".",
-            ])?;
+            let output = run_git(
+                &self.shadow_repo_path,
+                Some(&self.work_tree_path),
+                &["checkout", tag, "--", "."],
+            )?;
             if !output.status.success() {
                 bail!(
                     "Failed to restore checkpoint: {}",
@@ -305,13 +290,11 @@ impl CheckpointManager {
         }
 
         // Add statistics
-        let stat_output = run_git(&self.shadow_repo_path, None, &[
-            "diff",
-            from,
-            to,
-            "--stat",
-            "--color=always",
-        ])?;
+        let stat_output = run_git(
+            &self.shadow_repo_path,
+            None,
+            &["diff", from, to, "--stat", "--color=always"],
+        )?;
 
         if stat_output.status.success() {
             result.push('\n');
@@ -323,10 +306,11 @@ impl CheckpointManager {
 
     /// Check for uncommitted changes
     pub fn has_changes(&self) -> Result<bool> {
-        let output = run_git(&self.shadow_repo_path, Some(&self.work_tree_path), &[
-            "status",
-            "--porcelain",
-        ])?;
+        let output = run_git(
+            &self.shadow_repo_path,
+            Some(&self.work_tree_path),
+            &["status", "--porcelain"],
+        )?;
         Ok(!output.stdout.is_empty())
     }
 
@@ -409,13 +393,11 @@ fn stage_commit_tag(shadow_path: &str, work_tree: &Path, message: &str, tag: &st
     run_git(Path::new(shadow_path), Some(work_tree), &["add", "-A"])?;
 
     // Commit
-    let output = run_git(Path::new(shadow_path), Some(work_tree), &[
-        "commit",
-        "--allow-empty",
-        "--no-verify",
-        "-m",
-        message,
-    ])?;
+    let output = run_git(
+        Path::new(shadow_path),
+        Some(work_tree),
+        &["commit", "--allow-empty", "--no-verify", "-m", message],
+    )?;
 
     if !output.status.success() {
         bail!(

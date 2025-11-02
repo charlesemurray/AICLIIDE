@@ -1,0 +1,16 @@
+{
+  "name": "hello",
+  "description": "Greet a person by name",
+  "parameters": [
+    {
+      "name": "name",
+      "type": "string",
+      "description": "The name of the person to greet",
+      "required": true
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "echo 'Hello, {{name}}!'"
+  }
+}

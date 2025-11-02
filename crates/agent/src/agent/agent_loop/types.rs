@@ -2,22 +2,13 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{
-    DateTime,
-    Utc,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::api_client::error::{
-    ApiClientError,
-    ConverseStreamError,
-};
+use crate::api_client::error::{ApiClientError, ConverseStreamError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

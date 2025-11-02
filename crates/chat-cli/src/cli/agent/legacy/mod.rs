@@ -5,16 +5,9 @@ use std::collections::HashMap;
 
 use dialoguer::Select;
 use eyre::bail;
-use tracing::{
-    error,
-    info,
-    warn,
-};
+use tracing::{error, info, warn};
 
-use super::{
-    Agent,
-    McpServerConfig,
-};
+use super::{Agent, McpServerConfig};
 use crate::cli::agent::hook::Hook;
 use crate::cli::agent::legacy::context::LegacyContextConfig;
 use crate::os::Os;

@@ -3,15 +3,9 @@ use std::path::Path;
 use std::sync::OnceLock;
 
 use nix::sys::utsname::uname;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use super::{
-    OSVersion,
-    OsRelease,
-};
+use super::{OSVersion, OsRelease};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DisplayServer {

@@ -1,33 +1,15 @@
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::PathBuf;
-use std::time::{
-    SystemTime,
-    UNIX_EPOCH,
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossterm::style::Stylize;
-use crossterm::{
-    queue,
-    style,
-};
-use eyre::{
-    OptionExt,
-    Report,
-    Result,
-    bail,
-    eyre,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use crossterm::{queue, style};
+use eyre::{OptionExt, Report, Result, bail, eyre};
+use serde::{Deserialize, Serialize};
 
 use super::InvokeOutput;
-use crate::cli::experiment::experiment_manager::{
-    ExperimentManager,
-    ExperimentName,
-};
+use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
 use crate::os::Os;
 use crate::theme::StyledText;
 

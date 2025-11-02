@@ -1,15 +1,9 @@
 //! Workflow tool implementation
 
 use eyre::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::os::Os;
 
 #[derive(Debug, Clone)]
@@ -87,10 +81,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_workflow_tool_eval_perm() {
-        use crate::cli::agent::{
-            Agent,
-            PermissionEvalResult,
-        };
+        use crate::cli::agent::{Agent, PermissionEvalResult};
         use crate::os::Os;
 
         let workflow = WorkflowTool::new("test-workflow".to_string(), "Test".to_string());

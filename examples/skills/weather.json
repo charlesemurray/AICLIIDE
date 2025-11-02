@@ -1,0 +1,23 @@
+{
+  "name": "weather",
+  "description": "Get current weather for a location using wttr.in",
+  "parameters": [
+    {
+      "name": "location",
+      "type": "string",
+      "description": "City name or location",
+      "required": true
+    },
+    {
+      "name": "format",
+      "type": "string",
+      "description": "Output format: short or full",
+      "required": false,
+      "enum": ["short", "full"]
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "curl -s 'wttr.in/{{location}}?format={{format:3}}'"
+  }
+}

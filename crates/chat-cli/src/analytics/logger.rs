@@ -1,15 +1,6 @@
-use std::fs::{
-    File,
-    OpenOptions,
-};
-use std::io::{
-    BufWriter,
-    Write,
-};
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::fs::{File, OpenOptions};
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use serde_json;
@@ -88,16 +79,16 @@ impl ConversationAnalytics {
     }
 
     pub fn start_session(&mut self, _initial_request: &str) -> Result<(), std::io::Error> {
-        use super::types::{
-            AnalyticsEventType,
-            SessionEventType,
-        };
+        use super::types::{AnalyticsEventType, SessionEventType};
 
-        let event = ConversationAnalyticsEvent::new(self.session_id.clone(), AnalyticsEventType::SessionFlow {
-            event_type: SessionEventType::Started,
-            at_message_count: 0,
-            duration_ms: None,
-        });
+        let event = ConversationAnalyticsEvent::new(
+            self.session_id.clone(),
+            AnalyticsEventType::SessionFlow {
+                event_type: SessionEventType::Started,
+                at_message_count: 0,
+                duration_ms: None,
+            },
+        );
 
         self.log_event(event)?;
         self.message_count = 0;
@@ -105,10 +96,7 @@ impl ConversationAnalytics {
     }
 
     pub fn end_session(&mut self, completion_status: SessionCompletionStatus) -> Result<(), std::io::Error> {
-        use super::types::{
-            AnalyticsEventType,
-            SessionEventType,
-        };
+        use super::types::{AnalyticsEventType, SessionEventType};
 
         let duration_ms = self.start_time.elapsed().as_millis() as u64;
         let event_type = match completion_status {
@@ -116,11 +104,14 @@ impl ConversationAnalytics {
             SessionCompletionStatus::Abandoned => SessionEventType::Abandoned,
         };
 
-        let event = ConversationAnalyticsEvent::new(self.session_id.clone(), AnalyticsEventType::SessionFlow {
-            event_type,
-            at_message_count: self.message_count,
-            duration_ms: Some(duration_ms),
-        });
+        let event = ConversationAnalyticsEvent::new(
+            self.session_id.clone(),
+            AnalyticsEventType::SessionFlow {
+                event_type,
+                at_message_count: self.message_count,
+                duration_ms: Some(duration_ms),
+            },
+        );
 
         self.log_event(event)?;
         Ok(())

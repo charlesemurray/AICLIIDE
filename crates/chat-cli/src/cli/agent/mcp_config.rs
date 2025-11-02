@@ -2,10 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use schemars::JsonSchema;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::cli::chat::tools::custom_tool::CustomToolConfig;
 use crate::os::Os;

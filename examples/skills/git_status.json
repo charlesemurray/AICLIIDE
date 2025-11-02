@@ -1,0 +1,16 @@
+{
+  "name": "git_status",
+  "description": "Get the git status of a repository",
+  "parameters": [
+    {
+      "name": "directory",
+      "type": "string",
+      "description": "Directory of the git repository (defaults to current directory)",
+      "required": false
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "cd {{directory:-.}} && git status --short"
+  }
+}

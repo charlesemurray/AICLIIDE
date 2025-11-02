@@ -1,16 +1,10 @@
 use std::env;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use tracing::warn;
 
-use super::error::{
-    ErrorContext as _,
-    UtilError,
-};
+use super::error::{ErrorContext as _, UtilError};
 use crate::agent::util::consts::env_var::CLI_DATA_DIR;
 
 const DATA_DIR_NAME: &str = "amazon-q";

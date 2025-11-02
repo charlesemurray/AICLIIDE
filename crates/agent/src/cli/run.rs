@@ -3,46 +3,20 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use agent::agent_config::load_agents;
-use agent::agent_loop::protocol::{
-    AgentLoopEventKind,
-    LoopEndReason,
-};
+use agent::agent_loop::protocol::{AgentLoopEventKind, LoopEndReason};
 use agent::api_client::ApiClient;
 use agent::mcp::McpManager;
 use agent::protocol::{
-    AgentEvent,
-    AgentStopReason,
-    ApprovalResult,
-    ContentChunk,
-    InternalEvent,
-    SendApprovalResultArgs,
-    SendPromptArgs,
+    AgentEvent, AgentStopReason, ApprovalResult, ContentChunk, InternalEvent, SendApprovalResultArgs, SendPromptArgs,
     UpdateEvent,
 };
-use agent::rts::{
-    RtsModel,
-    RtsModelState,
-};
+use agent::rts::{RtsModel, RtsModelState};
 use agent::types::AgentSnapshot;
-use agent::{
-    Agent,
-    AgentHandle,
-};
+use agent::{Agent, AgentHandle};
 use clap::Args;
-use eyre::{
-    Result,
-    bail,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use tracing::{
-    debug,
-    error,
-    info,
-    warn,
-};
+use eyre::{Result, bail};
+use serde::{Deserialize, Serialize};
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone, Default, Args)]
 pub struct RunArgs {

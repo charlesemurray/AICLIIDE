@@ -2,13 +2,7 @@
 
 use super::*;
 use crate::cli::creation::{
-    AgentCreationFlow,
-    CommandCreationFlow,
-    CreationContext,
-    CreationFlow,
-    CreationType,
-    SkillCreationFlow,
-    TerminalUI,
+    AgentCreationFlow, CommandCreationFlow, CreationContext, CreationFlow, CreationType, SkillCreationFlow, TerminalUI,
 };
 
 #[cfg(test)]
@@ -25,30 +19,39 @@ mod creation_types {
     #[test]
     fn test_creation_type_required_phases() {
         let command_phases = CreationType::CustomCommand.required_phases();
-        assert_eq!(command_phases, vec![
-            CreationPhase::Discovery,
-            CreationPhase::BasicConfig,
-            CreationPhase::Completion
-        ]);
+        assert_eq!(
+            command_phases,
+            vec![
+                CreationPhase::Discovery,
+                CreationPhase::BasicConfig,
+                CreationPhase::Completion
+            ]
+        );
 
         let skill_phases = CreationType::Skill.required_phases();
-        assert_eq!(skill_phases, vec![
-            CreationPhase::Discovery,
-            CreationPhase::BasicConfig,
-            CreationPhase::Security,
-            CreationPhase::Testing,
-            CreationPhase::Completion
-        ]);
+        assert_eq!(
+            skill_phases,
+            vec![
+                CreationPhase::Discovery,
+                CreationPhase::BasicConfig,
+                CreationPhase::Security,
+                CreationPhase::Testing,
+                CreationPhase::Completion
+            ]
+        );
 
         let agent_phases = CreationType::Agent.required_phases();
-        assert_eq!(agent_phases, vec![
-            CreationPhase::Discovery,
-            CreationPhase::BasicConfig,
-            CreationPhase::AdvancedConfig,
-            CreationPhase::Security,
-            CreationPhase::Testing,
-            CreationPhase::Completion
-        ]);
+        assert_eq!(
+            agent_phases,
+            vec![
+                CreationPhase::Discovery,
+                CreationPhase::BasicConfig,
+                CreationPhase::AdvancedConfig,
+                CreationPhase::Security,
+                CreationPhase::Testing,
+                CreationPhase::Completion
+            ]
+        );
     }
 }
 

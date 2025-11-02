@@ -1,24 +1,12 @@
-use std::io::{
-    IsTerminal,
-    stdout,
-};
+use std::io::{IsTerminal, stdout};
 use std::process::ExitCode;
 
 use anstream::println;
 use clap::Args;
 use color_eyre::Result;
-use crossterm::terminal::{
-    Clear,
-    ClearType,
-};
-use crossterm::{
-    cursor,
-    execute,
-};
-use spinners::{
-    Spinner,
-    Spinners,
-};
+use crossterm::terminal::{Clear, ClearType};
+use crossterm::{cursor, execute};
+use spinners::{Spinner, Spinners};
 
 use super::OutputFormat;
 use crate::os::Os;

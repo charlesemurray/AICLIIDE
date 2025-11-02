@@ -3,10 +3,7 @@ use crate::embedding::CandleTextEmbedder;
 use crate::embedding::MockTextEmbedder; // Used for Fast type since BM25 doesn't need embeddings
 #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
 use crate::embedding::ModelType;
-use crate::embedding::{
-    EmbeddingType,
-    TextEmbedderTrait,
-};
+use crate::embedding::{EmbeddingType, TextEmbedderTrait};
 use crate::error::Result;
 
 /// Creates a text embedder based on the specified embedding type

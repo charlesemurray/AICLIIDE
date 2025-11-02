@@ -3,10 +3,7 @@
 use eyre::Result;
 
 use super::*;
-use crate::cli::creation::{
-    SemanticColor,
-    TerminalUI,
-};
+use crate::cli::creation::{SemanticColor, TerminalUI};
 
 pub struct InteractivePromptBuilder<'a, T: TerminalUI> {
     ui: &'a mut T,
@@ -19,19 +16,22 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
 
     /// Interactive template-based creation
     pub fn create_from_template(&mut self) -> Result<PromptTemplate> {
-        let template_choice = self.ui.select_option("Choose a starting template:", &[
-            (
-                "code_reviewer",
-                "Code Reviewer - Reviews code for security and best practices",
-            ),
-            (
-                "doc_writer",
-                "Documentation Writer - Creates clear technical documentation",
-            ),
-            ("domain_expert", "Domain Expert - Specialized knowledge assistant"),
-            ("conversation", "General Assistant - Flexible helper for various tasks"),
-            ("custom", "Custom - Build from scratch"),
-        ])?;
+        let template_choice = self.ui.select_option(
+            "Choose a starting template:",
+            &[
+                (
+                    "code_reviewer",
+                    "Code Reviewer - Reviews code for security and best practices",
+                ),
+                (
+                    "doc_writer",
+                    "Documentation Writer - Creates clear technical documentation",
+                ),
+                ("domain_expert", "Domain Expert - Specialized knowledge assistant"),
+                ("conversation", "General Assistant - Flexible helper for various tasks"),
+                ("custom", "Custom - Build from scratch"),
+            ],
+        )?;
 
         match template_choice.as_str() {
             "custom" => self.create_custom(),
@@ -47,12 +47,15 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
         let name = self.ui.prompt_required("Assistant name")?;
         let description = self.ui.prompt_required("Description")?;
 
-        let role_type = self.ui.select_option("What should this assistant specialize in?", &[
-            ("code", "Code and software development"),
-            ("writing", "Writing and documentation"),
-            ("data", "Data analysis and research"),
-            ("general", "General problem solving"),
-        ])?;
+        let role_type = self.ui.select_option(
+            "What should this assistant specialize in?",
+            &[
+                ("code", "Code and software development"),
+                ("writing", "Writing and documentation"),
+                ("data", "Data analysis and research"),
+                ("general", "General problem solving"),
+            ],
+        )?;
 
         let role = self.build_role(&role_type)?;
         let capabilities = self.select_capabilities(&role_type)?;
@@ -166,11 +169,14 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
     }
 
     fn select_difficulty(&mut self) -> Result<DifficultyLevel> {
-        let choice = self.ui.select_option("Difficulty level:", &[
-            ("beginner", "Beginner - Simple and approachable"),
-            ("intermediate", "Intermediate - Balanced complexity"),
-            ("advanced", "Advanced - Expert-level"),
-        ])?;
+        let choice = self.ui.select_option(
+            "Difficulty level:",
+            &[
+                ("beginner", "Beginner - Simple and approachable"),
+                ("intermediate", "Intermediate - Balanced complexity"),
+                ("advanced", "Advanced - Expert-level"),
+            ],
+        )?;
 
         Ok(match choice.as_str() {
             "beginner" => DifficultyLevel::Beginner,

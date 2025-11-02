@@ -2,11 +2,7 @@
 mod json_schema_tests {
     use serde_json::json;
 
-    use crate::cli::skills::types::{
-        JsonSkill,
-        Parameter,
-        SkillType,
-    };
+    use crate::cli::skills::types::{JsonSkill, Parameter, SkillType};
 
     // Core Fields Tests
     #[test]

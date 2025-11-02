@@ -1,30 +1,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{
-    DateTime,
-    Utc,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use super::model::Model;
-use super::types::{
-    Message,
-    MetadataEvent,
-    StreamError,
-    StreamEvent,
-    ToolSpec,
-    ToolUseBlock,
-};
-use super::{
-    AgentLoopId,
-    InvalidToolUse,
-    LoopState,
-};
+use super::types::{Message, MetadataEvent, StreamError, StreamEvent, ToolSpec, ToolUseBlock};
+use super::{AgentLoopId, InvalidToolUse, LoopState};
 
 #[derive(Debug)]
 pub enum AgentLoopRequest {

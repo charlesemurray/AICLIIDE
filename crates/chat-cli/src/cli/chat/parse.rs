@@ -1,48 +1,15 @@
 use std::io::Write;
 
-use crossterm::style::{
-    Attribute,
-    Stylize,
-};
-use crossterm::{
-    Command,
-    style,
-};
-use unicode_width::{
-    UnicodeWidthChar,
-    UnicodeWidthStr,
-};
+use crossterm::style::{Attribute, Stylize};
+use crossterm::{Command, style};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use winnow::Partial;
-use winnow::ascii::{
-    self,
-    digit1,
-    space0,
-    space1,
-    till_line_ending,
-};
-use winnow::combinator::{
-    alt,
-    delimited,
-    preceded,
-    repeat,
-    terminated,
-};
-use winnow::error::{
-    ErrMode,
-    ErrorKind,
-    ParserError,
-};
+use winnow::ascii::{self, digit1, space0, space1, till_line_ending};
+use winnow::combinator::{alt, delimited, preceded, repeat, terminated};
+use winnow::error::{ErrMode, ErrorKind, ParserError};
 use winnow::prelude::*;
-use winnow::stream::{
-    AsChar,
-    Stream,
-};
-use winnow::token::{
-    any,
-    take_till,
-    take_until,
-    take_while,
-};
+use winnow::stream::{AsChar, Stream};
+use winnow::token::{any, take_till, take_until, take_while};
 
 use crate::theme::StyledText;
 
@@ -705,76 +672,107 @@ mod tests {
     }
 
     validate!(text_1, "hello world!", [style::Print("hello world!")]);
-    validate!(linted_codeblock_1, "```java\nhello world!```", [
-        style::SetAttribute(Attribute::Bold),
-        style::Print("java\n"),
-        StyledText::reset_attributes(),
-        StyledText::success_fg(),
-        style::Print("hello world!"),
-        StyledText::reset(),
-    ]);
-    validate!(code_1, "`print`", [
-        StyledText::success_fg(),
-        style::Print("print"),
-        StyledText::reset(),
-    ]);
-    validate!(url_1, "[google](google.com)", [
-        StyledText::info_fg(),
-        style::Print("google "),
-        StyledText::secondary_fg(),
-        style::Print("google.com"),
-        StyledText::reset(),
-    ]);
-    validate!(citation_1, "[[1]](google.com)", [
-        StyledText::info_fg(),
-        style::Print("[^1]"),
-        StyledText::reset(),
-    ]);
-    validate!(bold_1, "**hello**", [
-        style::SetAttribute(Attribute::Bold),
-        style::Print("hello"),
-        style::SetAttribute(Attribute::NormalIntensity)
-    ]);
-    validate!(italic_1, "*hello*", [
-        style::SetAttribute(Attribute::Italic),
-        style::Print("hello"),
-        style::SetAttribute(Attribute::NoItalic)
-    ]);
-    validate!(strikethrough_1, "~~hello~~", [
-        style::SetAttribute(Attribute::CrossedOut),
-        style::Print("hello"),
-        style::SetAttribute(Attribute::NotCrossedOut)
-    ]);
+    validate!(
+        linted_codeblock_1,
+        "```java\nhello world!```",
+        [
+            style::SetAttribute(Attribute::Bold),
+            style::Print("java\n"),
+            StyledText::reset_attributes(),
+            StyledText::success_fg(),
+            style::Print("hello world!"),
+            StyledText::reset(),
+        ]
+    );
+    validate!(
+        code_1,
+        "`print`",
+        [StyledText::success_fg(), style::Print("print"), StyledText::reset(),]
+    );
+    validate!(
+        url_1,
+        "[google](google.com)",
+        [
+            StyledText::info_fg(),
+            style::Print("google "),
+            StyledText::secondary_fg(),
+            style::Print("google.com"),
+            StyledText::reset(),
+        ]
+    );
+    validate!(
+        citation_1,
+        "[[1]](google.com)",
+        [StyledText::info_fg(), style::Print("[^1]"), StyledText::reset(),]
+    );
+    validate!(
+        bold_1,
+        "**hello**",
+        [
+            style::SetAttribute(Attribute::Bold),
+            style::Print("hello"),
+            style::SetAttribute(Attribute::NormalIntensity)
+        ]
+    );
+    validate!(
+        italic_1,
+        "*hello*",
+        [
+            style::SetAttribute(Attribute::Italic),
+            style::Print("hello"),
+            style::SetAttribute(Attribute::NoItalic)
+        ]
+    );
+    validate!(
+        strikethrough_1,
+        "~~hello~~",
+        [
+            style::SetAttribute(Attribute::CrossedOut),
+            style::Print("hello"),
+            style::SetAttribute(Attribute::NotCrossedOut)
+        ]
+    );
     validate!(less_than_1, "&lt;", [style::Print('<')]);
     validate!(greater_than_1, ".&gt;.", [style::Print(".>.")]);
     validate!(ampersand_1, "&amp;", [style::Print('&')]);
     validate!(quote_1, "&quot;", [style::Print('"')]);
     validate!(fallback_1, "+ % @ . ? ", [style::Print("+ % @ . ?")]);
     validate!(horizontal_rule_1, "---", [style::Print("━".repeat(80))]);
-    validate!(heading_1, "# Hello World", [
-        StyledText::emphasis_fg(),
-        style::SetAttribute(Attribute::Bold),
-        style::Print("# Hello World"),
-    ]);
+    validate!(
+        heading_1,
+        "# Hello World",
+        [
+            StyledText::emphasis_fg(),
+            style::SetAttribute(Attribute::Bold),
+            style::Print("# Hello World"),
+        ]
+    );
     validate!(bulleted_item_1, "- bullet", [style::Print("• bullet")]);
     validate!(bulleted_item_2, "* bullet", [style::Print("• bullet")]);
     validate!(numbered_item_1, "1. number", [style::Print("1. number")]);
-    validate!(blockquote_1, "> hello", [
-        StyledText::secondary_fg(),
-        style::Print("│ hello"),
-    ]);
+    validate!(
+        blockquote_1,
+        "> hello",
+        [StyledText::secondary_fg(), style::Print("│ hello"),]
+    );
     validate!(square_bracket_1, "[test]", [style::Print("[test]")]);
-    validate!(square_bracket_2, "Text with [brackets]", [style::Print(
-        "Text with [brackets]"
-    )]);
+    validate!(
+        square_bracket_2,
+        "Text with [brackets]",
+        [style::Print("Text with [brackets]")]
+    );
     validate!(square_bracket_empty, "[]", [style::Print("[]")]);
     validate!(square_bracket_array, "a[i]", [style::Print("a[i]")]);
-    validate!(square_bracket_url_like_1, "[text] without url part", [style::Print(
-        "[text] without url part"
-    )]);
-    validate!(square_bracket_url_like_2, "[text](without url part", [style::Print(
-        "[text](without url part"
-    )]);
+    validate!(
+        square_bracket_url_like_1,
+        "[text] without url part",
+        [style::Print("[text] without url part")]
+    );
+    validate!(
+        square_bracket_url_like_2,
+        "[text](without url part",
+        [style::Print("[text](without url part")]
+    );
 
     validate!(markdown_disabled_bold, "**hello**", [style::Print("**hello**")], true);
     validate!(markdown_disabled_italic, "*hello*", [style::Print("*hello*")], true);

@@ -1,9 +1,6 @@
 use std::path::Path;
 
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
 use super::types::*;
 use crate::cli::skills::types::SkillType;

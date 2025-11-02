@@ -1,9 +1,4 @@
-use amzn_toolkit_telemetry_client::config::endpoint::{
-    Endpoint,
-    EndpointFuture,
-    Params,
-    ResolveEndpoint,
-};
+use amzn_toolkit_telemetry_client::config::endpoint::{Endpoint, EndpointFuture, Params, ResolveEndpoint};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StaticEndpoint(pub &'static str);

@@ -3,24 +3,13 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{
-    Args,
-    Subcommand,
-};
+use clap::{Args, Subcommand};
 use eyre::Result;
 
 use crate::cli::creation::TerminalUIImpl;
 use crate::cli::creation::prompt_system::{
-    AssistantEditor,
-    ConflictStrategy,
-    InteractivePromptBuilder,
-    delete_template,
-    export_all_assistants,
-    export_assistant,
-    import_assistant,
-    list_templates,
-    load_template,
-    save_template,
+    AssistantEditor, ConflictStrategy, InteractivePromptBuilder, delete_template, export_all_assistants,
+    export_assistant, import_assistant, list_templates, load_template, save_template,
 };
 
 #[derive(Debug, Args, PartialEq)]

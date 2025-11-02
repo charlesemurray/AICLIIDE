@@ -2,30 +2,14 @@ mod run;
 
 use std::process::ExitCode;
 
-use clap::{
-    ArgAction,
-    Parser,
-    Subcommand,
-};
-use eyre::{
-    Context,
-    Result,
-};
+use clap::{ArgAction, Parser, Subcommand};
+use eyre::{Context, Result};
 use run::RunArgs;
-use tracing_appender::non_blocking::{
-    NonBlocking,
-    WorkerGuard,
-};
-use tracing_appender::rolling::{
-    RollingFileAppender,
-    Rotation,
-};
+use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{
-    EnvFilter,
-    Registry,
-};
+use tracing_subscriber::{EnvFilter, Registry};
 
 #[derive(Debug, Clone, Parser)]
 pub struct CliArgs {

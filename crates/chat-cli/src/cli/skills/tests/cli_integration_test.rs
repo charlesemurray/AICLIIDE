@@ -2,10 +2,7 @@
 mod cli_integration_tests {
     use serde_json::json;
 
-    use crate::cli::skills::{
-        SkillError,
-        SkillRegistry,
-    };
+    use crate::cli::skills::{SkillError, SkillRegistry};
 
     #[tokio::test]
     async fn test_cli_skills_list_command() {

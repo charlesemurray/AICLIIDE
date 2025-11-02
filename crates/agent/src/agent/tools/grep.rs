@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 const GREP_TOOL_DESCRIPTION: &str = r#"
 A tool for searching file content.

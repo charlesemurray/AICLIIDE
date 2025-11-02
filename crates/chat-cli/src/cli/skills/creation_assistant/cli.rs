@@ -1,7 +1,4 @@
-use std::io::{
-    self,
-    Write,
-};
+use std::io::{self, Write};
 
 use super::*;
 use crate::cli::skills::types::SkillType;

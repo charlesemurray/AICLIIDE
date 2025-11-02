@@ -13,10 +13,7 @@ mod tests {
     use std::time::SystemTime;
 
     use super::*;
-    use crate::telemetry::core::{
-        ChatConversationType,
-        MessageMetaTag,
-    };
+    use crate::telemetry::core::{ChatConversationType, MessageMetaTag};
     use crate::telemetry::definitions::metrics::CodewhispererterminalAddChatMessage;
 
     #[test]

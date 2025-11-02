@@ -1,18 +1,10 @@
 //! Module for common testing utilities
 
 use std::env::VarError;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
 use super::path::canonicalize_path_sys;
-use super::providers::{
-    CwdProvider,
-    EnvProvider,
-    HomeProvider,
-    SystemProvider,
-};
+use super::providers::{CwdProvider, EnvProvider, HomeProvider, SystemProvider};
 
 /// Test helper that wraps a temporary directory and test [SystemProvider].
 #[derive(Debug)]

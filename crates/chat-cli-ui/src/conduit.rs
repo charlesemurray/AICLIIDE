@@ -1,24 +1,11 @@
 use std::io::Write as _;
 use std::marker::PhantomData;
 
-use crossterm::style::{
-    self,
-    Print,
-    Stylize,
-};
-use crossterm::{
-    execute,
-    queue,
-};
+use crossterm::style::{self, Print, Stylize};
+use crossterm::{execute, queue};
 
 use crate::legacy_ui_util::ThemeSource;
-use crate::protocol::{
-    Event,
-    LegacyPassThroughOutput,
-    MetaEvent,
-    ToolCallRejection,
-    ToolCallStart,
-};
+use crate::protocol::{Event, LegacyPassThroughOutput, MetaEvent, ToolCallRejection, ToolCallStart};
 
 const TOOL_BULLET: &str = " ● ";
 const CONTINUATION_LINE: &str = " ⋮ ";

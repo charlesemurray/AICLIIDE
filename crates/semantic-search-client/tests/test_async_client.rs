@@ -2,19 +2,13 @@
 mod tests {
     use std::env;
     use std::sync::Arc;
-    use std::sync::atomic::{
-        AtomicUsize,
-        Ordering,
-    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
     use semantic_search_client::SemanticSearchClient;
     use semantic_search_client::types::ProgressStatus;
     use tempfile::TempDir;
-    use tokio::{
-        task,
-        time,
-    };
+    use tokio::{task, time};
 
     #[tokio::test]
     async fn test_background_indexing_example() {

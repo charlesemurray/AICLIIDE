@@ -1,8 +1,5 @@
 use std::fs;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
 use eyre::Result;
 use thiserror::Error;

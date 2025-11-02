@@ -1,9 +1,6 @@
 use eyre::Result;
 
-use super::types::{
-    StepType,
-    Workflow,
-};
+use super::types::{StepType, Workflow};
 use crate::cli::skills::SkillRegistry;
 
 pub struct WorkflowExecutor {
@@ -64,12 +61,7 @@ impl WorkflowExecutor {
 mod tests {
     use super::*;
     use crate::cli::skills::SkillRegistry;
-    use crate::cli::workflow::types::{
-        StepType,
-        Workflow,
-        WorkflowInput,
-        WorkflowStep,
-    };
+    use crate::cli::workflow::types::{StepType, Workflow, WorkflowInput, WorkflowStep};
 
     #[tokio::test]
     async fn test_workflow_execution() {

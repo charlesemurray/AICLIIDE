@@ -1,30 +1,15 @@
 use std::collections::HashMap;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::{
-    Mutex,
-    RwLock,
-};
+use tokio::sync::{Mutex, RwLock};
 use tracing::warn;
 
-use super::{
-    BM25Context,
-    SemanticContext,
-};
+use super::{BM25Context, SemanticContext};
 use crate::client::utils;
-use crate::embedding::{
-    EmbeddingType,
-    TextEmbedderTrait,
-};
-use crate::error::{
-    Result,
-    SemanticSearchError,
-};
+use crate::embedding::{EmbeddingType, TextEmbedderTrait};
+use crate::error::{Result, SemanticSearchError};
 use crate::types::*;
 
 type VolatileContexts = Arc<RwLock<HashMap<ContextId, Arc<Mutex<SemanticContext>>>>>;

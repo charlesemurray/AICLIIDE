@@ -1,15 +1,9 @@
 //! Skill tool implementation
 
 use eyre::Result;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::os::Os;
 
 #[derive(Debug, Clone)]
@@ -88,10 +82,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_tool_eval_perm() {
-        use crate::cli::agent::{
-            Agent,
-            PermissionEvalResult,
-        };
+        use crate::cli::agent::{Agent, PermissionEvalResult};
         use crate::os::Os;
 
         let skill = SkillTool::new("test-skill".to_string(), "Test".to_string());

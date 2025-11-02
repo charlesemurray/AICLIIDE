@@ -5,11 +5,7 @@ use serde_json::json;
 
 use super::*;
 use crate::cli::creation::tests::MockTerminalUI;
-use crate::cli::creation::{
-    CreateArgs,
-    CreateCommand,
-    SkillMode,
-};
+use crate::cli::creation::{CreateArgs, CreateCommand, SkillMode};
 
 #[cfg(test)]
 mod cisco_style_parsing {

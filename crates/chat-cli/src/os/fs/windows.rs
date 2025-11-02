@@ -1,10 +1,6 @@
 use std::fs::metadata;
 use std::io;
-use std::path::{
-    Component,
-    Path,
-    PathBuf,
-};
+use std::path::{Component, Path, PathBuf};
 
 /// Performs `a.join(b)`, except:
 /// - if `b` is an absolute path, then the resulting path will equal `/a/b`

@@ -1,0 +1,16 @@
+{
+  "name": "format_json",
+  "description": "Format and pretty-print JSON data",
+  "parameters": [
+    {
+      "name": "json_string",
+      "type": "string",
+      "description": "JSON string to format",
+      "required": true
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "echo '{{json_string}}' | jq ."
+  }
+}

@@ -4,12 +4,7 @@ use std::collections::HashMap;
 
 use eyre::Result;
 
-use super::creation_builder::{
-    CreationBuilder,
-    IssueSeverity,
-    ValidationIssue,
-    ValidationResult,
-};
+use super::creation_builder::{CreationBuilder, IssueSeverity, ValidationIssue, ValidationResult};
 
 /// Builder for creating executable commands
 pub struct CommandBuilder {

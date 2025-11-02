@@ -34,28 +34,16 @@ use http_body_util::Full;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::Service;
-use hyper::{
-    Request,
-    Response,
-};
+use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
-use percent_encoding::{
-    NON_ALPHANUMERIC,
-    utf8_percent_encode,
-};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use rand::Rng;
 use tokio::net::TcpListener;
-use tracing::{
-    debug,
-    error,
-};
+use tracing::{debug, error};
 
 use crate::auth::builder_id::*;
 use crate::auth::consts::*;
-use crate::auth::{
-    AuthError,
-    START_URL,
-};
+use crate::auth::{AuthError, START_URL};
 use crate::database::Database;
 
 const DEFAULT_AUTHORIZATION_TIMEOUT: Duration = Duration::from_secs(60 * 3);
@@ -289,10 +277,13 @@ impl PkceRegistration {
         let host = listener.local_addr()?.to_string();
         tokio::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(stream, PkceHttpService {
-                    code_tx: std::sync::Arc::new(code_tx),
-                    host,
-                })
+                .serve_connection(
+                    stream,
+                    PkceHttpService {
+                        code_tx: std::sync::Arc::new(code_tx),
+                        host,
+                    },
+                )
                 .await
             {
                 error!(?err, "Error occurred serving the connection");
@@ -467,10 +458,7 @@ fn generate_code_verifier() -> String {
 ///
 /// Reference: https://datatracker.ietf.org/doc/html/rfc7636#section-4.2
 fn generate_code_challenge(code_verifier: &str) -> String {
-    use sha2::{
-        Digest,
-        Sha256,
-    };
+    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(code_verifier);
     URL_SAFE.encode(hasher.finalize()).replace('=', "")

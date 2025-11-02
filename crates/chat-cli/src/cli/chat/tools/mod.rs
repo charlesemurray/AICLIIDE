@@ -14,29 +14,15 @@ pub mod use_aws;
 pub mod workflow;
 pub mod workflow_tool;
 
-use std::borrow::{
-    Borrow,
-    Cow,
-};
+use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
-use chat_cli_ui::conduit::{
-    ControlEnd,
-    DestinationStdout,
-};
-use chat_cli_ui::protocol::{
-    Event,
-    ToolCallArgs,
-};
+use chat_cli_ui::conduit::{ControlEnd, DestinationStdout};
+use chat_cli_ui::protocol::{Event, ToolCallArgs};
 use crossterm::queue;
-use crossterm::style::{
-    self,
-};
+use crossterm::style::{self};
 use custom_tool::CustomTool;
 use delegate::Delegate;
 use execute::ExecuteCommand;
@@ -46,33 +32,20 @@ use fs_write::FsWrite;
 use gh_issue::GhIssue;
 use introspect::Introspect;
 use knowledge::Knowledge;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use thinking::Thinking;
 use todo::TodoList;
 use tracing::error;
 use use_aws::UseAws;
 
 use super::consts::{
-    MAX_TOOL_RESPONSE_SIZE,
-    USER_AGENT_APP_NAME,
-    USER_AGENT_ENV_VAR,
-    USER_AGENT_VERSION_KEY,
-    USER_AGENT_VERSION_VALUE,
+    MAX_TOOL_RESPONSE_SIZE, USER_AGENT_APP_NAME, USER_AGENT_ENV_VAR, USER_AGENT_VERSION_KEY, USER_AGENT_VERSION_VALUE,
 };
 use super::util::images::RichImageBlocks;
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::cli::chat::line_tracker::FileLineTracker;
 use crate::os::Os;
-use crate::theme::{
-    StyledText,
-    theme,
-};
+use crate::theme::{StyledText, theme};
 
 pub const DEFAULT_APPROVE: [&str; 0] = [];
 pub const NATIVE_TOOLS: [&str; 10] = [
@@ -815,10 +788,7 @@ mod tests {
     #[tokio::test]
     async fn test_workflow_tool_in_enum() {
         use crate::cli::workflow::Workflow;
-        use crate::cli::workflow::types::{
-            StepType,
-            WorkflowStep,
-        };
+        use crate::cli::workflow::types::{StepType, WorkflowStep};
 
         let workflow = Workflow {
             name: "test-workflow".to_string(),
@@ -835,10 +805,7 @@ mod tests {
     #[tokio::test]
     async fn test_workflow_tool_invocation_through_enum() {
         use crate::cli::workflow::Workflow;
-        use crate::cli::workflow::types::{
-            StepType,
-            WorkflowStep,
-        };
+        use crate::cli::workflow::types::{StepType, WorkflowStep};
 
         let os = Os::new().await.unwrap();
         let agents = crate::cli::agent::Agents::default();

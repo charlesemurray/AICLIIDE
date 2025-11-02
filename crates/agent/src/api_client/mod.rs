@@ -20,25 +20,14 @@ use aws_types::request_id::RequestId;
 use aws_types::sdk_config::StalledStreamProtectionConfig;
 use credentials::CredentialsChain;
 use endpoints::Endpoint;
-use error::{
-    ApiClientError,
-    ConverseStreamError,
-    ConverseStreamErrorKind,
-};
+use error::{ApiClientError, ConverseStreamError, ConverseStreamErrorKind};
 use model::ConversationState;
 use send_message_output::SendMessageOutput;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use crate::auth::builder_id::BearerResolver;
-use crate::aws_common::{
-    UserAgentOverrideInterceptor,
-    app_name,
-    behavior_version,
-};
+use crate::aws_common::{UserAgentOverrideInterceptor, app_name, behavior_version};
 
 const DEFAULT_TIMEOUT_DURATION: Duration = Duration::from_secs(60 * 5);
 

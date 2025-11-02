@@ -1,10 +1,7 @@
 use std::process::Command;
 use std::sync::LazyLock;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 static INSTALL_METHOD: LazyLock<InstallMethod> = LazyLock::new(|| {
     if let Ok(output) = Command::new("brew").args(["list", "amazon-q", "-1"]).output() {

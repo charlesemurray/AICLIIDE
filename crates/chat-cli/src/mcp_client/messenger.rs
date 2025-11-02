@@ -1,14 +1,5 @@
-use rmcp::model::{
-    ListPromptsResult,
-    ListResourceTemplatesResult,
-    ListResourcesResult,
-    ListToolsResult,
-};
-use rmcp::{
-    Peer,
-    RoleClient,
-    ServiceError,
-};
+use rmcp::model::{ListPromptsResult, ListResourceTemplatesResult, ListResourcesResult, ListToolsResult};
+use rmcp::{Peer, RoleClient, ServiceError};
 use thiserror::Error;
 
 pub type Result<V> = core::result::Result<V, ServiceError>;

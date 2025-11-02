@@ -1,7 +1,4 @@
-use anstream::{
-    eprintln,
-    println,
-};
+use anstream::{eprintln, println};
 use crossterm::style::Stylize;
 use eyre::Result;
 

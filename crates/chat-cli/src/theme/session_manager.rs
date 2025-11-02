@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use crate::theme::session::{
-    SessionDisplay,
-    SessionStatus,
-    SessionType,
-};
+use crate::theme::session::{SessionDisplay, SessionStatus, SessionType};
 
 /// Manages multiple active sessions
 #[derive(Debug, Default)]

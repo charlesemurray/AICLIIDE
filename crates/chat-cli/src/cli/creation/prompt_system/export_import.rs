@@ -1,19 +1,11 @@
 //! Export and import assistants
 
 use std::fs;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
 use eyre::Result;
 
-use super::{
-    PromptTemplate,
-    list_templates,
-    load_template,
-    save_template,
-};
+use super::{PromptTemplate, list_templates, load_template, save_template};
 
 /// Export a single assistant to a file
 pub fn export_assistant(id: &str, output_path: &Path) -> Result<PathBuf> {
@@ -105,10 +97,7 @@ pub enum ConflictStrategy {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{
-        SystemTime,
-        UNIX_EPOCH,
-    };
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use tempfile::TempDir;
 

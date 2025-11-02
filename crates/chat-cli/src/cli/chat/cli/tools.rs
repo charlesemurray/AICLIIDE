@@ -1,35 +1,15 @@
-use std::collections::{
-    BTreeSet,
-    HashSet,
-};
+use std::collections::{BTreeSet, HashSet};
 use std::io::Write;
 
-use clap::{
-    Args,
-    Subcommand,
-};
+use clap::{Args, Subcommand};
 use crossterm::style::Attribute;
-use crossterm::{
-    queue,
-    style,
-};
+use crossterm::{queue, style};
 
 use crate::api_client::model::Tool as FigTool;
-use crate::cli::agent::{
-    Agent,
-    DEFAULT_AGENT_NAME,
-};
-use crate::cli::chat::consts::{
-    AGENT_FORMAT_TOOLS_DOC_URL,
-    DUMMY_TOOL_NAME,
-};
+use crate::cli::agent::{Agent, DEFAULT_AGENT_NAME};
+use crate::cli::chat::consts::{AGENT_FORMAT_TOOLS_DOC_URL, DUMMY_TOOL_NAME};
 use crate::cli::chat::tools::ToolOrigin;
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-    trust_all_text,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState, trust_all_text};
 use crate::constants::help_text::tools_long_help;
 use crate::theme::StyledText;
 use crate::util::consts::MCP_SERVER_TOOL_DELIMITER;

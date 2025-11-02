@@ -2,16 +2,10 @@
 mod cli_commands_tests {
     use std::process::ExitCode;
 
-    use clap::{
-        Parser,
-        Subcommand,
-    };
+    use clap::{Parser, Subcommand};
     use serde_json::json;
 
-    use crate::cli::skills::{
-        SkillError,
-        SkillRegistry,
-    };
+    use crate::cli::skills::{SkillError, SkillRegistry};
 
     #[derive(Debug, PartialEq, Parser)]
     pub struct SkillsArgs {
@@ -258,29 +252,41 @@ mod cli_commands_tests {
 
         // Test run command
         let args = SkillsArgs::try_parse_from(&["skills", "run", "calculator"]).unwrap();
-        assert_eq!(args.command, SkillsCommand::Run {
-            skill_name: "calculator".to_string(),
-            params: None,
-        });
+        assert_eq!(
+            args.command,
+            SkillsCommand::Run {
+                skill_name: "calculator".to_string(),
+                params: None,
+            }
+        );
 
         // Test run command with params
         let args =
             SkillsArgs::try_parse_from(&["skills", "run", "calculator", "--params", r#"{"op": "add"}"#]).unwrap();
-        assert_eq!(args.command, SkillsCommand::Run {
-            skill_name: "calculator".to_string(),
-            params: Some(r#"{"op": "add"}"#.to_string()),
-        });
+        assert_eq!(
+            args.command,
+            SkillsCommand::Run {
+                skill_name: "calculator".to_string(),
+                params: Some(r#"{"op": "add"}"#.to_string()),
+            }
+        );
 
         // Test info command
         let args = SkillsArgs::try_parse_from(&["skills", "info", "calculator"]).unwrap();
-        assert_eq!(args.command, SkillsCommand::Info {
-            skill_name: "calculator".to_string(),
-        });
+        assert_eq!(
+            args.command,
+            SkillsCommand::Info {
+                skill_name: "calculator".to_string(),
+            }
+        );
 
         // Test install command
         let args = SkillsArgs::try_parse_from(&["skills", "install", "skill.json"]).unwrap();
-        assert_eq!(args.command, SkillsCommand::Install {
-            source: "skill.json".to_string(),
-        });
+        assert_eq!(
+            args.command,
+            SkillsCommand::Install {
+                source: "skill.json".to_string(),
+            }
+        );
     }
 }

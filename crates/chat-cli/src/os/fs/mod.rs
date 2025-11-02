@@ -1,14 +1,8 @@
 use std::collections::HashMap;
 use std::fs::Permissions;
 use std::io;
-use std::path::{
-    Path,
-    PathBuf,
-};
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use tempfile::TempDir;
 use tokio::fs;
@@ -30,15 +24,9 @@ mod windows;
 
 // Use platform-specific functions
 #[cfg(unix)]
-use unix::{
-    append as platform_append,
-    symlink_sync,
-};
+use unix::{append as platform_append, symlink_sync};
 #[cfg(windows)]
-use windows::{
-    append as platform_append,
-    symlink_sync,
-};
+use windows::{append as platform_append, symlink_sync};
 
 /// Rust path handling is hard coded to work specific ways depending on the
 /// OS that is being executed on. Because of this, if Unix paths are provided,

@@ -5,10 +5,7 @@ mod skill_creation_workflow_tests {
     use serde_json::json;
     use tempfile::TempDir;
 
-    use crate::cli::skills::{
-        SkillError,
-        SkillRegistry,
-    };
+    use crate::cli::skills::{SkillError, SkillRegistry};
 
     #[tokio::test]
     async fn test_skill_creation_to_execution_workflow() {

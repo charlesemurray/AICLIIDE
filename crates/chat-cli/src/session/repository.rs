@@ -20,16 +20,16 @@ pub struct SessionFilter {
 pub trait SessionRepository: Send + Sync {
     /// Get a session by ID
     async fn get(&self, id: &str) -> Result<SessionMetadata, SessionError>;
-    
+
     /// Save or update a session
     async fn save(&self, metadata: &SessionMetadata) -> Result<(), SessionError>;
-    
+
     /// Delete a session
     async fn delete(&self, id: &str) -> Result<(), SessionError>;
-    
+
     /// List sessions with optional filtering
     async fn list(&self, filter: SessionFilter) -> Result<Vec<SessionMetadata>, SessionError>;
-    
+
     /// Check if a session exists
     async fn exists(&self, id: &str) -> Result<bool, SessionError>;
 }

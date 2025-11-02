@@ -1,11 +1,7 @@
 use clap::Args;
 use eyre::Result;
 
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
 use crate::util::ui;
 
 #[derive(Debug, PartialEq, Args)]

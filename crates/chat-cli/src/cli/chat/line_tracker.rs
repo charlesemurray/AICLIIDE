@@ -1,7 +1,4 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Contains metadata for tracking user and agent contribution metrics for a given file for
 /// `fs_write` tool uses.

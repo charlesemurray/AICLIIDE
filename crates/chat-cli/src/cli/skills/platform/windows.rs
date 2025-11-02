@@ -1,11 +1,7 @@
 use async_trait::async_trait;
 
 use crate::cli::skills::platform::generic::GenericSandbox;
-use crate::cli::skills::security::{
-    PlatformSandbox,
-    ResourceUsage,
-    SecurityResult,
-};
+use crate::cli::skills::security::{PlatformSandbox, ResourceUsage, SecurityResult};
 
 pub struct WindowsSandbox {
     generic: GenericSandbox,

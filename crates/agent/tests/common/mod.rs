@@ -3,43 +3,17 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{
-    Duration,
-    Instant,
-};
+use std::time::{Duration, Instant};
 
 use agent::agent_config::definitions::AgentConfig;
-use agent::agent_loop::model::{
-    MockModel,
-    MockResponse,
-};
-use agent::agent_loop::protocol::{
-    SendRequestArgs,
-    StreamResult,
-};
-use agent::agent_loop::types::{
-    ContentBlock,
-    Message,
-    Role,
-    ToolSpec,
-};
+use agent::agent_loop::model::{MockModel, MockResponse};
+use agent::agent_loop::protocol::{SendRequestArgs, StreamResult};
+use agent::agent_loop::types::{ContentBlock, Message, Role, ToolSpec};
 use agent::mcp::McpManager;
-use agent::protocol::{
-    AgentEvent,
-    ApprovalResult,
-    InternalEvent,
-    SendApprovalResultArgs,
-    SendPromptArgs,
-};
+use agent::protocol::{AgentEvent, ApprovalResult, InternalEvent, SendApprovalResultArgs, SendPromptArgs};
 use agent::types::AgentSnapshot;
-use agent::util::test::{
-    TestBase,
-    TestFile,
-};
-use agent::{
-    Agent,
-    AgentHandle,
-};
+use agent::util::test::{TestBase, TestFile};
+use agent::{Agent, AgentHandle};
 use eyre::Result;
 use rand::Rng as _;
 use rand::distr::Alphanumeric;

@@ -3,10 +3,7 @@ mod common;
 use std::time::Duration;
 
 use agent::agent_config::definitions::AgentConfig;
-use agent::protocol::{
-    ApprovalResult,
-    SendApprovalResultArgs,
-};
+use agent::protocol::{ApprovalResult, SendApprovalResultArgs};
 use common::*;
 
 #[tokio::test]

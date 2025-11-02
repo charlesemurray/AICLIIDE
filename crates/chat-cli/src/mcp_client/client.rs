@@ -4,60 +4,22 @@ use std::process::Stdio;
 
 use regex::Regex;
 use rmcp::model::{
-    CallToolRequestParam,
-    CallToolResult,
-    ClientResult,
-    ErrorCode,
-    GetPromptRequestParam,
-    GetPromptResult,
-    Implementation,
-    InitializeRequestParam,
-    ListPromptsResult,
-    ListToolsResult,
-    LoggingLevel,
-    LoggingMessageNotificationParam,
-    PaginatedRequestParam,
-    ServerNotification,
-    ServerRequest,
+    CallToolRequestParam, CallToolResult, ClientResult, ErrorCode, GetPromptRequestParam, GetPromptResult,
+    Implementation, InitializeRequestParam, ListPromptsResult, ListToolsResult, LoggingLevel,
+    LoggingMessageNotificationParam, PaginatedRequestParam, ServerNotification, ServerRequest,
 };
-use rmcp::service::{
-    ClientInitializeError,
-    DynService,
-    NotificationContext,
-};
-use rmcp::transport::{
-    ConfigureCommandExt,
-    TokioChildProcess,
-};
-use rmcp::{
-    ErrorData,
-    RoleClient,
-    Service,
-    ServiceError,
-    ServiceExt,
-};
+use rmcp::service::{ClientInitializeError, DynService, NotificationContext};
+use rmcp::transport::{ConfigureCommandExt, TokioChildProcess};
+use rmcp::{ErrorData, RoleClient, Service, ServiceError, ServiceExt};
 use tokio::io::AsyncReadExt as _;
-use tokio::process::{
-    ChildStderr,
-    Command,
-};
+use tokio::process::{ChildStderr, Command};
 use tokio::task::JoinHandle;
-use tracing::{
-    error,
-    info,
-};
+use tracing::{error, info};
 
 use super::messenger::Messenger;
-use super::{
-    AuthClientWrapper,
-    HttpServiceBuilder,
-    OauthUtilError,
-};
+use super::{AuthClientWrapper, HttpServiceBuilder, OauthUtilError};
 use crate::cli::chat::server_messenger::ServerMessenger;
-use crate::cli::chat::tools::custom_tool::{
-    CustomToolConfig,
-    TransportType,
-};
+use crate::cli::chat::tools::custom_tool::{CustomToolConfig, TransportType};
 use crate::os::Os;
 use crate::util::env_var::get_all_env_vars;
 

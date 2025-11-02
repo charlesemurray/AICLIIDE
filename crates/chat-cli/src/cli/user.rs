@@ -1,58 +1,29 @@
 use std::fmt;
 use std::fmt::Display;
-use std::process::{
-    ExitCode,
-    exit,
-};
+use std::process::{ExitCode, exit};
 use std::time::Duration;
 
-use anstream::{
-    eprintln,
-    println,
-};
-use clap::{
-    Args,
-    Subcommand,
-};
+use anstream::{eprintln, println};
+use clap::{Args, Subcommand};
 use dialoguer::Select;
-use eyre::{
-    Result,
-    bail,
-};
+use eyre::{Result, bail};
 use serde_json::json;
 use tokio::signal::ctrl_c;
-use tracing::{
-    error,
-    info,
-};
+use tracing::{error, info};
 
 use super::OutputFormat;
 use crate::api_client::list_available_profiles;
 use crate::auth::builder_id::{
-    BuilderIdToken,
-    PollCreateToken,
-    TokenType,
-    poll_create_token,
-    start_device_authorization,
+    BuilderIdToken, PollCreateToken, TokenType, poll_create_token, start_device_authorization,
 };
 use crate::auth::pkce::start_pkce_authorization;
 use crate::constants::PRODUCT_NAME;
 use crate::os::Os;
-use crate::telemetry::{
-    QProfileSwitchIntent,
-    TelemetryResult,
-};
+use crate::telemetry::{QProfileSwitchIntent, TelemetryResult};
 use crate::theme::StyledText;
-use crate::util::spinner::{
-    Spinner,
-    SpinnerComponent,
-};
+use crate::util::spinner::{Spinner, SpinnerComponent};
 use crate::util::system_info::is_remote;
-use crate::util::{
-    CLI_BINARY_NAME,
-    choose,
-    input,
-};
+use crate::util::{CLI_BINARY_NAME, choose, input};
 
 #[derive(Args, Debug, PartialEq, Eq, Clone, Default)]
 pub struct LoginArgs {

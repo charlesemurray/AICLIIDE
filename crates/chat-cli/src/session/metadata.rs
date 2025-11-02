@@ -102,15 +102,12 @@ impl SessionMetadata {
                 self.custom_fields = HashMap::new();
                 self.version = 1;
                 Ok(self)
-            }
+            },
             1 => {
                 // Current version
                 Ok(self)
-            }
-            v => Err(SessionError::InvalidMetadata(format!(
-                "Unknown schema version: {}",
-                v
-            ))),
+            },
+            v => Err(SessionError::InvalidMetadata(format!("Unknown schema version: {}", v))),
         }
     }
 }
@@ -129,15 +126,10 @@ pub fn validate_session_name(name: &str) -> Result<(), SessionError> {
     }
 
     if name.len() > 100 {
-        return Err(SessionError::InvalidName(
-            "Name too long (max 100 characters)".into(),
-        ));
+        return Err(SessionError::InvalidName("Name too long (max 100 characters)".into()));
     }
 
-    if !name
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-    {
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
         return Err(SessionError::InvalidName(
             "Only alphanumeric, dash, and underscore allowed".into(),
         ));

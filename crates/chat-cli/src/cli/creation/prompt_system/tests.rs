@@ -3,14 +3,8 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::cli::creation::prompt_system::{
-        DifficultyLevel,
-        ParameterType,
-        PromptSystem,
-        PromptTemplate,
-        TemplateCategory,
-        TemplateError,
-        TemplateParameter,
-        UsageStats,
+        DifficultyLevel, ParameterType, PromptSystem, PromptTemplate, TemplateCategory, TemplateError,
+        TemplateParameter, UsageStats,
     };
 
     #[tokio::test]

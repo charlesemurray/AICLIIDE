@@ -24,12 +24,7 @@ mod ui_integration_tests;
 use std::process::ExitCode;
 
 pub use assistant::CreationAssistant;
-use clap::{
-    Args,
-    CommandFactory,
-    Parser,
-    Subcommand,
-};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 pub use context::CreationContext;
 pub use errors::CreationError;
 use eyre::Result;
@@ -187,10 +182,7 @@ impl CreateArgs {
 
         match self.command {
             CreateCommand::Assistant { mode } => {
-                use crate::cli::creation::prompt_system::{
-                    InteractivePromptBuilder,
-                    save_template,
-                };
+                use crate::cli::creation::prompt_system::{InteractivePromptBuilder, save_template};
 
                 let mut ui = TerminalUIImpl::new();
                 let mut builder = InteractivePromptBuilder::new(&mut ui);
@@ -212,10 +204,7 @@ impl CreateArgs {
                 Ok(ExitCode::SUCCESS)
             },
             CreateCommand::ListAssistants => {
-                use crate::cli::creation::prompt_system::{
-                    list_templates,
-                    load_template,
-                };
+                use crate::cli::creation::prompt_system::{list_templates, load_template};
 
                 let templates = list_templates()?;
 
@@ -238,11 +227,7 @@ impl CreateArgs {
                 Ok(ExitCode::SUCCESS)
             },
             CreateCommand::EditAssistant { id } => {
-                use crate::cli::creation::prompt_system::{
-                    AssistantEditor,
-                    load_template,
-                    save_template,
-                };
+                use crate::cli::creation::prompt_system::{AssistantEditor, load_template, save_template};
 
                 let template = load_template(&id)?;
 
@@ -286,10 +271,7 @@ impl CreateArgs {
                 Ok(ExitCode::SUCCESS)
             },
             CreateCommand::ImportAssistant { path, strategy } => {
-                use crate::cli::creation::prompt_system::{
-                    ConflictStrategy,
-                    import_assistant,
-                };
+                use crate::cli::creation::prompt_system::{ConflictStrategy, import_assistant};
 
                 let conflict_strategy = match strategy.as_str() {
                     "skip" => ConflictStrategy::Skip,

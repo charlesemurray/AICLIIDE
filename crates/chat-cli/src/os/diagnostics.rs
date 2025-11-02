@@ -2,21 +2,14 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use sysinfo::{
-    CpuRefreshKind,
-    MemoryRefreshKind,
-    RefreshKind,
-};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::os::Env;
 use crate::telemetry::InstallMethod;
 use crate::util::consts::build::HASH;
-use crate::util::system_info::{
-    OSVersion,
-    os_version,
-};
+use crate::util::system_info::{OSVersion, os_version};
 
 fn serialize_display<D, S>(display: D, serializer: S) -> Result<S::Ok, S::Error>
 where

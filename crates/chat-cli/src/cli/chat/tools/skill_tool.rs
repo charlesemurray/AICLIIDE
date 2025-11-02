@@ -2,10 +2,7 @@ use std::io::Write;
 
 use eyre::Result;
 
-use super::{
-    InvokeOutput,
-    OutputKind,
-};
+use super::{InvokeOutput, OutputKind};
 use crate::cli::skills::SkillRegistry;
 
 #[derive(Debug, Clone)]

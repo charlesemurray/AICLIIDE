@@ -5,71 +5,31 @@ mod root_command_args;
 mod wrapper_types;
 
 use std::borrow::Borrow;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::io::{
-    self,
-    Write,
-};
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 
 use crossterm::style::Stylize as _;
-use crossterm::{
-    execute,
-    queue,
-    style,
-};
+use crossterm::{execute, queue, style};
 use eyre::bail;
 pub use mcp_config::McpServerConfig;
 pub use root_command_args::*;
-use schemars::{
-    JsonSchema,
-    schema_for,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use schemars::{JsonSchema, schema_for};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::fs::ReadDir;
-use tracing::{
-    error,
-    info,
-    warn,
-};
+use tracing::{error, info, warn};
 use wrapper_types::ResourcePath;
-pub use wrapper_types::{
-    OriginalToolName,
-    ToolSettingTarget,
-    alias_schema,
-    tool_settings_schema,
-};
+pub use wrapper_types::{OriginalToolName, ToolSettingTarget, alias_schema, tool_settings_schema};
 
-use super::chat::tools::{
-    DEFAULT_APPROVE,
-    NATIVE_TOOLS,
-    ToolOrigin,
-};
-use crate::cli::agent::hook::{
-    Hook,
-    HookTrigger,
-};
+use super::chat::tools::{DEFAULT_APPROVE, NATIVE_TOOLS, ToolOrigin};
+use crate::cli::agent::hook::{Hook, HookTrigger};
 use crate::database::settings::Setting;
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::paths::PathResolver;
-use crate::util::{
-    self,
-    MCP_SERVER_TOOL_DELIMITER,
-    file_uri,
-    paths,
-};
+use crate::util::{self, MCP_SERVER_TOOL_DELIMITER, file_uri, paths};
 
 pub const DEFAULT_AGENT_NAME: &str = "q_cli_default";
 

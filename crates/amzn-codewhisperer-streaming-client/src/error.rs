@@ -6,10 +6,7 @@ pub type SdkError<E, R = ::aws_smithy_runtime_api::client::orchestrator::HttpRes
     ::aws_smithy_runtime_api::client::result::SdkError<E, R>;
 pub use ::aws_smithy_runtime_api::client::result::ConnectorError;
 pub use ::aws_smithy_types::error::display::DisplayErrorContext;
-pub use ::aws_smithy_types::error::metadata::{
-    ErrorMetadata,
-    ProvideErrorMetadata,
-};
+pub use ::aws_smithy_types::error::metadata::{ErrorMetadata, ProvideErrorMetadata};
 pub use ::aws_smithy_types::error::operation::BuildError;
 
 /// The given enum value failed to parse since it is not a known value.

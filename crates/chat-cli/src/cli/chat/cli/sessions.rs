@@ -1,17 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{
-    Arc,
-    Mutex,
-    OnceLock,
-};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use clap::Subcommand;
 
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
 use crate::os::Os;
 
 static SESSIONS: OnceLock<Arc<Mutex<HashMap<String, String>>>> = OnceLock::new();

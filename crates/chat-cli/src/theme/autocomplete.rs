@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 /// Autocomplete configuration for commands
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -270,30 +267,45 @@ mod tests {
         let mut subcommands = HashMap::new();
         let mut options = HashMap::new();
 
-        options.insert("--message".to_string(), OptionType::String {
-            suggestions: Some(vec!["Initial commit".to_string(), "Fix bug".to_string()]),
-            description: Some("Commit message".to_string()),
-        });
-        options.insert("--all".to_string(), OptionType::Flag {
-            description: "Stage all changes".to_string(),
-        });
+        options.insert(
+            "--message".to_string(),
+            OptionType::String {
+                suggestions: Some(vec!["Initial commit".to_string(), "Fix bug".to_string()]),
+                description: Some("Commit message".to_string()),
+            },
+        );
+        options.insert(
+            "--all".to_string(),
+            OptionType::Flag {
+                description: "Stage all changes".to_string(),
+            },
+        );
 
-        subcommands.insert("commit".to_string(), SubcommandConfig {
-            description: "Commit changes".to_string(),
-            options: OptionConfig::Complex(options),
-        });
+        subcommands.insert(
+            "commit".to_string(),
+            SubcommandConfig {
+                description: "Commit changes".to_string(),
+                options: OptionConfig::Complex(options),
+            },
+        );
 
-        subcommands.insert("status".to_string(), SubcommandConfig {
-            description: "Show status".to_string(),
-            options: OptionConfig::Simple(vec!["--short".to_string(), "--branch".to_string()]),
-        });
+        subcommands.insert(
+            "status".to_string(),
+            SubcommandConfig {
+                description: "Show status".to_string(),
+                options: OptionConfig::Simple(vec!["--short".to_string(), "--branch".to_string()]),
+            },
+        );
 
         let mut dynamic_sources = HashMap::new();
-        dynamic_sources.insert("git_remotes".to_string(), DynamicSource {
-            command: "echo 'origin\nupstream'".to_string(),
-            cache_duration: 300,
-            parser: "lines".to_string(),
-        });
+        dynamic_sources.insert(
+            "git_remotes".to_string(),
+            DynamicSource {
+                command: "echo 'origin\nupstream'".to_string(),
+                cache_duration: 300,
+                parser: "lines".to_string(),
+            },
+        );
 
         AutocompleteConfig {
             subcommands,
@@ -324,10 +336,13 @@ mod tests {
     #[test]
     fn test_option_config_complex() {
         let mut options = HashMap::new();
-        options.insert("--message".to_string(), OptionType::String {
-            suggestions: Some(vec!["test".to_string()]),
-            description: Some("Message".to_string()),
-        });
+        options.insert(
+            "--message".to_string(),
+            OptionType::String {
+                suggestions: Some(vec!["test".to_string()]),
+                description: Some("Message".to_string()),
+            },
+        );
 
         let complex = OptionConfig::Complex(options);
         match complex {

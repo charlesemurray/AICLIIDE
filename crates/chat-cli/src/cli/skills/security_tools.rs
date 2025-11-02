@@ -2,11 +2,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use tokio::fs;
-use tokio::io::{
-    self,
-    AsyncBufReadExt,
-    BufReader,
-};
+use tokio::io::{self, AsyncBufReadExt, BufReader};
 
 use crate::cli::skills::security::*;
 use crate::cli::skills::security_logging::*;

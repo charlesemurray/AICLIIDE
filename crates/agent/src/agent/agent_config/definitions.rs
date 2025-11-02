@@ -1,13 +1,7 @@
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 
 use schemars::JsonSchema;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use super::types::ResourcePath;
 use crate::agent::consts::DEFAULT_AGENT_NAME;

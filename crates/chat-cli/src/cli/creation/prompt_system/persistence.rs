@@ -1,10 +1,7 @@
 //! Persistence layer for saving and loading prompt templates
 
 use std::fs;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
 use eyre::Result;
 

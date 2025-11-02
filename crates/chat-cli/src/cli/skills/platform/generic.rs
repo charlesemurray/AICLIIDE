@@ -1,16 +1,8 @@
 use async_trait::async_trait;
-use sysinfo::{
-    Pid,
-    System,
-};
+use sysinfo::{Pid, System};
 use tokio::time::Duration;
 
-use crate::cli::skills::security::{
-    PlatformSandbox,
-    ResourceUsage,
-    SecurityError,
-    SecurityResult,
-};
+use crate::cli::skills::security::{PlatformSandbox, ResourceUsage, SecurityError, SecurityResult};
 
 pub struct GenericSandbox;
 

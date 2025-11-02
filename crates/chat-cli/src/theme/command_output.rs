@@ -1,9 +1,6 @@
 use crossterm::style::Color;
 
-use crate::theme::{
-    StatusColors,
-    UiColors,
-};
+use crate::theme::{StatusColors, UiColors};
 
 /// Formatter for command output with semantic colors
 #[derive(Debug)]
@@ -110,10 +107,7 @@ pub fn formatter() -> CommandOutputFormatter<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::{
-        StatusColors,
-        UiColors,
-    };
+    use crate::theme::{StatusColors, UiColors};
 
     fn create_test_formatter() -> CommandOutputFormatter<'static> {
         // Use default colors for testing

@@ -1,11 +1,5 @@
-use convert_case::{
-    Case,
-    Casing,
-};
-use quote::{
-    format_ident,
-    quote,
-};
+use convert_case::{Case, Casing};
+use quote::{format_ident, quote};
 
 const DEF: &str = include_str!("./def.json");
 

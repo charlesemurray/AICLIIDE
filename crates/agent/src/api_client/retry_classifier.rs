@@ -1,11 +1,7 @@
 use std::fmt;
 
 use aws_smithy_runtime_api::client::interceptors::context::InterceptorContext;
-use aws_smithy_runtime_api::client::retries::classifiers::{
-    ClassifyRetry,
-    RetryAction,
-    RetryClassifierPriority,
-};
+use aws_smithy_runtime_api::client::retries::classifiers::{ClassifyRetry, RetryAction, RetryClassifierPriority};
 use tracing::debug;
 
 const MONTHLY_LIMIT_ERROR_MARKER: &str = "MONTHLY_REQUEST_COUNT";
@@ -93,10 +89,7 @@ impl fmt::Display for QCliRetryClassifier {
 
 #[cfg(test)]
 mod tests {
-    use aws_smithy_runtime_api::client::interceptors::context::{
-        Input,
-        InterceptorContext,
-    };
+    use aws_smithy_runtime_api::client::interceptors::context::{Input, InterceptorContext};
     use aws_smithy_types::body::SdkBody;
     use http::Response;
 

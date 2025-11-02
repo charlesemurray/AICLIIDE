@@ -1,21 +1,12 @@
 use std::time::Duration;
 
-use chrono::{
-    DateTime,
-    Utc,
-};
+use chrono::{DateTime, Utc};
 use rand::Rng as _;
 use rand::distr::Alphanumeric;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::agent_loop::protocol::{
-    SendRequestArgs,
-    UserTurnMetadata,
-};
+use super::agent_loop::protocol::{SendRequestArgs, UserTurnMetadata};
 use super::agent_loop::types::Message;
 use super::consts::DEFAULT_AGENT_NAME;
 use crate::agent::ExecutionState;

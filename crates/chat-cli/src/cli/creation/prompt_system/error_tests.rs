@@ -3,14 +3,9 @@ mod error_tests {
     use super::*;
     use crate::cli::creation::prompt_system::storage::HybridTemplateStorage;
     use crate::cli::creation::prompt_system::template_manager::{
-        DefaultTemplateManager,
-        TemplateManager,
-        TemplateStorage,
+        DefaultTemplateManager, TemplateManager, TemplateStorage,
     };
-    use crate::cli::creation::prompt_system::{
-        PromptSystem,
-        TemplateError,
-    };
+    use crate::cli::creation::prompt_system::{PromptSystem, TemplateError};
 
     #[tokio::test]
     async fn test_template_error_types() {

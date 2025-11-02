@@ -5,75 +5,38 @@ pub mod endpoint;
 mod install_method;
 
 use core::{
-    AgentConfigInitArgs,
-    ChatAddedMessageParams,
-    RecordUserTurnCompletionArgs,
-    TangentModeSessionArgs,
+    AgentConfigInitArgs, ChatAddedMessageParams, RecordUserTurnCompletionArgs, TangentModeSessionArgs,
     ToolUseEventBuilder,
 };
 use std::str::FromStr;
 
 use amzn_codewhisperer_client::types::{
-    ChatAddMessageEvent,
-    ChatInteractWithMessageEvent,
-    ChatMessageInteractionType,
-    IdeCategory,
-    OperatingSystem,
-    TelemetryEvent,
-    UserContext,
+    ChatAddMessageEvent, ChatInteractWithMessageEvent, ChatMessageInteractionType, IdeCategory, OperatingSystem,
+    TelemetryEvent, UserContext,
 };
-use amzn_toolkit_telemetry_client::config::{
-    BehaviorVersion,
-    Region,
-};
+use amzn_toolkit_telemetry_client::config::{BehaviorVersion, Region};
 use amzn_toolkit_telemetry_client::error::DisplayErrorContext;
 use amzn_toolkit_telemetry_client::types::AwsProduct;
-use amzn_toolkit_telemetry_client::{
-    Client as ToolkitTelemetryClient,
-    Config,
-};
+use amzn_toolkit_telemetry_client::{Client as ToolkitTelemetryClient, Config};
 use aws_credential_types::provider::SharedCredentialsProvider;
 use cognito::CognitoProvider;
 use endpoint::StaticEndpoint;
-pub use install_method::{
-    InstallMethod,
-    get_install_method,
-};
+pub use install_method::{InstallMethod, get_install_method};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::error::Elapsed;
-use tracing::{
-    debug,
-    error,
-    trace,
-};
-use uuid::{
-    Uuid,
-    uuid,
-};
+use tracing::{debug, error, trace};
+use uuid::{Uuid, uuid};
 
-use crate::api_client::{
-    ApiClient,
-    ApiClientError,
-};
+use crate::api_client::{ApiClient, ApiClientError};
 use crate::auth::builder_id::get_start_url_and_region;
 use crate::aws_common::app_name;
 use crate::cli::RootSubcommand;
 use crate::database::settings::Setting;
-use crate::database::{
-    Database,
-    DatabaseError,
-};
-use crate::os::{
-    Env,
-    Fs,
-};
+use crate::database::{Database, DatabaseError};
+use crate::os::{Env, Fs};
 use crate::telemetry::core::Event;
-pub use crate::telemetry::core::{
-    EventType,
-    QProfileSwitchIntent,
-    TelemetryResult,
-};
+pub use crate::telemetry::core::{EventType, QProfileSwitchIntent, TelemetryResult};
 use crate::util::env_var::get_cli_client_application;
 use crate::util::system_info::os_version;
 

@@ -1,20 +1,9 @@
 use std::borrow::Cow;
 use std::env::VarError;
-use std::path::{
-    Path,
-    PathBuf,
-};
+use std::path::{Path, PathBuf};
 
-use super::error::{
-    ErrorContext as _,
-    UtilError,
-};
-use super::providers::{
-    EnvProvider,
-    HomeProvider,
-    RealProvider,
-    SystemProvider,
-};
+use super::error::{ErrorContext as _, UtilError};
+use super::providers::{EnvProvider, HomeProvider, RealProvider, SystemProvider};
 
 /// Performs tilde and environment variable expansion on the provided input.
 pub fn expand_path<'a>(input: &'a str, provider: &'_ impl SystemProvider) -> Result<Cow<'a, str>, UtilError> {

@@ -1,63 +1,26 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::PathBuf;
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::sync::{Arc, Mutex};
 
 use eyre::Result;
-use rustyline::completion::{
-    Completer,
-    FilenameCompleter,
-    extract_word,
-};
+use rustyline::completion::{Completer, FilenameCompleter, extract_word};
 use rustyline::error::ReadlineError;
-use rustyline::highlight::{
-    CmdKind,
-    Highlighter,
-};
+use rustyline::highlight::{CmdKind, Highlighter};
 use rustyline::hint::Hinter as RustylineHinter;
-use rustyline::history::{
-    FileHistory,
-    SearchDirection,
-};
-use rustyline::validate::{
-    ValidationContext,
-    ValidationResult,
-    Validator,
-};
+use rustyline::history::{FileHistory, SearchDirection};
+use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::{
-    Cmd,
-    Completer,
-    CompletionType,
-    Config,
-    Context,
-    EditMode,
-    Editor,
-    EventHandler,
-    Helper,
-    Hinter,
-    KeyCode,
-    KeyEvent,
+    Cmd, Completer, CompletionType, Config, Context, EditMode, Editor, EventHandler, Helper, Hinter, KeyCode, KeyEvent,
     Modifiers,
 };
 use winnow::stream::AsChar;
 
 pub use super::prompt_parser::generate_prompt;
 use super::prompt_parser::parse_prompt_components;
-use super::tool_manager::{
-    PromptQuery,
-    PromptQueryResult,
-};
-use super::util::clipboard::{
-    ClipboardError,
-    paste_image_from_clipboard,
-};
-use crate::cli::experiment::experiment_manager::{
-    ExperimentManager,
-    ExperimentName,
-};
+use super::tool_manager::{PromptQuery, PromptQueryResult};
+use super::util::clipboard::{ClipboardError, paste_image_from_clipboard};
+use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
 use crate::database::settings::Setting;
 use crate::os::Os;
 use crate::util::paths::PathResolver;

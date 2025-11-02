@@ -2,22 +2,13 @@ use std::io::Write;
 
 use clap::Subcommand;
 use crossterm::queue;
-use crossterm::style::{
-    self,
-};
+use crossterm::style::{self};
 use eyre::Result;
 use semantic_search_client::SystemStatus;
 
 use crate::cli::chat::tools::sanitize_path_tool_arg;
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-};
-use crate::cli::experiment::experiment_manager::{
-    ExperimentManager,
-    ExperimentName,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::knowledge_store::KnowledgeStore;

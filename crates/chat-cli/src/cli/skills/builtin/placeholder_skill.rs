@@ -1,13 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::cli::skills::{
-    Skill,
-    SkillError,
-    SkillResult,
-    SkillUI,
-    UIElement,
-};
+use crate::cli::skills::{Skill, SkillError, SkillResult, SkillUI, UIElement};
 
 pub struct PlaceholderSkill {
     name: String,

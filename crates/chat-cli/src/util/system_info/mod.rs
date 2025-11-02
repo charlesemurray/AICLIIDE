@@ -6,10 +6,7 @@ pub mod windows;
 use std::sync::OnceLock;
 
 use cfg_if::cfg_if;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::os::Env;
 use crate::util::env_var::is_remote_fake;

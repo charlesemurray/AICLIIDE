@@ -1,18 +1,10 @@
 #[cfg(test)]
 mod timeout_test {
-    use std::time::{
-        Duration,
-        Instant,
-    };
+    use std::time::{Duration, Instant};
 
     use tokio::time::sleep;
 
-    use crate::cli::skills::{
-        ResourceLimits,
-        SkillError,
-        SkillResult,
-        execute_with_timeout,
-    };
+    use crate::cli::skills::{ResourceLimits, SkillError, SkillResult, execute_with_timeout};
 
     #[tokio::test]
     async fn test_timeout_functionality() {

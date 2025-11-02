@@ -5,29 +5,16 @@ use std::collections::HashMap;
 use std::process::Stdio;
 
 use bstr::ByteSlice as _;
-use schemars::{
-    JsonSchema,
-    schema_for,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use schemars::{JsonSchema, schema_for};
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
 use super::{
-    BuiltInToolName,
-    BuiltInToolTrait,
-    ToolExecutionError,
-    ToolExecutionOutput,
-    ToolExecutionOutputItem,
+    BuiltInToolName, BuiltInToolTrait, ToolExecutionError, ToolExecutionOutput, ToolExecutionOutputItem,
     ToolExecutionResult,
 };
 use crate::agent::util::consts::{
-    USER_AGENT_APP_NAME,
-    USER_AGENT_ENV_VAR,
-    USER_AGENT_VERSION_KEY,
-    USER_AGENT_VERSION_VALUE,
+    USER_AGENT_APP_NAME, USER_AGENT_ENV_VAR, USER_AGENT_VERSION_KEY, USER_AGENT_VERSION_VALUE,
 };
 
 const EXECUTE_CMD_TOOL_DESCRIPTION: &str = r#"

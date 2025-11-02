@@ -1,11 +1,6 @@
 use chat_cli::cli::chat::tools::ToolOrigin;
 use chat_cli::cli::skills::toolspec_conversion::ToToolSpec;
-use chat_cli::cli::workflow::types::{
-    StepType,
-    Workflow,
-    WorkflowInput,
-    WorkflowStep,
-};
+use chat_cli::cli::workflow::types::{StepType, Workflow, WorkflowInput, WorkflowStep};
 
 #[test]
 fn test_workflow_to_toolspec_conversion() {

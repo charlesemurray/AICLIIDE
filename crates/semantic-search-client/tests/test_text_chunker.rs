@@ -1,7 +1,4 @@
-use std::{
-    env,
-    fs,
-};
+use std::{env, fs};
 
 use semantic_search_client::config;
 use semantic_search_client::processing::text_chunker::chunk_text;

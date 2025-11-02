@@ -1,12 +1,6 @@
 use eyre::Result;
-use tokio::sync::{
-    mpsc,
-    oneshot,
-};
-use tracing::{
-    error,
-    trace,
-};
+use tokio::sync::{mpsc, oneshot};
+use tracing::{error, trace};
 
 /// A request to a specific task
 #[derive(Debug)]

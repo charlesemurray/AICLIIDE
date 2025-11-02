@@ -1,11 +1,7 @@
 use std::time::Duration;
 
 use aws_smithy_runtime_api::client::http::{
-    HttpClient,
-    HttpConnector,
-    HttpConnectorFuture,
-    HttpConnectorSettings,
-    SharedHttpConnector,
+    HttpClient, HttpConnector, HttpConnectorFuture, HttpConnectorSettings, SharedHttpConnector,
 };
 use aws_smithy_runtime_api::client::result::ConnectorError;
 use aws_smithy_runtime_api::client::runtime_components::RuntimeComponents;

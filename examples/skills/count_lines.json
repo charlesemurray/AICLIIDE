@@ -1,0 +1,16 @@
+{
+  "name": "count_lines",
+  "description": "Count the number of lines in a file",
+  "parameters": [
+    {
+      "name": "file_path",
+      "type": "string",
+      "description": "Path to the file to count lines in",
+      "required": true
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "wc -l {{file_path}} | awk '{print $1}'"
+  }
+}

@@ -1,8 +1,5 @@
 use std::path::Path;
-use std::{
-    env,
-    fs,
-};
+use std::{env, fs};
 
 use semantic_search_client::SemanticSearchClient;
 use semantic_search_client::types::ProgressStatus;

@@ -1,22 +1,13 @@
 use std::fs;
-use std::io::{
-    self,
-    Write,
-};
+use std::io::{self, Write};
 use std::process::ExitCode;
 
-use clap::{
-    Args,
-    Subcommand,
-};
+use clap::{Args, Subcommand};
 use eyre::Result;
 use serde_json::json;
 
 use crate::cli::skills::validation::SkillValidator;
-use crate::cli::skills::{
-    SkillError,
-    SkillRegistry,
-};
+use crate::cli::skills::{SkillError, SkillRegistry};
 use crate::os::Os;
 
 // Map user-friendly names to internal types

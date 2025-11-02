@@ -1,25 +1,16 @@
 use std::io::Write;
 
 use crossterm::queue;
-use crossterm::style::{
-    self,
-};
+use crossterm::style::{self};
 use eyre::Result;
 use regex::Regex;
 use serde::Deserialize;
 use tracing::error;
 
 use super::env_vars_with_user_agent;
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::cli::chat::sanitize_unicode_tags;
-use crate::cli::chat::tools::{
-    InvokeOutput,
-    MAX_TOOL_RESPONSE_SIZE,
-    OutputKind,
-};
+use crate::cli::chat::tools::{InvokeOutput, MAX_TOOL_RESPONSE_SIZE, OutputKind};
 use crate::cli::chat::util::truncate_safe;
 use crate::os::Os;
 use crate::theme::StyledText;
@@ -290,10 +281,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::cli::agent::{
-        Agent,
-        ToolSettingTarget,
-    };
+    use crate::cli::agent::{Agent, ToolSettingTarget};
 
     #[test]
     fn test_requires_acceptance_for_readonly_commands() {
@@ -687,10 +675,7 @@ mod tests {
     #[tokio::test]
     async fn test_cloudtrail_tracking() {
         use crate::cli::chat::consts::{
-            USER_AGENT_APP_NAME,
-            USER_AGENT_ENV_VAR,
-            USER_AGENT_VERSION_KEY,
-            USER_AGENT_VERSION_VALUE,
+            USER_AGENT_APP_NAME, USER_AGENT_ENV_VAR, USER_AGENT_VERSION_KEY, USER_AGENT_VERSION_VALUE,
         };
 
         let os = Os::new().await.unwrap();
@@ -713,10 +698,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cloudtrail_tracking_with_existing_env() {
-        use crate::cli::chat::consts::{
-            USER_AGENT_APP_NAME,
-            USER_AGENT_ENV_VAR,
-        };
+        use crate::cli::chat::consts::{USER_AGENT_APP_NAME, USER_AGENT_ENV_VAR};
 
         let os = Os::new().await.unwrap();
 

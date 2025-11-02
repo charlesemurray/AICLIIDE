@@ -1,24 +1,12 @@
 use amzn_codewhisperer_client::types::Model;
 use clap::Args;
-use crossterm::style::{
-    self,
-};
-use crossterm::{
-    execute,
-    queue,
-};
+use crossterm::style::{self};
+use crossterm::{execute, queue};
 use dialoguer::Select;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 use crate::api_client::Endpoint;
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
 use crate::os::Os;
 use crate::theme::StyledText;
 

@@ -1,17 +1,11 @@
 use std::path::PathBuf;
-use std::sync::{
-    Arc,
-    LazyLock as Lazy,
-};
+use std::sync::{Arc, LazyLock as Lazy};
 
 use eyre::Result;
 use semantic_search_client::KnowledgeContext;
 use semantic_search_client::client::AsyncSemanticSearchClient;
 use semantic_search_client::embedding::EmbeddingType;
-use semantic_search_client::types::{
-    AddContextRequest,
-    SearchResult,
-};
+use semantic_search_client::types::{AddContextRequest, SearchResult};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -23,10 +17,7 @@ use crate::util::paths::PathResolver;
 /// Generate a unique identifier for an agent based on its path and name
 fn generate_agent_unique_id(agent: &crate::cli::Agent) -> String {
     use std::collections::hash_map::DefaultHasher;
-    use std::hash::{
-        Hash,
-        Hasher,
-    };
+    use std::hash::{Hash, Hasher};
 
     if let Some(path) = &agent.path {
         let mut hasher = DefaultHasher::new();

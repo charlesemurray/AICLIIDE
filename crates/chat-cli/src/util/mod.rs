@@ -17,21 +17,13 @@ pub mod ui;
 
 use std::fmt::Display;
 use std::io;
-use std::io::{
-    ErrorKind,
-    Write,
-    stdout,
-};
+use std::io::{ErrorKind, Write, stdout};
 
 use anstream::stream::IsTerminal;
 pub use consts::*;
 use dialoguer::Select;
 use dialoguer::theme::ColorfulTheme;
-use eyre::{
-    Context,
-    Result,
-    bail,
-};
+use eyre::{Context, Result, bail};
 use thiserror::Error;
 use tracing::warn;
 

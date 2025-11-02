@@ -2,24 +2,12 @@ use std::time::SystemTime;
 
 use amzn_toolkit_telemetry_client::config::BehaviorVersion;
 use aws_credential_types::provider::error::CredentialsError;
-use aws_credential_types::{
-    Credentials,
-    provider,
-};
-use aws_sdk_cognitoidentity::primitives::{
-    DateTime,
-    DateTimeFormat,
-};
-use tracing::{
-    trace,
-    warn,
-};
+use aws_credential_types::{Credentials, provider};
+use aws_sdk_cognitoidentity::primitives::{DateTime, DateTimeFormat};
+use tracing::{trace, warn};
 
 use crate::aws_common::app_name;
-use crate::database::{
-    CredentialsJson,
-    Database,
-};
+use crate::database::{CredentialsJson, Database};
 use crate::telemetry::TelemetryStage;
 
 pub async fn get_cognito_credentials_send(

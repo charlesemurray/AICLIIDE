@@ -1,10 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
 
 use crate::cli::chat::tools::ToolSpec;
@@ -26,10 +23,7 @@ pub mod validation;
 mod unit_tests;
 
 pub use registry::SkillRegistry;
-pub use toolspec_conversion::{
-    ConversionError,
-    ToToolSpec,
-};
+pub use toolspec_conversion::{ConversionError, ToToolSpec};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillResult {

@@ -2,19 +2,12 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::process::Stdio;
 
-use eyre::{
-    Context as EyreContext,
-    Result,
-};
+use eyre::{Context as EyreContext, Result};
 use tokio::io::AsyncBufReadExt;
 use tokio::select;
 use tracing::error;
 
-use super::{
-    CommandResult,
-    env_vars_with_user_agent,
-    format_output,
-};
+use super::{CommandResult, env_vars_with_user_agent, format_output};
 use crate::os::Os;
 use crate::util::env_var::get_chat_shell;
 

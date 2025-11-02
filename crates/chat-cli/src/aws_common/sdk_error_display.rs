@@ -1,9 +1,5 @@
 use std::error::Error;
-use std::fmt::{
-    self,
-    Debug,
-    Display,
-};
+use std::fmt::{self, Debug, Display};
 
 use aws_smithy_runtime_api::client::result::SdkError;
 
@@ -53,13 +49,7 @@ where
 #[cfg(test)]
 mod tests {
     use aws_smithy_runtime_api::client::result::{
-        ConnectorError,
-        ConstructionFailure,
-        DispatchFailure,
-        ResponseError,
-        SdkError,
-        ServiceError,
-        TimeoutError,
+        ConnectorError, ConstructionFailure, DispatchFailure, ResponseError, SdkError, ServiceError, TimeoutError,
     };
 
     use super::SdkErrorDisplay;

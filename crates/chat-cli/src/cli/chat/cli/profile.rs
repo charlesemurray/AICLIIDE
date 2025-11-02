@@ -3,41 +3,18 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use clap::Subcommand;
-use crossterm::style::{
-    self,
-};
-use crossterm::{
-    execute,
-    queue,
-};
-use dialoguer::{
-    MultiSelect,
-    Select,
-};
+use crossterm::style::{self};
+use crossterm::{execute, queue};
+use dialoguer::{MultiSelect, Select};
 use eyre::Result;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{
-    Style,
-    ThemeSet,
-};
+use syntect::highlighting::{Style, ThemeSet};
 use syntect::parsing::SyntaxSet;
-use syntect::util::{
-    LinesWithEndings,
-    as_24_bit_terminal_escaped,
-};
+use syntect::util::{LinesWithEndings, as_24_bit_terminal_escaped};
 
-use crate::cli::agent::{
-    Agent,
-    Agents,
-    McpServerConfig,
-    create_agent,
-};
+use crate::cli::agent::{Agent, Agents, McpServerConfig, create_agent};
 use crate::cli::chat::conversation::McpServerInfo;
-use crate::cli::chat::{
-    ChatError,
-    ChatSession,
-    ChatState,
-};
+use crate::cli::chat::{ChatError, ChatSession, ChatState};
 use crate::database::settings::Setting;
 use crate::os::Os;
 use crate::theme::StyledText;
@@ -526,10 +503,13 @@ pub async fn get_all_available_mcp_servers(os: &mut Os) -> Result<Vec<McpServerI
     for (_, agent) in agents.agents {
         for (server_name, server_config) in agent.mcp_servers.mcp_servers {
             if !servers.values().any(|s| s.config.command == server_config.command) {
-                servers.insert(server_name.clone(), McpServerInfo {
-                    name: server_name,
-                    config: server_config,
-                });
+                servers.insert(
+                    server_name.clone(),
+                    McpServerInfo {
+                        name: server_name,
+                        config: server_config,
+                    },
+                );
             }
         }
     }
@@ -541,10 +521,13 @@ pub async fn get_all_available_mcp_servers(os: &mut Os) -> Result<Vec<McpServerI
         if let Ok(workspace_config) = McpServerConfig::load_from_file(os, workspace_path).await {
             for (server_name, server_config) in workspace_config.mcp_servers {
                 if !servers.values().any(|s| s.config.command == server_config.command) {
-                    servers.insert(server_name.clone(), McpServerInfo {
-                        name: server_name,
-                        config: server_config,
-                    });
+                    servers.insert(
+                        server_name.clone(),
+                        McpServerInfo {
+                            name: server_name,
+                            config: server_config,
+                        },
+                    );
                 }
             }
         }
@@ -555,10 +538,13 @@ pub async fn get_all_available_mcp_servers(os: &mut Os) -> Result<Vec<McpServerI
         if let Ok(global_config) = McpServerConfig::load_from_file(os, global_path).await {
             for (server_name, server_config) in global_config.mcp_servers {
                 if !servers.values().any(|s| s.config.command == server_config.command) {
-                    servers.insert(server_name.clone(), McpServerInfo {
-                        name: server_name,
-                        config: server_config,
-                    });
+                    servers.insert(
+                        server_name.clone(),
+                        McpServerInfo {
+                            name: server_name,
+                            config: server_config,
+                        },
+                    );
                 }
             }
         }

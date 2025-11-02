@@ -8,19 +8,10 @@ use uuid::Uuid;
 
 use super::super::operation::OperationManager;
 use super::context_manager::ContextManager;
-use super::{
-    BM25Context,
-    SemanticContext,
-};
-use crate::embedding::{
-    EmbeddingType,
-    TextEmbedderTrait,
-};
+use super::{BM25Context, SemanticContext};
+use crate::embedding::{EmbeddingType, TextEmbedderTrait};
 use crate::error::Result;
-use crate::types::{
-    BM25DataPoint,
-    DataPoint,
-};
+use crate::types::{BM25DataPoint, DataPoint};
 
 /// Context creator utility
 pub struct ContextCreator;

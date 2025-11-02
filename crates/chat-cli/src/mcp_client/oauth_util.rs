@@ -5,62 +5,29 @@ use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use http::{
-    HeaderMap,
-    StatusCode,
-};
+use http::{HeaderMap, StatusCode};
 use http_body_util::Full;
 use hyper::Response;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
 use reqwest::Client;
-use rmcp::service::{
-    DynService,
-    ServiceExt,
-};
-use rmcp::transport::auth::{
-    AuthClient,
-    OAuthClientConfig,
-    OAuthState,
-    OAuthTokenResponse,
-};
+use rmcp::service::{DynService, ServiceExt};
+use rmcp::transport::auth::{AuthClient, OAuthClientConfig, OAuthState, OAuthTokenResponse};
 use rmcp::transport::sse_client::SseClientConfig;
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
-use rmcp::transport::{
-    AuthorizationManager,
-    AuthorizationSession,
-    SseClientTransport,
-    StreamableHttpClientTransport,
-};
-use rmcp::{
-    RoleClient,
-    Service,
-    serde_json,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use sha2::{
-    Digest,
-    Sha256,
-};
+use rmcp::transport::{AuthorizationManager, AuthorizationSession, SseClientTransport, StreamableHttpClientTransport};
+use rmcp::{RoleClient, Service, serde_json};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tokio::sync::oneshot::Sender;
 use tokio_util::sync::CancellationToken;
-use tracing::{
-    debug,
-    error,
-    info,
-};
+use tracing::{debug, error, info};
 use url::Url;
 
 use super::messenger::Messenger;
 use crate::os::Os;
-use crate::util::paths::{
-    DirectoryError,
-    PathResolver,
-};
+use crate::util::paths::{DirectoryError, PathResolver};
 
 #[derive(Debug, thiserror::Error)]
 pub enum OauthUtilError {
@@ -345,10 +312,13 @@ impl<'a> HttpServiceBuilder<'a> {
                                 }
                             },
                             TransportType::Sse => {
-                                let transport = SseClientTransport::start_with_client(ac.clone(), SseClientConfig {
-                                    sse_endpoint: url.as_str().into(),
-                                    ..Default::default()
-                                })
+                                let transport = SseClientTransport::start_with_client(
+                                    ac.clone(),
+                                    SseClientConfig {
+                                        sse_endpoint: url.as_str().into(),
+                                        ..Default::default()
+                                    },
+                                )
                                 .await
                                 .map_err(|e| OauthUtilError::SseTransport(e.to_string()))?;
 
@@ -399,13 +369,15 @@ impl<'a> HttpServiceBuilder<'a> {
                             },
                             TransportType::Sse => {
                                 info!("## mcp: attempting open sse handshake for {server_name}");
-                                let transport =
-                                    SseClientTransport::start_with_client(reqwest_client.clone(), SseClientConfig {
+                                let transport = SseClientTransport::start_with_client(
+                                    reqwest_client.clone(),
+                                    SseClientConfig {
                                         sse_endpoint: url.as_str().into(),
                                         ..Default::default()
-                                    })
-                                    .await
-                                    .map_err(|e| OauthUtilError::SseTransport(e.to_string()))?;
+                                    },
+                                )
+                                .await
+                                .map_err(|e| OauthUtilError::SseTransport(e.to_string()))?;
 
                                 match service.clone().into_dyn().serve(transport).await {
                                     Ok(service) => return Ok((service, None)),

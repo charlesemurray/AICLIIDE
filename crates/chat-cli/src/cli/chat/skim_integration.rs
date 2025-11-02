@@ -1,25 +1,9 @@
-use std::io::{
-    BufReader,
-    Cursor,
-    Write,
-    stdout,
-};
+use std::io::{BufReader, Cursor, Write, stdout};
 
 use crossterm::execute;
-use crossterm::terminal::{
-    EnterAlternateScreen,
-    LeaveAlternateScreen,
-};
-use eyre::{
-    Result,
-    eyre,
-};
-use rustyline::{
-    Cmd,
-    ConditionalEventHandler,
-    EventContext,
-    RepeatCount,
-};
+use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
+use eyre::{Result, eyre};
+use rustyline::{Cmd, ConditionalEventHandler, EventContext, RepeatCount};
 use skim::prelude::*;
 use tempfile::NamedTempFile;
 

@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use spinners::{
-    Spinner,
-    Spinners,
-};
+use spinners::{Spinner, Spinners};
 
 use crate::theme::StyledText;
 use crate::util::ui::should_send_structured_message;
@@ -36,182 +33,72 @@ pub mod tool_manager;
 pub mod tools;
 pub mod util;
 use std::borrow::Cow;
-use std::collections::{
-    HashMap,
-    VecDeque,
-};
-use std::io::{
-    IsTerminal,
-    Read,
-    Write,
-};
+use std::collections::{HashMap, VecDeque};
+use std::io::{IsTerminal, Read, Write};
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::{
-    Duration,
-    Instant,
-};
+use std::time::{Duration, Instant};
 
 use amzn_codewhisperer_client::types::SubscriptionStatus;
-use chat_cli_ui::conduit::{
-    ConduitError,
-    ControlEnd,
-    DestinationStderr,
-    DestinationStdout,
-    get_legacy_conduits,
-};
+use chat_cli_ui::conduit::{ConduitError, ControlEnd, DestinationStderr, DestinationStdout, get_legacy_conduits};
 use chat_cli_ui::protocol::{
-    Event,
-    MessageRole,
-    TextMessageContent,
-    TextMessageEnd,
-    TextMessageStart,
-    ToolCallRejection,
-    ToolCallStart,
+    Event, MessageRole, TextMessageContent, TextMessageEnd, TextMessageStart, ToolCallRejection, ToolCallStart,
 };
-use clap::{
-    Args,
-    CommandFactory,
-    Parser,
-    ValueEnum,
-};
+use clap::{Args, CommandFactory, Parser, ValueEnum};
 use cli::compact::CompactStrategy;
 use cli::hooks::ToolContext;
-use cli::model::{
-    find_model,
-    get_available_models,
-    select_model,
-};
+use cli::model::{find_model, get_available_models, select_model};
 pub use conversation::ConversationState;
 use conversation::TokenWarningLevel;
-use crossterm::style::{
-    Attribute,
-    Stylize,
-};
-use crossterm::{
-    cursor,
-    execute,
-    queue,
-    style,
-    terminal,
-};
-use eyre::{
-    Report,
-    Result,
-    bail,
-    eyre,
-};
+use crossterm::style::{Attribute, Stylize};
+use crossterm::{cursor, execute, queue, style, terminal};
+use eyre::{Report, Result, bail, eyre};
 use input_source::InputSource;
-use message::{
-    AssistantMessage,
-    AssistantToolUse,
-    ToolUseResult,
-    ToolUseResultBlock,
-};
-use parse::{
-    ParseState,
-    interpret_markdown,
-};
-use parser::{
-    RecvErrorKind,
-    RequestMetadata,
-    SendMessageStream,
-};
+use message::{AssistantMessage, AssistantToolUse, ToolUseResult, ToolUseResultBlock};
+use parse::{ParseState, interpret_markdown};
+use parser::{RecvErrorKind, RequestMetadata, SendMessageStream};
 use regex::Regex;
 use rmcp::model::PromptMessage;
 use thiserror::Error;
 use time::OffsetDateTime;
 use token_counter::TokenCounter;
 use tokio::signal::ctrl_c;
-use tokio::sync::{
-    Mutex,
-    broadcast,
-};
-use tool_manager::{
-    PromptQuery,
-    PromptQueryResult,
-    ToolManager,
-    ToolManagerBuilder,
-};
+use tokio::sync::{Mutex, broadcast};
+use tool_manager::{PromptQuery, PromptQueryResult, ToolManager, ToolManagerBuilder};
 use tools::delegate::status_all_agents;
 use tools::gh_issue::GhIssueContext;
-use tools::{
-    NATIVE_TOOLS,
-    OutputKind,
-    QueuedTool,
-    Tool,
-    ToolSpec,
-};
-use tracing::{
-    debug,
-    error,
-    info,
-    trace,
-    warn,
-};
+use tools::{NATIVE_TOOLS, OutputKind, QueuedTool, Tool, ToolSpec};
+use tracing::{debug, error, info, trace, warn};
 use util::images::RichImageBlock;
 use util::ui::draw_box;
-use util::{
-    animate_output,
-    play_notification_bell,
-};
+use util::{animate_output, play_notification_bell};
 use winnow::Partial;
 use winnow::stream::Offset;
 
-use super::agent::{
-    Agent,
-    DEFAULT_AGENT_NAME,
-    PermissionEvalResult,
-};
+use super::agent::{Agent, DEFAULT_AGENT_NAME, PermissionEvalResult};
 use crate::api_client::model::ToolResultStatus;
-use crate::api_client::{
-    self,
-    ApiClientError,
-};
+use crate::api_client::{self, ApiClientError};
 use crate::auth::AuthError;
 use crate::auth::builder_id::is_idc_user;
 use crate::cli::TodoListState;
 use crate::cli::agent::Agents;
-use crate::cli::chat::checkpoint::{
-    CheckpointManager,
-    truncate_message,
-};
+use crate::cli::chat::checkpoint::{CheckpointManager, truncate_message};
 use crate::cli::chat::cli::SlashCommand;
 use crate::cli::chat::cli::editor::open_editor;
-use crate::cli::chat::cli::prompts::{
-    GetPromptError,
-    PromptsSubcommand,
-};
+use crate::cli::chat::cli::prompts::{GetPromptError, PromptsSubcommand};
 use crate::cli::chat::message::UserMessage;
 use crate::cli::chat::util::sanitize_unicode_tags;
-use crate::cli::experiment::experiment_manager::{
-    ExperimentManager,
-    ExperimentName,
-};
-use crate::constants::{
-    error_messages,
-    tips,
-};
+use crate::cli::experiment::experiment_manager::{ExperimentManager, ExperimentName};
+use crate::constants::{error_messages, tips};
 use crate::database::settings::Setting;
 use crate::os::Os;
 use crate::telemetry::core::{
-    AgentConfigInitArgs,
-    ChatAddedMessageParams,
-    ChatConversationType,
-    MessageMetaTag,
-    RecordUserTurnCompletionArgs,
+    AgentConfigInitArgs, ChatAddedMessageParams, ChatConversationType, MessageMetaTag, RecordUserTurnCompletionArgs,
     ToolUseEventBuilder,
 };
-use crate::telemetry::{
-    ReasonCode,
-    TelemetryResult,
-    get_error_reason,
-};
+use crate::telemetry::{ReasonCode, TelemetryResult, get_error_reason};
 use crate::util::paths::PathResolver;
-use crate::util::{
-    MCP_SERVER_TOOL_DELIMITER,
-    ui,
-};
+use crate::util::{MCP_SERVER_TOOL_DELIMITER, ui};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
 pub enum WrapMode {
@@ -324,13 +211,17 @@ impl ChatArgs {
             agents.trust_all_tools = self.trust_all_tools;
 
             os.telemetry
-                .send_agent_config_init(&os.database, conversation_id.clone(), AgentConfigInitArgs {
-                    agents_loaded_count: md.load_count as i64,
-                    agents_loaded_failed_count: md.load_failed_count as i64,
-                    legacy_profile_migration_executed: md.migration_performed,
-                    legacy_profile_migrated_count: md.migrated_count as i64,
-                    launched_agent: md.launched_agent,
-                })
+                .send_agent_config_init(
+                    &os.database,
+                    conversation_id.clone(),
+                    AgentConfigInitArgs {
+                        agents_loaded_count: md.load_count as i64,
+                        agents_loaded_failed_count: md.load_failed_count as i64,
+                        legacy_profile_migration_executed: md.migration_performed,
+                        legacy_profile_migrated_count: md.migrated_count as i64,
+                        launched_agent: md.launched_agent,
+                    },
+                )
                 .await
                 .map_err(|err| error!(?err, "failed to send agent config init telemetry"))
                 .ok();
@@ -4048,26 +3939,31 @@ impl ChatSession {
             };
 
             os.telemetry
-                .send_record_user_turn_completion(&os.database, conversation_id, result, RecordUserTurnCompletionArgs {
-                    message_ids: mds.iter().map(|md| md.message_id.clone()).collect::<_>(),
-                    request_ids: mds.iter().map(|md| md.request_id.clone()).collect::<_>(),
-                    reason,
-                    reason_desc,
-                    status_code,
-                    time_to_first_chunks_ms: mds
-                        .iter()
-                        .map(|md| md.time_to_first_chunk.map(|d| d.as_secs_f64() * 1000.0))
-                        .collect::<_>(),
-                    chat_conversation_type: md.and_then(|md| md.chat_conversation_type),
-                    assistant_response_length: mds.iter().map(|md| md.response_size as i64).sum(),
-                    message_meta_tags: mds.last().map(|md| md.message_meta_tags.clone()).unwrap_or_default(),
-                    user_prompt_length: mds.first().map(|md| md.user_prompt_length).unwrap_or_default() as i64,
-                    user_turn_duration_seconds,
-                    follow_up_count: mds
-                        .iter()
-                        .filter(|md| matches!(md.chat_conversation_type, Some(ChatConversationType::ToolUse)))
-                        .count() as i64,
-                })
+                .send_record_user_turn_completion(
+                    &os.database,
+                    conversation_id,
+                    result,
+                    RecordUserTurnCompletionArgs {
+                        message_ids: mds.iter().map(|md| md.message_id.clone()).collect::<_>(),
+                        request_ids: mds.iter().map(|md| md.request_id.clone()).collect::<_>(),
+                        reason,
+                        reason_desc,
+                        status_code,
+                        time_to_first_chunks_ms: mds
+                            .iter()
+                            .map(|md| md.time_to_first_chunk.map(|d| d.as_secs_f64() * 1000.0))
+                            .collect::<_>(),
+                        chat_conversation_type: md.and_then(|md| md.chat_conversation_type),
+                        assistant_response_length: mds.iter().map(|md| md.response_size as i64).sum(),
+                        message_meta_tags: mds.last().map(|md| md.message_meta_tags.clone()).unwrap_or_default(),
+                        user_prompt_length: mds.first().map(|md| md.user_prompt_length).unwrap_or_default() as i64,
+                        user_turn_duration_seconds,
+                        follow_up_count: mds
+                            .iter()
+                            .filter(|md| matches!(md.chat_conversation_type, Some(ChatConversationType::ToolUse)))
+                            .count() as i64,
+                    },
+                )
                 .await
                 .ok();
         }
@@ -4749,10 +4645,7 @@ mod tests {
     async fn test_tool_hook_integration() {
         use std::collections::HashMap;
 
-        use crate::cli::agent::hook::{
-            Hook,
-            HookTrigger,
-        };
+        use crate::cli::agent::hook::{Hook, HookTrigger};
 
         let mut os = Os::new().await.unwrap();
         os.client.set_mock_output(serde_json::json!([
@@ -4791,23 +4684,29 @@ mod tests {
         let pre_hook_command = format!("cat > {}", pre_hook_log_path);
         let post_hook_command = format!("cat > {}", post_hook_log_path);
 
-        hooks.insert(HookTrigger::PreToolUse, vec![Hook {
-            command: pre_hook_command,
-            timeout_ms: 5000,
-            max_output_size: 1024,
-            cache_ttl_seconds: 0,
-            matcher: Some("fs_*".to_string()), // Match fs_read, fs_write, etc.
-            source: crate::cli::agent::hook::Source::Agent,
-        }]);
+        hooks.insert(
+            HookTrigger::PreToolUse,
+            vec![Hook {
+                command: pre_hook_command,
+                timeout_ms: 5000,
+                max_output_size: 1024,
+                cache_ttl_seconds: 0,
+                matcher: Some("fs_*".to_string()), // Match fs_read, fs_write, etc.
+                source: crate::cli::agent::hook::Source::Agent,
+            }],
+        );
 
-        hooks.insert(HookTrigger::PostToolUse, vec![Hook {
-            command: post_hook_command,
-            timeout_ms: 5000,
-            max_output_size: 1024,
-            cache_ttl_seconds: 0,
-            matcher: Some("fs_*".to_string()), // Match fs_read, fs_write, etc.
-            source: crate::cli::agent::hook::Source::Agent,
-        }]);
+        hooks.insert(
+            HookTrigger::PostToolUse,
+            vec![Hook {
+                command: post_hook_command,
+                timeout_ms: 5000,
+                max_output_size: 1024,
+                cache_ttl_seconds: 0,
+                matcher: Some("fs_*".to_string()), // Match fs_read, fs_write, etc.
+                source: crate::cli::agent::hook::Source::Agent,
+            }],
+        );
 
         let agent = Agent {
             name: "TestAgent".to_string(),
@@ -4894,10 +4793,7 @@ mod tests {
     async fn test_pretool_hook_blocking_integration() {
         use std::collections::HashMap;
 
-        use crate::cli::agent::hook::{
-            Hook,
-            HookTrigger,
-        };
+        use crate::cli::agent::hook::{Hook, HookTrigger};
 
         let mut os = Os::new().await.unwrap();
 
@@ -4936,14 +4832,17 @@ mod tests {
         #[cfg(windows)]
         let hook_command = "echo Security policy violation: cannot read sensitive files 1>&2 & exit /b 2";
 
-        hooks.insert(HookTrigger::PreToolUse, vec![Hook {
-            command: hook_command.to_string(),
-            timeout_ms: 5000,
-            max_output_size: 1024,
-            cache_ttl_seconds: 0,
-            matcher: Some("fs_read".to_string()),
-            source: crate::cli::agent::hook::Source::Agent,
-        }]);
+        hooks.insert(
+            HookTrigger::PreToolUse,
+            vec![Hook {
+                command: hook_command.to_string(),
+                timeout_ms: 5000,
+                max_output_size: 1024,
+                cache_ttl_seconds: 0,
+                matcher: Some("fs_read".to_string()),
+                source: crate::cli::agent::hook::Source::Agent,
+            }],
+        );
 
         let agent = Agent {
             name: "SecurityAgent".to_string(),

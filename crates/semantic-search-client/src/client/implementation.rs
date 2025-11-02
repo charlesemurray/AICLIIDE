@@ -1,36 +1,17 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::{
-    Path,
-    PathBuf,
-};
-use std::sync::{
-    Arc,
-    Mutex,
-};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 
 use crate::client::context::SemanticContext;
-use crate::client::{
-    embedder_factory,
-    utils,
-};
+use crate::client::{embedder_factory, utils};
 use crate::config;
 use crate::embedding::TextEmbedderTrait;
-use crate::error::{
-    Result,
-    SemanticSearchError,
-};
+use crate::error::{Result, SemanticSearchError};
 use crate::processing::process_file_with_config;
-use crate::types::{
-    ContextId,
-    ContextMap,
-    DataPoint,
-    KnowledgeContext,
-    ProgressStatus,
-    SearchResults,
-};
+use crate::types::{ContextId, ContextMap, DataPoint, KnowledgeContext, ProgressStatus, SearchResults};
 
 /// Semantic search client for managing semantic memory
 ///

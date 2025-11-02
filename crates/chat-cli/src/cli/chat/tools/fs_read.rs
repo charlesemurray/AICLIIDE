@@ -3,46 +3,18 @@ use std::fs::Metadata;
 use std::io::Write;
 
 use crossterm::queue;
-use crossterm::style::{
-    self,
-};
-use eyre::{
-    Result,
-    bail,
-};
+use crossterm::style::{self};
+use eyre::{Result, bail};
 use globset::GlobSetBuilder;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use syntect::util::LinesWithEndings;
-use tracing::{
-    debug,
-    error,
-    warn,
-};
+use tracing::{debug, error, warn};
 
-use super::{
-    InvokeOutput,
-    MAX_TOOL_RESPONSE_SIZE,
-    OutputKind,
-    format_path,
-    sanitize_path_tool_arg,
-};
-use crate::cli::agent::{
-    Agent,
-    PermissionEvalResult,
-};
+use super::{InvokeOutput, MAX_TOOL_RESPONSE_SIZE, OutputKind, format_path, sanitize_path_tool_arg};
+use crate::cli::agent::{Agent, PermissionEvalResult};
 use crate::cli::chat::tools::display_purpose;
-use crate::cli::chat::util::images::{
-    handle_images_from_paths,
-    is_supported_image_type,
-    pre_process,
-};
-use crate::cli::chat::{
-    CONTINUATION_LINE,
-    sanitize_unicode_tags,
-};
+use crate::cli::chat::util::images::{handle_images_from_paths, is_supported_image_type, pre_process};
+use crate::cli::chat::{CONTINUATION_LINE, sanitize_unicode_tags};
 use crate::os::Os;
 use crate::theme::StyledText;
 use crate::util::paths;
@@ -743,10 +715,7 @@ impl FsDirectory {
 
             #[cfg(unix)]
             while let Some(ent) = read_dir.next_entry().await? {
-                use std::os::unix::fs::{
-                    MetadataExt,
-                    PermissionsExt,
-                };
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
                 let md = ent.metadata().await?;
                 let formatted_mode = format_mode(md.permissions().mode()).into_iter().collect::<String>();
@@ -867,11 +836,7 @@ mod tests {
 
     use super::*;
     use crate::cli::agent::ToolSettingTarget;
-    use crate::cli::chat::util::test::{
-        TEST_FILE_CONTENTS,
-        TEST_FILE_PATH,
-        setup_test_directory,
-    };
+    use crate::cli::chat::util::test::{TEST_FILE_CONTENTS, TEST_FILE_PATH, setup_test_directory};
 
     #[test]
     fn test_negative_index_conversion() {

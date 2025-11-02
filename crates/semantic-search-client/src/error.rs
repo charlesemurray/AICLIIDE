@@ -1,7 +1,4 @@
-use std::{
-    fmt,
-    io,
-};
+use std::{fmt, io};
 
 /// Result type for semantic search operations
 pub type Result<T> = std::result::Result<T, SemanticSearchError>;

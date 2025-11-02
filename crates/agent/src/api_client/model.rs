@@ -1,21 +1,8 @@
 use std::collections::HashMap;
 
-use aws_smithy_types::{
-    Blob,
-    Document as AwsDocument,
-};
-use serde::de::{
-    self,
-    MapAccess,
-    SeqAccess,
-    Visitor,
-};
-use serde::{
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
+use aws_smithy_types::{Blob, Document as AwsDocument};
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1090,9 +1077,12 @@ mod tests {
                 .build()
                 .unwrap(),
         );
-        assert_eq!(ChatResponseStream::from(code_event), ChatResponseStream::CodeEvent {
-            content: "context".into()
-        });
+        assert_eq!(
+            ChatResponseStream::from(code_event),
+            ChatResponseStream::CodeEvent {
+                content: "context".into()
+            }
+        );
 
         let code_event = amzn_qdeveloper_streaming_client::types::ChatResponseStream::CodeEvent(
             amzn_qdeveloper_streaming_client::types::CodeEvent::builder()
@@ -1100,9 +1090,12 @@ mod tests {
                 .build()
                 .unwrap(),
         );
-        assert_eq!(ChatResponseStream::from(code_event), ChatResponseStream::CodeEvent {
-            content: "context".into()
-        });
+        assert_eq!(
+            ChatResponseStream::from(code_event),
+            ChatResponseStream::CodeEvent {
+                content: "context".into()
+            }
+        );
 
         let code_reference_event = amzn_codewhisperer_streaming_client::types::ChatResponseStream::CodeReferenceEvent(
             amzn_codewhisperer_streaming_client::types::CodeReferenceEvent::builder().build(),

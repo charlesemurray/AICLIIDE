@@ -1,17 +1,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use super::{
-    Skill,
-    SkillError,
-    SkillResult,
-};
+use super::{Skill, SkillError, SkillResult};
 use crate::cli::chat::tools::ToolSpec;
 use crate::cli::skills::builtin::PlaceholderSkill;
 

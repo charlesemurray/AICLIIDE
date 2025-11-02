@@ -2,14 +2,8 @@ use std::io::Write;
 
 use eyre::Result;
 
-use super::{
-    InvokeOutput,
-    OutputKind,
-};
-use crate::cli::workflow::{
-    Workflow,
-    WorkflowExecutor,
-};
+use super::{InvokeOutput, OutputKind};
+use crate::cli::workflow::{Workflow, WorkflowExecutor};
 
 #[derive(Debug, Clone)]
 pub struct WorkflowTool {
@@ -37,14 +31,8 @@ impl WorkflowTool {
 mod tests {
     use super::*;
     use crate::cli::skills::SkillRegistry;
-    use crate::cli::workflow::types::{
-        StepType,
-        WorkflowStep,
-    };
-    use crate::cli::workflow::{
-        Workflow,
-        WorkflowExecutor,
-    };
+    use crate::cli::workflow::types::{StepType, WorkflowStep};
+    use crate::cli::workflow::{Workflow, WorkflowExecutor};
 
     #[tokio::test]
     async fn test_workflow_tool_invocation() {

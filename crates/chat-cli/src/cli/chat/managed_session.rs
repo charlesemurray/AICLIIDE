@@ -7,10 +7,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::cli::chat::ConversationState;
-use crate::theme::session::{
-    SessionDisplay,
-    SessionStatus,
-};
+use crate::theme::session::{SessionDisplay, SessionStatus};
 
 /// Events that can be buffered for background sessions
 #[derive(Debug, Clone)]
@@ -160,10 +157,7 @@ impl ManagedSession {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::session::{
-        SessionDisplay,
-        SessionType,
-    };
+    use crate::theme::session::{SessionDisplay, SessionType};
 
     #[test]
     fn test_output_event_size() {

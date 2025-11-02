@@ -1,23 +1,9 @@
 use async_trait::async_trait;
-use serde_json::{
-    Value,
-    json,
-};
+use serde_json::{Value, json};
 
-use crate::cli::chat::tools::{
-    InputSchema,
-    ToolOrigin,
-    ToolSpec,
-};
+use crate::cli::chat::tools::{InputSchema, ToolOrigin, ToolSpec};
 use crate::cli::skills::toolspec_conversion::ConversionError;
-use crate::cli::skills::{
-    Result,
-    Skill,
-    SkillError,
-    SkillResult,
-    SkillUI,
-    UIElement,
-};
+use crate::cli::skills::{Result, Skill, SkillError, SkillResult, SkillUI, UIElement};
 
 pub struct Calculator;
 

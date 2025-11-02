@@ -14,11 +14,7 @@ use std::sync::Arc;
 
 use execute_cmd::ExecuteCmd;
 use fs_read::FsRead;
-use fs_write::{
-    FsWrite,
-    FsWriteContext,
-    FsWriteState,
-};
+use fs_write::{FsWrite, FsWriteContext, FsWriteState};
 use grep::Grep;
 use image_read::ImageRead;
 use introspect::Introspect;
@@ -26,20 +22,14 @@ use ls::Ls;
 use mcp::McpTool;
 use mkdir::Mkdir;
 use schemars::JsonSchema;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
 use super::agent_config::parse::CanonicalToolName;
 use super::agent_loop::types::ToolUseBlock;
 use super::consts::TOOL_USE_PURPOSE_FIELD_NAME;
 use super::protocol::AgentError;
-use crate::agent::agent_loop::types::{
-    ImageBlock,
-    ToolSpec,
-};
+use crate::agent::agent_loop::types::{ImageBlock, ToolSpec};
 
 fn generate_tool_spec_from_json_schema<T>() -> ToolSpec
 where

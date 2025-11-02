@@ -4,14 +4,8 @@
 use std::path::PathBuf;
 
 use crate::cli::skills::security::{
-    FilePermissions,
-    NetworkPermissions,
-    PermissionSet,
-    ProcessPermissions,
-    ResourceLimits,
-    SecurityContext,
-    SecurityError,
-    TrustLevel,
+    FilePermissions, NetworkPermissions, PermissionSet, ProcessPermissions, ResourceLimits, SecurityContext,
+    SecurityError, TrustLevel,
 };
 
 #[cfg(test)]
