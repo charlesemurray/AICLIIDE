@@ -2,7 +2,10 @@ use std::sync::RwLock;
 
 use hnsw_rs::hnsw::Hnsw;
 use hnsw_rs::prelude::DistCosine;
-use tracing::{debug, info};
+use tracing::{
+    debug,
+    info,
+};
 
 /// Vector index for fast approximate nearest neighbor search
 pub struct VectorIndex {

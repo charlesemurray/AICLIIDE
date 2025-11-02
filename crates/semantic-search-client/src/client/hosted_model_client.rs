@@ -8,10 +8,19 @@
 use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result as AnyhowResult};
-use indicatif::{ProgressBar, ProgressStyle};
+use anyhow::{
+    Context,
+    Result as AnyhowResult,
+};
+use indicatif::{
+    ProgressBar,
+    ProgressStyle,
+};
 use reqwest;
-use tracing::{debug, error};
+use tracing::{
+    debug,
+    error,
+};
 
 use crate::embedding::ModelConfig;
 use crate::model_validator::ModelValidator;

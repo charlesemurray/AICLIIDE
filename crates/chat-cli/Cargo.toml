@@ -153,3 +153,8 @@ serde.workspace = true
 serde_json.workspace = true
 syn.workspace = true
 schemars.workspace = true
+
+[[bench]]
+name = "toolspec_conversion"
+harness = false
+

@@ -5,8 +5,15 @@
 #![allow(dead_code)]
 
 use aws_smithy_http::header::set_request_header_if_absent;
-use aws_smithy_types::config_bag::{Storable, StoreReplace};
-use http::header::{CONTENT_LENGTH, CONTENT_TYPE, HeaderName};
+use aws_smithy_types::config_bag::{
+    Storable,
+    StoreReplace,
+};
+use http::header::{
+    CONTENT_LENGTH,
+    CONTENT_TYPE,
+    HeaderName,
+};
 
 /// Configuration for how default protocol headers are serialized
 #[derive(Clone, Debug, Default)]

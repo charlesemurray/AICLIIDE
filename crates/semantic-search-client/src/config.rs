@@ -5,10 +5,16 @@
 //! It also manages model paths and directory structure.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::sync::OnceLock;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::embedding::EmbeddingType;
 

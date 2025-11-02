@@ -1,4 +1,8 @@
-use crossterm::style::{ResetColor, SetAttribute, SetForegroundColor};
+use crossterm::style::{
+    ResetColor,
+    SetAttribute,
+    SetForegroundColor,
+};
 
 /// This trait is purely here to facilitate a smooth transition from the old event loop to a new
 /// event loop. It is a way to achieve inversion of control to delegate the implementation of

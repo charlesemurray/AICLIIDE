@@ -11,55 +11,151 @@ pub mod tools;
 pub mod types;
 pub mod util;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use agent_config::LoadedMcpServerConfigs;
-use agent_config::definitions::{AgentConfig, HookConfig, HookTrigger};
-use agent_config::parse::{CanonicalToolName, ResourceKind, ToolNameKind};
+use agent_config::definitions::{
+    AgentConfig,
+    HookConfig,
+    HookTrigger,
+};
+use agent_config::parse::{
+    CanonicalToolName,
+    ResourceKind,
+    ToolNameKind,
+};
 use agent_loop::model::Model;
 use agent_loop::protocol::{
-    AgentLoopEvent, AgentLoopEventKind, AgentLoopResponse, LoopError, SendRequestArgs, UserTurnMetadata,
+    AgentLoopEvent,
+    AgentLoopEventKind,
+    AgentLoopResponse,
+    LoopError,
+    SendRequestArgs,
+    UserTurnMetadata,
 };
 use agent_loop::types::{
-    ContentBlock, Message, Role, StreamErrorKind, ToolResultBlock, ToolResultContentBlock, ToolResultStatus, ToolSpec,
+    ContentBlock,
+    Message,
+    Role,
+    StreamErrorKind,
+    ToolResultBlock,
+    ToolResultContentBlock,
+    ToolResultStatus,
+    ToolSpec,
     ToolUseBlock,
 };
-use agent_loop::{AgentLoop, AgentLoopHandle, AgentLoopId, LoopState};
+use agent_loop::{
+    AgentLoop,
+    AgentLoopHandle,
+    AgentLoopId,
+    LoopState,
+};
 use chrono::Utc;
 use consts::MAX_RESOURCE_FILE_LENGTH;
 use futures::stream::FuturesUnordered;
 use permissions::evaluate_tool_permission;
 use protocol::{
-    AgentError, AgentEvent, AgentRequest, AgentResponse, AgentStopReason, ApprovalResult, ContentChunk, InternalEvent,
-    PermissionEvalResult, SendApprovalResultArgs, SendPromptArgs, ToolCall, UpdateEvent,
+    AgentError,
+    AgentEvent,
+    AgentRequest,
+    AgentResponse,
+    AgentStopReason,
+    ApprovalResult,
+    ContentChunk,
+    InternalEvent,
+    PermissionEvalResult,
+    SendApprovalResultArgs,
+    SendPromptArgs,
+    ToolCall,
+    UpdateEvent,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use task_executor::{
-    Hook, HookExecutionId, HookExecutorResult, HookResult, StartHookExecution, StartToolExecution, TaskExecutor,
-    TaskExecutorEvent, ToolExecutionEndEvent, ToolExecutionId, ToolExecutorResult, ToolFuture,
+    Hook,
+    HookExecutionId,
+    HookExecutorResult,
+    HookResult,
+    StartHookExecution,
+    StartToolExecution,
+    TaskExecutor,
+    TaskExecutorEvent,
+    ToolExecutionEndEvent,
+    ToolExecutionId,
+    ToolExecutorResult,
+    ToolFuture,
 };
-use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::sync::{
+    broadcast,
+    mpsc,
+    oneshot,
+};
 use tokio::time::Instant;
 use tokio_stream::StreamExt as _;
 use tokio_util::sync::CancellationToken;
-use tool_utils::{SanitizedToolSpecs, add_tool_use_purpose_arg, sanitize_tool_specs};
-use tools::{
-    Tool, ToolExecutionError, ToolExecutionOutput, ToolExecutionOutputItem, ToolParseError, ToolParseErrorKind,
+use tool_utils::{
+    SanitizedToolSpecs,
+    add_tool_use_purpose_arg,
+    sanitize_tool_specs,
 };
-use tracing::{debug, error, info, trace, warn};
-use types::{AgentId, AgentSettings, AgentSnapshot, ConversationMetadata, ConversationState};
+use tools::{
+    Tool,
+    ToolExecutionError,
+    ToolExecutionOutput,
+    ToolExecutionOutputItem,
+    ToolParseError,
+    ToolParseErrorKind,
+};
+use tracing::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
+use types::{
+    AgentId,
+    AgentSettings,
+    AgentSnapshot,
+    ConversationMetadata,
+    ConversationState,
+};
 use util::path::canonicalize_path_sys;
-use util::providers::{RealProvider, SystemProvider};
+use util::providers::{
+    RealProvider,
+    SystemProvider,
+};
 use util::read_file_with_max_limit;
 use util::request_channel::new_request_channel;
 
-use crate::agent::consts::{DUMMY_TOOL_NAME, MAX_CONVERSATION_STATE_HISTORY_LEN};
+use crate::agent::consts::{
+    DUMMY_TOOL_NAME,
+    MAX_CONVERSATION_STATE_HISTORY_LEN,
+};
 use crate::agent::mcp::McpManagerHandle;
-use crate::agent::tools::{BuiltInTool, ToolKind, ToolState, built_in_tool_names};
-use crate::agent::util::glob::{find_matches, matches_any_pattern};
-use crate::agent::util::request_channel::{RequestReceiver, RequestSender, respond};
+use crate::agent::tools::{
+    BuiltInTool,
+    ToolKind,
+    ToolState,
+    built_in_tool_names,
+};
+use crate::agent::util::glob::{
+    find_matches,
+    matches_any_pattern,
+};
+use crate::agent::util::request_channel::{
+    RequestReceiver,
+    RequestSender,
+    respond,
+};
 
 pub const CONTEXT_ENTRY_START_HEADER: &str = "--- CONTEXT ENTRY BEGIN ---\n";
 pub const CONTEXT_ENTRY_END_HEADER: &str = "--- CONTEXT ENTRY END ---\n\n";

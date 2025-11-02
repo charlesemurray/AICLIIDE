@@ -2,18 +2,47 @@ pub mod definitions;
 pub mod parse;
 pub mod types;
 
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
-use definitions::{AgentConfig, HookConfig, HookTrigger, McpServerConfig, McpServers, ToolSettings};
+use definitions::{
+    AgentConfig,
+    HookConfig,
+    HookTrigger,
+    McpServerConfig,
+    McpServers,
+    ToolSettings,
+};
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::fs;
-use tracing::{error, info, warn};
+use tracing::{
+    error,
+    info,
+    warn,
+};
 
-use super::util::directories::{global_agents_path, legacy_global_mcp_config_path};
-use crate::agent::util::directories::{legacy_workspace_mcp_config_path, local_agents_path};
-use crate::agent::util::error::{ErrorContext as _, UtilError};
+use super::util::directories::{
+    global_agents_path,
+    legacy_global_mcp_config_path,
+};
+use crate::agent::util::directories::{
+    legacy_workspace_mcp_config_path,
+    local_agents_path,
+};
+use crate::agent::util::error::{
+    ErrorContext as _,
+    UtilError,
+};
 
 /// Represents an agent config.
 ///

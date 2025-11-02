@@ -8,7 +8,10 @@ pub mod memory_manager;
 pub mod memory_note;
 pub mod stm;
 
-pub use error::{CortexError, Result};
+pub use error::{
+    CortexError,
+    Result,
+};
 pub use hnsw_wrapper::HnswWrapper;
 pub use id_mapper::IdMapper;
 pub use ltm::LongTermMemory;
@@ -18,7 +21,11 @@ pub use stm::ShortTermMemory;
 
 #[cfg(test)]
 mod tests {
-    use hnswlib::{HnswDistanceFunction, HnswIndex, HnswIndexInitConfig};
+    use hnswlib::{
+        HnswDistanceFunction,
+        HnswIndex,
+        HnswIndexInitConfig,
+    };
 
     #[test]
     fn test_hnswlib_basic() {

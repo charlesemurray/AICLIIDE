@@ -1,14 +1,27 @@
 use std::path::PathBuf;
 
 use futures::StreamExt;
-use schemars::{JsonSchema, schema_for};
-use serde::{Deserialize, Serialize};
+use schemars::{
+    JsonSchema,
+    schema_for,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::fs;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{
+    AsyncBufReadExt,
+    BufReader,
+};
 use tokio_stream::wrappers::LinesStream;
 
 use super::{
-    BuiltInToolName, BuiltInToolTrait, ToolExecutionError, ToolExecutionOutput, ToolExecutionOutputItem,
+    BuiltInToolName,
+    BuiltInToolTrait,
+    ToolExecutionError,
+    ToolExecutionOutput,
+    ToolExecutionOutputItem,
     ToolExecutionResult,
 };
 use crate::util::path::canonicalize_path_sys;

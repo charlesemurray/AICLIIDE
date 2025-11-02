@@ -1,5 +1,12 @@
-use rmcp::model::{Prompt as RmcpPrompt, PromptArgument as RmcpPromptArgument, Tool as RmcpTool};
-use serde::{Deserialize, Serialize};
+use rmcp::model::{
+    Prompt as RmcpPrompt,
+    PromptArgument as RmcpPromptArgument,
+    Tool as RmcpTool,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::agent::agent_loop::types::ToolSpec;
 

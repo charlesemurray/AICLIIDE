@@ -1379,17 +1379,38 @@ pub(crate) fn base_client_runtime_plugins(
     plugins
 }
 
-pub use ::aws_credential_types::provider::{ProvideCredentials, SharedCredentialsProvider};
-pub use ::aws_smithy_async::rt::sleep::{AsyncSleep, SharedAsyncSleep};
+pub use ::aws_credential_types::provider::{
+    ProvideCredentials,
+    SharedCredentialsProvider,
+};
+pub use ::aws_smithy_async::rt::sleep::{
+    AsyncSleep,
+    SharedAsyncSleep,
+};
 pub use ::aws_smithy_runtime_api::client::behavior_version::BehaviorVersion;
-pub use ::aws_smithy_runtime_api::client::http::{HttpClient, SharedHttpClient};
-pub use ::aws_smithy_runtime_api::client::identity::{ResolveCachedIdentity, SharedIdentityCache};
-pub use ::aws_smithy_runtime_api::client::interceptors::{Intercept, SharedInterceptor};
+pub use ::aws_smithy_runtime_api::client::http::{
+    HttpClient,
+    SharedHttpClient,
+};
+pub use ::aws_smithy_runtime_api::client::identity::{
+    ResolveCachedIdentity,
+    SharedIdentityCache,
+};
+pub use ::aws_smithy_runtime_api::client::interceptors::{
+    Intercept,
+    SharedInterceptor,
+};
 pub use ::aws_smithy_runtime_api::client::runtime_components::RuntimeComponentsBuilder;
-pub use ::aws_smithy_runtime_api::client::runtime_plugin::{RuntimePlugin, SharedRuntimePlugin};
+pub use ::aws_smithy_runtime_api::client::runtime_plugin::{
+    RuntimePlugin,
+    SharedRuntimePlugin,
+};
 pub use ::aws_smithy_runtime_api::client::stalled_stream_protection::StalledStreamProtectionConfig;
 pub use ::aws_smithy_runtime_api::shared::IntoShared;
-pub use ::aws_smithy_types::config_bag::{FrozenLayer, Layer};
+pub use ::aws_smithy_types::config_bag::{
+    FrozenLayer,
+    Layer,
+};
 pub use ::aws_types::region::Region;
 
 /// Types needed to configure endpoint resolution.

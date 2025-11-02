@@ -1,6 +1,14 @@
-use hnswlib::{HnswDistanceFunction, HnswIndex, HnswIndexInitConfig};
+use hnswlib::{
+    HnswDistanceFunction,
+    HnswIndex,
+    HnswIndexInitConfig,
+};
 
-use crate::{CortexError, IdMapper, Result};
+use crate::{
+    CortexError,
+    IdMapper,
+    Result,
+};
 
 pub struct HnswWrapper {
     index: HnswIndex,

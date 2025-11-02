@@ -3,18 +3,40 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rmcp::ServiceError;
-use rmcp::model::{CallToolRequestParam, Prompt as RmcpPrompt, Tool as RmcpTool};
-use serde::{Deserialize, Serialize};
+use rmcp::model::{
+    CallToolRequestParam,
+    Prompt as RmcpPrompt,
+    Tool as RmcpTool,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
-use tokio::sync::{mpsc, oneshot};
-use tracing::{debug, error, warn};
+use tokio::sync::{
+    mpsc,
+    oneshot,
+};
+use tracing::{
+    debug,
+    error,
+    warn,
+};
 
 use super::ExecuteToolResult;
-use super::service::{McpService, RunningMcpService};
+use super::service::{
+    McpService,
+    RunningMcpService,
+};
 use super::types::Prompt;
 use crate::agent::agent_config::definitions::McpServerConfig;
 use crate::agent::agent_loop::types::ToolSpec;
-use crate::agent::util::request_channel::{RequestReceiver, RequestSender, new_request_channel, respond};
+use crate::agent::util::request_channel::{
+    RequestReceiver,
+    RequestSender,
+    new_request_channel,
+    respond,
+};
 
 /// Represents a message from an MCP server to the client.
 #[derive(Debug)]

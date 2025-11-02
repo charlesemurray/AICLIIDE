@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -10,9 +13,15 @@ use super::context::ContextManager;
 use super::model::ModelDownloader;
 use super::operation::OperationManager;
 use crate::client::embedder_factory;
-use crate::config::{self, SemanticSearchConfig};
+use crate::config::{
+    self,
+    SemanticSearchConfig,
+};
 use crate::embedding::TextEmbedderTrait;
-use crate::error::{Result, SemanticSearchError};
+use crate::error::{
+    Result,
+    SemanticSearchError,
+};
 use crate::types::*;
 
 /// Async Semantic Search Client with proper cancellation support

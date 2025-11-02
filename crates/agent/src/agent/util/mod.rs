@@ -14,9 +14,15 @@ use std::path::Path;
 
 use bstr::ByteSlice as _;
 use consts::env_var::CLI_IS_INTEG_TEST;
-use error::{ErrorContext as _, UtilError};
+use error::{
+    ErrorContext as _,
+    UtilError,
+};
 use regex::Regex;
-use tokio::io::{AsyncReadExt as _, BufReader};
+use tokio::io::{
+    AsyncReadExt as _,
+    BufReader,
+};
 
 pub fn expand_env_vars(env_vars: &mut HashMap<String, String>) {
     let env_provider = |input: &str| Ok(std::env::var(input).ok());

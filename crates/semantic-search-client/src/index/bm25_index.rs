@@ -1,11 +1,25 @@
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{
+    BufReader,
+    BufWriter,
+};
 use std::path::Path;
 use std::sync::RwLock;
 
-use bm25::{Document, Language, SearchEngine, SearchEngineBuilder};
-use serde::{Deserialize, Serialize};
-use tracing::{debug, info};
+use bm25::{
+    Document,
+    Language,
+    SearchEngine,
+    SearchEngineBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use tracing::{
+    debug,
+    info,
+};
 
 /// Serializable document for persistence
 #[derive(Serialize, Deserialize)]

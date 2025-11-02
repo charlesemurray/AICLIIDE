@@ -2,7 +2,10 @@ use std::borrow::Borrow;
 use std::ops::Deref;
 
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq, JsonSchema)]
 pub struct ResourcePath(

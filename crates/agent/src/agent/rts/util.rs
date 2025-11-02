@@ -1,4 +1,7 @@
-use aws_smithy_types::{Document, Number as SmithyNumber};
+use aws_smithy_types::{
+    Document,
+    Number as SmithyNumber,
+};
 
 pub fn serde_value_to_document(value: serde_json::Value) -> Document {
     match value {

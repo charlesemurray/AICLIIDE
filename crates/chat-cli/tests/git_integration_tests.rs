@@ -2,7 +2,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use chat_cli::git::{GitError, create_worktree, detect_git_context, is_git_installed, list_worktrees, remove_worktree};
+use chat_cli::git::{
+    GitError,
+    create_worktree,
+    detect_git_context,
+    is_git_installed,
+    list_worktrees,
+    remove_worktree,
+};
 use tempfile::TempDir;
 
 /// Helper to create a test git repository

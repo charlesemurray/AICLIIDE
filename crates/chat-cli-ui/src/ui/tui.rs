@@ -1,14 +1,35 @@
 #![allow(dead_code)]
-use std::io::{Stderr, stderr};
-use std::ops::{Deref, DerefMut};
+use std::io::{
+    Stderr,
+    stderr,
+};
+use std::ops::{
+    Deref,
+    DerefMut,
+};
 
 use crossterm::cursor;
-use crossterm::event::{Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseEvent};
-use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::event::{
+    Event as CrosstermEvent,
+    KeyEvent,
+    KeyEventKind,
+    MouseEvent,
+};
+use crossterm::terminal::{
+    EnterAlternateScreen,
+    LeaveAlternateScreen,
+};
 use eyre::Result;
-use futures::{FutureExt, StreamExt};
+use futures::{
+    FutureExt,
+    StreamExt,
+};
 use ratatui::backend::CrosstermBackend as Backend;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{
+    UnboundedReceiver,
+    UnboundedSender,
+    unbounded_channel,
+};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::error;

@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::fs;
 
-use cortex_memory::{MemoryManager, MemoryNote, ShortTermMemory};
+use cortex_memory::{
+    MemoryManager,
+    MemoryNote,
+    ShortTermMemory,
+};
 use serde::Deserialize;
 use serde_json::Value;
 use tempfile::NamedTempFile;

@@ -1,13 +1,22 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::{
+    Duration,
+    SystemTime,
+};
 
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{
+    Mutex,
+    RwLock,
+};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use super::super::context::ContextManager;
-use crate::error::{Result, SemanticSearchError};
+use crate::error::{
+    Result,
+    SemanticSearchError,
+};
 use crate::types::*;
 
 const MAX_CONCURRENT_OPERATIONS: usize = 3;

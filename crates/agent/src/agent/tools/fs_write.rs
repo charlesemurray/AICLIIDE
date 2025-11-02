@@ -1,9 +1,20 @@
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use syntect::util::LinesWithEndings;
 
-use super::{BuiltInToolName, BuiltInToolTrait, ToolExecutionError, ToolExecutionResult};
+use super::{
+    BuiltInToolName,
+    BuiltInToolTrait,
+    ToolExecutionError,
+    ToolExecutionResult,
+};
 use crate::util::path::canonicalize_path_sys;
 use crate::util::providers::SystemProvider;
 

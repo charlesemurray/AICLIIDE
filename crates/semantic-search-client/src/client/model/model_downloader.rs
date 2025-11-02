@@ -1,7 +1,10 @@
 use tracing::debug;
 
 use crate::embedding::EmbeddingType;
-use crate::error::{Result, SemanticSearchError};
+use crate::error::{
+    Result,
+    SemanticSearchError,
+};
 
 /// Model downloader utility
 pub struct ModelDownloader;

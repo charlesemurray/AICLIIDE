@@ -26,10 +26,25 @@ pub mod types;
 /// Text embedding functionality
 pub mod embedding;
 
-pub use client::{AsyncSemanticSearchClient, BM25Context, SemanticSearchClient};
+pub use client::{
+    AsyncSemanticSearchClient,
+    BM25Context,
+    SemanticSearchClient,
+};
 pub use config::SemanticSearchConfig;
-pub use error::{Result, SemanticSearchError};
+pub use error::{
+    Result,
+    SemanticSearchError,
+};
 pub use types::{
-    BM25DataPoint, DataPoint, FileType, KnowledgeContext, OperationStatus, OperationType, ProgressInfo, ProgressStatus,
-    SearchResult, SystemStatus,
+    BM25DataPoint,
+    DataPoint,
+    FileType,
+    KnowledgeContext,
+    OperationStatus,
+    OperationType,
+    ProgressInfo,
+    ProgressStatus,
+    SearchResult,
+    SystemStatus,
 };

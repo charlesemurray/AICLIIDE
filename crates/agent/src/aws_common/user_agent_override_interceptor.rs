@@ -2,7 +2,11 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 
-use aws_runtime::user_agent::{AdditionalMetadata, ApiMetadata, AwsUserAgent};
+use aws_runtime::user_agent::{
+    AdditionalMetadata,
+    ApiMetadata,
+    AwsUserAgent,
+};
 use aws_smithy_runtime_api::box_error::BoxError;
 use aws_smithy_runtime_api::client::interceptors::Intercept;
 use aws_smithy_runtime_api::client::interceptors::context::BeforeTransmitInterceptorContextMut;
@@ -10,8 +14,14 @@ use aws_smithy_runtime_api::client::runtime_components::RuntimeComponents;
 use aws_smithy_types::config_bag::ConfigBag;
 use aws_types::app_name::AppName;
 use aws_types::os_shim_internal::Env;
-use http::header::{InvalidHeaderValue, USER_AGENT};
-use tracing::{trace, warn};
+use http::header::{
+    InvalidHeaderValue,
+    USER_AGENT,
+};
+use tracing::{
+    trace,
+    warn,
+};
 
 /// The environment variable name of additional user agent metadata we include in the user agent
 /// string. This is used in AWS CloudShell where they want to track usage by version.
@@ -147,12 +157,18 @@ fn clean_metadata(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use aws_smithy_runtime_api::client::interceptors::context::{Input, InterceptorContext};
+    use aws_smithy_runtime_api::client::interceptors::context::{
+        Input,
+        InterceptorContext,
+    };
     use aws_smithy_runtime_api::client::runtime_components::RuntimeComponentsBuilder;
     use aws_smithy_types::config_bag::Layer;
     use http::HeaderValue;
 
-    use super::super::{APP_NAME_STR, app_name};
+    use super::super::{
+        APP_NAME_STR,
+        app_name,
+    };
     use super::*;
 
     #[test]

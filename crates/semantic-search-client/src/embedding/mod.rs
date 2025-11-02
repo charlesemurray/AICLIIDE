@@ -8,9 +8,20 @@ mod candle_models;
 pub mod mock;
 mod trait_def;
 
-pub use benchmark_utils::{BenchmarkResults, BenchmarkableEmbedder, create_standard_test_data, run_standard_benchmark};
+pub use benchmark_utils::{
+    BenchmarkResults,
+    BenchmarkableEmbedder,
+    create_standard_test_data,
+    run_standard_benchmark,
+};
 #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
 pub use candle::CandleTextEmbedder;
-pub use candle_models::{ModelConfig, ModelType};
+pub use candle_models::{
+    ModelConfig,
+    ModelType,
+};
 pub use mock::MockTextEmbedder;
-pub use trait_def::{EmbeddingType, TextEmbedderTrait};
+pub use trait_def::{
+    EmbeddingType,
+    TextEmbedderTrait,
+};

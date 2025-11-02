@@ -1,15 +1,29 @@
 use std::os::unix::fs::MetadataExt as _;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 use std::str::FromStr as _;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use strum::IntoEnumIterator;
 
 use super::{
-    BuiltInToolName, BuiltInToolTrait, ToolExecutionError, ToolExecutionOutput, ToolExecutionOutputItem,
+    BuiltInToolName,
+    BuiltInToolTrait,
+    ToolExecutionError,
+    ToolExecutionOutput,
+    ToolExecutionOutputItem,
     ToolExecutionResult,
 };
-use crate::agent::agent_loop::types::{ImageBlock, ImageFormat, ImageSource};
+use crate::agent::agent_loop::types::{
+    ImageBlock,
+    ImageFormat,
+    ImageSource,
+};
 use crate::agent::consts::MAX_IMAGE_SIZE_BYTES;
 use crate::agent::util::path::canonicalize_path;
 

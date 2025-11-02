@@ -1,6 +1,12 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
 
-use crate::{MemoryNote, Result};
+use crate::{
+    MemoryNote,
+    Result,
+};
 
 pub struct ShortTermMemory {
     capacity: usize,

@@ -1,5 +1,9 @@
 #![allow(dead_code)]
-use crossterm::event::{Event, KeyEvent, MouseEvent};
+use crossterm::event::{
+    Event,
+    KeyEvent,
+    MouseEvent,
+};
 use eyre::Result;
 use ratatui::Frame;
 use ratatui::layout::Rect;

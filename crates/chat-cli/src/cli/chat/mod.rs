@@ -697,7 +697,16 @@ impl ChatSession {
             resume_tx: None,
             terminal_state: None,
             analytics,
-        })
+        };
+
+        // Log session start for analytics
+        if let Some(ref mut analytics) = session.analytics {
+            if let Err(e) = analytics.start_session("") {
+                tracing::warn!("Failed to log session start: {}", e);
+            }
+        }
+
+        Ok(session)
     }
 
     /// Pause the session (for background execution)
@@ -1243,6 +1252,19 @@ impl ChatSession {
 
 impl Drop for ChatSession {
     fn drop(&mut self) {
+        // Log session end for analytics
+        if let Some(ref mut analytics) = self.analytics {
+            let completion_status = if matches!(self.inner, Some(ChatState::Exit)) {
+                crate::analytics::SessionCompletionStatus::Completed
+            } else {
+                crate::analytics::SessionCompletionStatus::Abandoned
+            };
+            
+            if let Err(e) = analytics.end_session(completion_status) {
+                tracing::warn!("Failed to log session end: {}", e);
+            }
+        }
+
         if let Some(spinner) = &mut self.spinner {
             spinner.stop();
         }
@@ -2060,6 +2082,22 @@ impl ChatSession {
             }
 
             // Show confirmation dialog
+            // Log continuation prompt for analytics
+            if let Some(session_id) = self.analytics_session_id() {
+                let tool_name = self.pending_tool_index
+                    .and_then(|i| self.tool_uses.get(i))
+                    .map(|tool| tool.name.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+                
+                let event = crate::analytics::ConversationAnalyticsEvent::continuation_prompt(
+                    session_id.to_string(),
+                    self.conversation.message_count(),
+                    format!("Tool approval: {}", tool_name),
+                    Some(self.tool_uses.len() as u32),
+                );
+                self.log_analytics_event(event);
+            }
+
             execute!(
                 self.stderr,
                 StyledText::secondary_fg(),
@@ -2237,6 +2275,29 @@ impl ChatSession {
         queue!(self.stderr, style::Print('\n'))?;
         user_input = sanitize_unicode_tags(&user_input);
         let input = user_input.trim();
+
+        // Log user response for analytics
+        if let Some(session_id) = self.analytics_session_id() {
+            let response_type = if input.is_empty() {
+                crate::analytics::UserResponseType::Continue
+            } else if input.starts_with('/') {
+                crate::analytics::UserResponseType::Modify
+            } else if input.eq_ignore_ascii_case("stop") || input.eq_ignore_ascii_case("quit") {
+                crate::analytics::UserResponseType::Stop
+            } else {
+                crate::analytics::UserResponseType::Question
+            };
+
+            let event = crate::analytics::ConversationAnalyticsEvent::new(
+                session_id.to_string(),
+                crate::analytics::AnalyticsEventType::UserResponse {
+                    response_type,
+                    at_message_count: self.conversation.message_count(),
+                    response_length: input.len(),
+                }
+            );
+            self.log_analytics_event(event);
+        }
 
         // handle image path
         if let Some(chat_state) = does_input_reference_file(input) {

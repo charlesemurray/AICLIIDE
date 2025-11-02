@@ -1,15 +1,24 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::{
+    Semaphore,
+    mpsc,
+};
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
 use uuid::Uuid;
 
-use super::super::context::{ContextCreator, ContextManager};
+use super::super::context::{
+    ContextCreator,
+    ContextManager,
+};
 use super::super::operation::OperationManager;
 use super::file_processor::FileProcessor;
-use crate::client::{embedder_factory, utils};
+use crate::client::{
+    embedder_factory,
+    utils,
+};
 use crate::config::SemanticSearchConfig;
 use crate::embedding::TextEmbedderTrait;
 use crate::types::*;

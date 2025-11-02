@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{
+    AtomicUsize,
+    Ordering,
+};
 
 #[derive(Debug, Default)]
 pub struct IdMapper {

@@ -1,16 +1,30 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::ExecutionState;
 use super::agent_loop::protocol::{
-    AgentLoopEvent, AgentLoopResponseError, LoopError, SendRequestArgs, UserTurnMetadata,
+    AgentLoopEvent,
+    AgentLoopResponseError,
+    LoopError,
+    SendRequestArgs,
+    UserTurnMetadata,
 };
-use super::agent_loop::types::{ImageBlock, ToolUseBlock};
+use super::agent_loop::types::{
+    ImageBlock,
+    ToolUseBlock,
+};
 use super::mcp::McpManagerError;
 use super::mcp::types::Prompt;
 use super::task_executor::TaskExecutorEvent;
-use super::tools::{Tool, ToolExecutionError, ToolExecutionOutput};
+use super::tools::{
+    Tool,
+    ToolExecutionError,
+    ToolExecutionOutput,
+};
 use super::types::AgentSnapshot;
 
 /// Represents a message from the agent to the client

@@ -3,7 +3,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use sha2::{Digest, Sha256};
+use sha2::{
+    Digest,
+    Sha256,
+};
 
 /// Validator for model files using allowlisted SHA256 hashes
 pub struct ModelValidator {
@@ -22,15 +25,13 @@ impl ModelValidator {
         let mut allowlisted_shas = HashMap::new();
 
         // Each file can have multiple valid SHAs (for different versions)
-        allowlisted_shas.insert(
-            "model.safetensors",
-            vec!["53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"],
-        );
+        allowlisted_shas.insert("model.safetensors", vec![
+            "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db",
+        ]);
 
-        allowlisted_shas.insert(
-            "tokenizer.json",
-            vec!["be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"],
-        );
+        allowlisted_shas.insert("tokenizer.json", vec![
+            "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+        ]);
 
         Self { allowlisted_shas }
     }

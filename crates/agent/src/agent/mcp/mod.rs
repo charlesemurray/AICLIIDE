@@ -4,20 +4,38 @@ pub mod types;
 
 use std::collections::HashMap;
 
-use actor::{McpServerActor, McpServerActorError, McpServerActorEvent, McpServerActorHandle};
+use actor::{
+    McpServerActor,
+    McpServerActorError,
+    McpServerActorEvent,
+    McpServerActorHandle,
+};
 use futures::stream::FuturesUnordered;
 use rmcp::model::CallToolResult;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 use tokio::sync::oneshot;
 use tokio_stream::StreamExt as _;
-use tracing::{debug, error, warn};
+use tracing::{
+    debug,
+    error,
+    warn,
+};
 use types::Prompt;
 
 use super::agent_loop::types::ToolSpec;
-use super::util::request_channel::{RequestReceiver, new_request_channel};
+use super::util::request_channel::{
+    RequestReceiver,
+    new_request_channel,
+};
 use crate::agent::agent_config::definitions::McpServerConfig;
-use crate::agent::util::request_channel::{RequestSender, respond};
+use crate::agent::util::request_channel::{
+    RequestSender,
+    respond,
+};
 
 #[derive(Debug, Clone)]
 pub struct McpManagerHandle {

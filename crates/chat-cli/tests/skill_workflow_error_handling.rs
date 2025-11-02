@@ -1,6 +1,11 @@
 use chat_cli::cli::chat::skill_registry::SkillRegistry;
 use chat_cli::cli::chat::tool_manager::ToolManager;
-use chat_cli::cli::workflow::types::{StepType, Workflow, WorkflowInput, WorkflowStep};
+use chat_cli::cli::workflow::types::{
+    StepType,
+    Workflow,
+    WorkflowInput,
+    WorkflowStep,
+};
 use chat_cli::os::Os;
 use serde_json::json;
 

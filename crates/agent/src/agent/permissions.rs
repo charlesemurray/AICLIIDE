@@ -1,12 +1,19 @@
 use std::collections::HashSet;
 
-use globset::{Glob, GlobSet, GlobSetBuilder};
+use globset::{
+    Glob,
+    GlobSet,
+    GlobSetBuilder,
+};
 
 use super::util::path::canonicalize_path_sys;
 use super::util::providers::SystemProvider;
 use crate::agent::agent_config::definitions::ToolSettings;
 use crate::agent::protocol::PermissionEvalResult;
-use crate::agent::tools::{BuiltInTool, ToolKind};
+use crate::agent::tools::{
+    BuiltInTool,
+    ToolKind,
+};
 use crate::agent::util::error::UtilError;
 use crate::agent::util::glob::matches_any_pattern;
 

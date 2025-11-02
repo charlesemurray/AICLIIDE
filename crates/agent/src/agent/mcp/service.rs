@@ -1,16 +1,43 @@
 use std::process::Stdio;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use rmcp::model::{
-    CallToolRequestParam, CallToolResult, ClientInfo, ClientResult, Implementation, LoggingLevel, Prompt as RmcpPrompt,
-    ServerNotification, ServerRequest, Tool as RmcpTool,
+    CallToolRequestParam,
+    CallToolResult,
+    ClientInfo,
+    ClientResult,
+    Implementation,
+    LoggingLevel,
+    Prompt as RmcpPrompt,
+    ServerNotification,
+    ServerRequest,
+    Tool as RmcpTool,
 };
-use rmcp::transport::{ConfigureCommandExt as _, TokioChildProcess};
-use rmcp::{RoleClient, ServiceError, ServiceExt as _};
+use rmcp::transport::{
+    ConfigureCommandExt as _,
+    TokioChildProcess,
+};
+use rmcp::{
+    RoleClient,
+    ServiceError,
+    ServiceExt as _,
+};
 use tokio::io::AsyncReadExt as _;
-use tokio::process::{ChildStderr, Command};
+use tokio::process::{
+    ChildStderr,
+    Command,
+};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{
+    debug,
+    error,
+    info,
+    trace,
+    warn,
+};
 
 use super::actor::McpMessage;
 use super::types::Prompt;

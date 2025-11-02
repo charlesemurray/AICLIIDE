@@ -1,15 +1,31 @@
 use std::path::Path;
 use std::thread::available_parallelism;
 
-use candle_core::{Device, Tensor};
+use candle_core::{
+    Device,
+    Tensor,
+};
 use candle_nn::VarBuilder;
-use candle_transformers::models::bert::{BertModel, DTYPE};
+use candle_transformers::models::bert::{
+    BertModel,
+    DTYPE,
+};
 use rayon::prelude::*;
 use tokenizers::Tokenizer;
-use tracing::{debug, error, info};
+use tracing::{
+    debug,
+    error,
+    info,
+};
 
-use crate::embedding::candle_models::{ModelConfig, ModelType};
-use crate::error::{Result, SemanticSearchError};
+use crate::embedding::candle_models::{
+    ModelConfig,
+    ModelType,
+};
+use crate::error::{
+    Result,
+    SemanticSearchError,
+};
 
 /// Text embedding generator using Candle for embedding models
 pub struct CandleTextEmbedder {
@@ -457,7 +473,10 @@ impl crate::embedding::BenchmarkableEmbedder for CandleTextEmbedder {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs};
+    use std::{
+        env,
+        fs,
+    };
 
     use tempfile::tempdir;
 

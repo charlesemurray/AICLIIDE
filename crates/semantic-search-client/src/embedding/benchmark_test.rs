@@ -7,7 +7,10 @@ use std::env;
 
 use crate::embedding::run_standard_benchmark;
 #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
-use crate::embedding::{CandleTextEmbedder, ModelType};
+use crate::embedding::{
+    CandleTextEmbedder,
+    ModelType,
+};
 
 /// Helper function to check if real embedder tests should be skipped
 fn should_skip_real_embedder_tests() -> bool {

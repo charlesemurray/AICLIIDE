@@ -1,6 +1,11 @@
 use std::path::Path;
 
-use crate::{LongTermMemory, MemoryNote, Result, ShortTermMemory};
+use crate::{
+    LongTermMemory,
+    MemoryNote,
+    Result,
+    ShortTermMemory,
+};
 
 pub struct MemoryManager {
     stm: ShortTermMemory,

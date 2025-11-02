@@ -219,21 +219,15 @@ mod tests {
         let sys = TestProvider::new();
 
         let resource = "file://project/README.md";
-        assert_eq!(
-            ResourceKind::parse(resource, &sys).unwrap(),
-            ResourceKind::File {
-                original: resource,
-                file_path: "/home/testuser/project/README.md".to_string()
-            }
-        );
+        assert_eq!(ResourceKind::parse(resource, &sys).unwrap(), ResourceKind::File {
+            original: resource,
+            file_path: "/home/testuser/project/README.md".to_string()
+        });
 
         let resource = "file://~/project/**/*.rs";
-        assert_eq!(
-            ResourceKind::parse(resource, &sys).unwrap(),
-            ResourceKind::FileGlob {
-                original: resource,
-                pattern: glob::Pattern::new("/home/testuser/project/**/*.rs").unwrap()
-            }
-        );
+        assert_eq!(ResourceKind::parse(resource, &sys).unwrap(), ResourceKind::FileGlob {
+            original: resource,
+            pattern: glob::Pattern::new("/home/testuser/project/**/*.rs").unwrap()
+        });
     }
 }

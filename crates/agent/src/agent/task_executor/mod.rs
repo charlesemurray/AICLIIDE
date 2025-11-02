@@ -1,18 +1,39 @@
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::process::Stdio;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use bstr::ByteSlice as _;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, oneshot};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use tokio::sync::{
+    mpsc,
+    oneshot,
+};
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
-use crate::agent::agent_config::definitions::{CommandHook, HookConfig, HookTrigger};
+use crate::agent::agent_config::definitions::{
+    CommandHook,
+    HookConfig,
+    HookTrigger,
+};
 use crate::agent::agent_loop::types::ToolUseBlock;
-use crate::agent::tools::{Tool, ToolExecutionOutput, ToolExecutionResult, ToolState};
+use crate::agent::tools::{
+    Tool,
+    ToolExecutionOutput,
+    ToolExecutionResult,
+    ToolState,
+};
 use crate::agent::util::truncate_safe;
 
 #[derive(Debug, Clone)]
@@ -136,16 +157,13 @@ impl TaskExecutor {
                 tool: req.tool.clone(),
                 start_time,
             }));
-        self.executing_tools.insert(
-            req.id,
-            ExecutingTool {
-                tool: req.tool,
-                cancel_token,
-                start_instant: Instant::now(),
-                start_time,
-                context_rx: req.context_rx,
-            },
-        );
+        self.executing_tools.insert(req.id, ExecutingTool {
+            tool: req.tool,
+            cancel_token,
+            start_instant: Instant::now(),
+            start_time,
+            context_rx: req.context_rx,
+        });
     }
 
     fn handle_hook_execute_request(&mut self, req: StartHookExecution) {
@@ -207,14 +225,11 @@ impl TaskExecutor {
                 id: req_id.clone(),
                 start_time,
             }));
-        self.executing_hooks.insert(
-            req_id,
-            ExecutingHook {
-                cancel_token,
-                start_instant: Instant::now(),
-                start_time,
-            },
-        );
+        self.executing_hooks.insert(req_id, ExecutingHook {
+            cancel_token,
+            start_instant: Instant::now(),
+            start_time,
+        });
     }
 
     fn get_cached_hook(&self, hook: &Hook) -> Option<HookResult> {

@@ -1,11 +1,18 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+    HashSet,
+};
 
 use regex::Regex;
 
 use super::agent_config::parse::CanonicalToolName;
 use super::agent_loop::types::ToolSpec;
 use super::consts::{
-    MAX_TOOL_NAME_LEN, MAX_TOOL_SPEC_DESCRIPTION_LEN, RTS_VALID_TOOL_NAME_REGEX, TOOL_USE_PURPOSE_FIELD_DESCRIPTION,
+    MAX_TOOL_NAME_LEN,
+    MAX_TOOL_SPEC_DESCRIPTION_LEN,
+    RTS_VALID_TOOL_NAME_REGEX,
+    TOOL_USE_PURPOSE_FIELD_DESCRIPTION,
     TOOL_USE_PURPOSE_FIELD_NAME,
 };
 use super::tools::BuiltInTool;
@@ -132,13 +139,10 @@ pub fn sanitize_tool_specs(
     for name in canonical_names {
         match &name {
             canon_name @ CanonicalToolName::BuiltIn(name) => {
-                tool_map.insert(
-                    name.as_ref().to_string(),
-                    SanitizedToolSpec {
-                        canonical_name: canon_name.clone(),
-                        tool_spec: BuiltInTool::generate_tool_spec(name),
-                    },
-                );
+                tool_map.insert(name.as_ref().to_string(), SanitizedToolSpec {
+                    canonical_name: canon_name.clone(),
+                    tool_spec: BuiltInTool::generate_tool_spec(name),
+                });
             },
             CanonicalToolName::Mcp { server_name, tool_name } => {
                 // MCP tools will be processed below
@@ -240,13 +244,10 @@ pub fn sanitize_tool_specs(
                 }
                 spec.name = sanitized_name.clone();
                 spec.description.truncate(MAX_TOOL_SPEC_DESCRIPTION_LEN);
-                tool_map.insert(
-                    sanitized_name,
-                    SanitizedToolSpec {
-                        canonical_name,
-                        tool_spec: spec,
-                    },
-                );
+                tool_map.insert(sanitized_name, SanitizedToolSpec {
+                    canonical_name,
+                    tool_spec: spec,
+                });
             }
         }
     }

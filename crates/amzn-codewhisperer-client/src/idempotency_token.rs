@@ -4,7 +4,10 @@
 
 use std::sync::Mutex;
 
-use aws_smithy_types::config_bag::{Storable, StoreReplace};
+use aws_smithy_types::config_bag::{
+    Storable,
+    StoreReplace,
+};
 
 pub(crate) fn uuid_v4(input: u128) -> String {
     let mut out = String::with_capacity(36);

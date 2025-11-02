@@ -1,13 +1,30 @@
 use std::collections::VecDeque;
 use std::fs::Metadata;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::fs::DirEntry;
-use tracing::{debug, trace, warn};
+use tracing::{
+    debug,
+    trace,
+    warn,
+};
 
-use super::{BuiltInToolName, BuiltInToolTrait, ToolExecutionResult};
-use crate::agent::tools::{ToolExecutionOutput, ToolExecutionOutputItem};
+use super::{
+    BuiltInToolName,
+    BuiltInToolTrait,
+    ToolExecutionResult,
+};
+use crate::agent::tools::{
+    ToolExecutionOutput,
+    ToolExecutionOutputItem,
+};
 use crate::agent::util::glob::matches_any_pattern;
 use crate::util::path::canonicalize_path_sys;
 use crate::util::providers::SystemProvider;
@@ -261,7 +278,10 @@ impl Entry {
 
     #[cfg(unix)]
     fn to_long_format(&self) -> String {
-        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        use std::os::unix::fs::{
+            MetadataExt,
+            PermissionsExt,
+        };
 
         let formatted_mode = format_mode(self.metadata.permissions().mode())
             .into_iter()

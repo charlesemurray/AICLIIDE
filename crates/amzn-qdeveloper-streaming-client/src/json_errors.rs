@@ -6,9 +6,15 @@ use std::borrow::Cow;
 
 use aws_smithy_json::deserialize::error::DeserializeError;
 use aws_smithy_json::deserialize::token::skip_value;
-use aws_smithy_json::deserialize::{Token, json_token_iter};
+use aws_smithy_json::deserialize::{
+    Token,
+    json_token_iter,
+};
 use aws_smithy_runtime_api::http::Headers;
-use aws_smithy_types::error::metadata::{Builder as ErrorMetadataBuilder, ErrorMetadata};
+use aws_smithy_types::error::metadata::{
+    Builder as ErrorMetadataBuilder,
+    ErrorMetadata,
+};
 
 // currently only used by AwsJson
 #[allow(unused)]
@@ -94,7 +100,11 @@ mod test {
     use aws_smithy_types::body::SdkBody;
     use aws_smithy_types::error::ErrorMetadata;
 
-    use crate::json_errors::{parse_error_body, parse_error_metadata, sanitize_error_code};
+    use crate::json_errors::{
+        parse_error_body,
+        parse_error_metadata,
+        sanitize_error_code,
+    };
 
     #[test]
     fn error_metadata() {

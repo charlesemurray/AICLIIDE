@@ -1,16 +1,32 @@
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 use std::time::Duration;
 
 use futures::Stream;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, trace};
+use tracing::{
+    debug,
+    error,
+    trace,
+};
 
-use super::protocol::{SendRequestArgs, StreamResult};
-use super::types::{Message, ToolSpec};
+use super::protocol::{
+    SendRequestArgs,
+    StreamResult,
+};
+use super::types::{
+    Message,
+    ToolSpec,
+};
 use crate::agent::rts::RtsModel;
 
 /// Represents a backend implementation for a converse stream compatible API.
@@ -196,7 +212,13 @@ mod mock {
 mod tests {
     use super::*;
     use crate::agent_loop::types::{
-        ContentBlockDelta, ContentBlockDeltaEvent, MessageStartEvent, MessageStopEvent, Role, StopReason, StreamEvent,
+        ContentBlockDelta,
+        ContentBlockDeltaEvent,
+        MessageStartEvent,
+        MessageStopEvent,
+        Role,
+        StopReason,
+        StreamEvent,
     };
 
     fn make_mock_response(input: &str) -> Vec<StreamResult> {

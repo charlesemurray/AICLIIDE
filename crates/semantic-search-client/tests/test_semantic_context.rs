@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use std::{env, fs};
+use std::{
+    env,
+    fs,
+};
 
 use semantic_search_client::client::SemanticContext;
 use semantic_search_client::types::DataPoint;

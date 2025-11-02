@@ -1,4 +1,7 @@
-use std::{env, fs};
+use std::{
+    env,
+    fs,
+};
 
 use semantic_search_client::SemanticSearchClient;
 

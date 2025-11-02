@@ -23,24 +23,43 @@
 
 use aws_sdk_ssooidc::client::Client;
 use aws_sdk_ssooidc::config::retry::RetryConfig;
-use aws_sdk_ssooidc::config::{ConfigBag, RuntimeComponents, SharedAsyncSleep};
+use aws_sdk_ssooidc::config::{
+    ConfigBag,
+    RuntimeComponents,
+    SharedAsyncSleep,
+};
 use aws_sdk_ssooidc::error::SdkError;
 use aws_sdk_ssooidc::operation::create_token::CreateTokenOutput;
 use aws_smithy_async::rt::sleep::TokioSleep;
 use aws_smithy_runtime_api::client::identity::http::Token;
-use aws_smithy_runtime_api::client::identity::{Identity, IdentityFuture, ResolveIdentity};
+use aws_smithy_runtime_api::client::identity::{
+    Identity,
+    IdentityFuture,
+    ResolveIdentity,
+};
 use aws_smithy_types::error::display::DisplayErrorContext;
 use aws_types::region::Region;
 use eyre::Result;
 use time::OffsetDateTime;
-use tracing::{debug, error, trace, warn};
+use tracing::{
+    debug,
+    error,
+    trace,
+    warn,
+};
 
 use crate::agent::util::is_integ_test;
 use crate::api_client::stalled_stream_protection_config;
 use crate::auth::AuthError;
 use crate::auth::consts::*;
-use crate::aws_common::{app_name, behavior_version};
-use crate::database::{Database, Secret};
+use crate::aws_common::{
+    app_name,
+    behavior_version,
+};
+use crate::database::{
+    Database,
+    Secret,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum OAuthFlow {

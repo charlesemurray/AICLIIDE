@@ -7,7 +7,10 @@ use std::borrow::Cow;
 use aws_smithy_runtime_api::client::auth::AuthSchemeId;
 use aws_smithy_runtime_api::client::auth::static_resolver::StaticAuthSchemeOptionResolver;
 use aws_smithy_runtime_api::client::runtime_components::RuntimeComponentsBuilder;
-use aws_smithy_runtime_api::client::runtime_plugin::{Order, RuntimePlugin};
+use aws_smithy_runtime_api::client::runtime_plugin::{
+    Order,
+    RuntimePlugin,
+};
 
 #[derive(Debug)]
 pub(crate) struct DefaultAuthOptionsPlugin {

@@ -22,7 +22,10 @@ pub mod utils;
 pub mod hosted_model_client;
 
 pub use async_implementation::AsyncSemanticSearchClient;
-pub use context::{BM25Context, SemanticContext};
+pub use context::{
+    BM25Context,
+    SemanticContext,
+};
 #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
 pub use hosted_model_client::HostedModelClient;
 pub use implementation::SemanticSearchClient;

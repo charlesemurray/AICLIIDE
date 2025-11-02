@@ -8,24 +8,56 @@ use std::time::Instant;
 
 use chrono::Utc;
 use eyre::Result;
-use futures::{Stream, StreamExt};
+use futures::{
+    Stream,
+    StreamExt,
+};
 use model::Model;
 use protocol::{
-    AgentLoopEventKind, AgentLoopRequest, AgentLoopResponse, AgentLoopResponseError, LoopEndReason, LoopError,
-    SendRequestArgs, StreamMetadata, StreamResult, UserTurnMetadata,
+    AgentLoopEventKind,
+    AgentLoopRequest,
+    AgentLoopResponse,
+    AgentLoopResponseError,
+    LoopEndReason,
+    LoopError,
+    SendRequestArgs,
+    StreamMetadata,
+    StreamResult,
+    UserTurnMetadata,
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+use tracing::{
+    debug,
+    error,
+    info,
+    warn,
+};
 use types::{
-    ContentBlock, Message, MessageStartEvent, MessageStopEvent, MetadataEvent, Role, StreamError, StreamErrorKind,
-    StreamEvent, ToolUseBlock,
+    ContentBlock,
+    Message,
+    MessageStartEvent,
+    MessageStopEvent,
+    MetadataEvent,
+    Role,
+    StreamError,
+    StreamErrorKind,
+    StreamEvent,
+    ToolUseBlock,
 };
 
 use crate::agent::AgentId;
-use crate::agent::util::request_channel::{RequestReceiver, RequestSender, new_request_channel, respond};
+use crate::agent::util::request_channel::{
+    RequestReceiver,
+    RequestSender,
+    new_request_channel,
+    respond,
+};
 
 /// Identifier for an instance of an executing loop. Derived from an agent id and some unique
 /// identifier.

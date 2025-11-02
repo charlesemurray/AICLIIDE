@@ -2,9 +2,15 @@
 
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{ToolExecutionError, ToolExecutionResult};
+use super::{
+    ToolExecutionError,
+    ToolExecutionResult,
+};
 use crate::agent::util::path::canonicalize_path;
 
 pub const MKDIR_TOOL_DESCRIPTION: &str = r#"
