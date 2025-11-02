@@ -48,6 +48,10 @@ impl IdMapper {
     pub fn len(&self) -> usize {
         self.string_to_usize.len()
     }
+    
+    pub fn is_empty(&self) -> bool {
+        self.string_to_usize.is_empty()
+    }
 }
 
 #[cfg(test)]
