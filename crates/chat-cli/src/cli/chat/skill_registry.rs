@@ -39,6 +39,10 @@ impl SkillRegistry {
         self.get(name)
     }
 
+    pub fn list_skills(&self) -> Vec<&SkillDefinition> {
+        self.skills.values().collect()
+    }
+
     pub fn len(&self) -> usize {
         self.skills.len()
     }
@@ -110,5 +114,31 @@ mod tests {
         let registry = SkillRegistry::new();
         let result = registry.get_skill("nonexistent");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_list_skills() {
+        let mut registry = SkillRegistry::new();
+
+        let skill1 = SkillDefinition {
+            name: "skill-1".to_string(),
+            description: "First skill".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: None,
+        };
+        let skill2 = SkillDefinition {
+            name: "skill-2".to_string(),
+            description: "Second skill".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: None,
+        };
+
+        registry.skills.insert("skill-1".to_string(), skill1);
+        registry.skills.insert("skill-2".to_string(), skill2);
+
+        let skills = registry.list_skills();
+        assert_eq!(skills.len(), 2);
     }
 }

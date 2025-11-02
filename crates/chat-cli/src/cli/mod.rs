@@ -449,6 +449,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -466,6 +468,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -483,6 +487,8 @@ mod test {
                 trust_all_tools: true,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -500,6 +506,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: true,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -513,6 +521,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: true,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -547,6 +557,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: Some(vec!["".to_string()]),
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -564,6 +576,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: Some(vec!["fs_read".to_string(), "fs_write".to_string()]),
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: None,
             })
         );
@@ -581,6 +595,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: Some(Never),
             })
         );
@@ -594,6 +610,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: Some(Always),
             })
         );
@@ -607,6 +625,8 @@ mod test {
                 trust_all_tools: false,
                 trust_tools: None,
                 no_interactive: false,
+                auto_approve: None,
+                batch_mode: false,
                 wrap: Some(Auto),
             })
         );
