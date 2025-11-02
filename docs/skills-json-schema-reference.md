@@ -1,7 +1,5 @@
 # Skills JSON Schema Reference
 
-## Overview
-
 This document provides the complete specification for Q CLI skill JSON files. All skills must conform to this schema to be loaded and executed properly.
 
 ## Core Schema Structure
@@ -48,6 +46,279 @@ This document provides the complete specification for Q CLI skill JSON files. Al
 
 ### `timeout` (optional)
 - **Type**: Number (seconds)
+- **Description**: Maximum execution time for the skill
+- **Default**: System default timeout
+- **Example**: `30`
+
+## Type-Specific Fields
+
+### For `command` and `code_inline` types:
+
+#### `command` (required)
+- **Type**: String
+- **Description**: Command to execute
+- **Example**: `"echo"`, `"python3"`, `"git"`
+
+#### `args` (optional)
+- **Type**: Array of strings
+- **Description**: Command arguments
+- **Example**: `["--version"]`, `["-c", "print('hello')"]`
+
+### For `code_session` type:
+
+#### `command` (required)
+- **Type**: String
+- **Description**: Command to start the session
+- **Example**: `"python3"`, `"node"`
+
+#### `session_config` (optional)
+- **Type**: Object
+- **Description**: Session configuration options
+- **Fields**:
+  - `session_timeout`: Number (seconds)
+  - `max_sessions`: Number
+  - `cleanup_on_exit`: Boolean
+
+```json
+{
+  "session_config": {
+    "session_timeout": 3600,
+    "max_sessions": 5,
+    "cleanup_on_exit": true
+  }
+}
+```
+
+### For `conversation` type:
+
+#### `prompt_template` (required)
+- **Type**: String
+- **Description**: Template for AI conversation
+- **Supports**: Parameter substitution with `{parameter_name}`
+- **Example**: `"Analyze this {language} code: {code}"`
+
+#### `context_files` (optional)
+- **Type**: Object
+- **Description**: File context configuration
+- **Fields**:
+  - `patterns`: Array of glob patterns
+  - `max_files`: Number (optional)
+  - `max_file_size_kb`: Number (optional)
+
+```json
+{
+  "context_files": {
+    "patterns": ["*.rs", "*.py"],
+    "max_files": 10,
+    "max_file_size_kb": 100
+  }
+}
+```
+
+### For `prompt_inline` type:
+
+#### `prompt_template` or `prompt` (required)
+- **Type**: String
+- **Description**: Template string with parameter placeholders
+- **Supports**: Parameter substitution with `{parameter_name}`
+- **Example**: `"Hello {name}! Welcome to {place}."`
+- **Note**: `prompt_template` and `prompt` are mutually exclusive aliases - use one or the other, not both
+
+## Parameters Schema
+
+The `parameters` field defines input parameters for skills that support them (`prompt_inline`, `conversation`).
+
+### Parameter Object Structure
+
+```json
+{
+  "name": "string (required)",
+  "type": "string (required)",
+  "required": "boolean (optional, default: false)",
+  "values": "array (optional)",
+  "pattern": "string (optional)"
+}
+```
+
+### Parameter Fields
+
+#### `name` (required)
+- **Type**: String
+- **Description**: Parameter identifier used in templates
+- **Format**: Alphanumeric characters and underscores
+- **Example**: `"user_name"`, `"language"`, `"count"`
+
+#### `type` (required)
+- **Type**: String (enum)
+- **Description**: Parameter data type for validation
+- **Valid Values**: 
+  - `"string"` - Text values
+  - `"number"` - Numeric values  
+  - `"enum"` - Restricted to predefined values (requires `values` field)
+
+#### `required` (optional)
+- **Type**: Boolean
+- **Description**: Whether parameter must be provided
+- **Default**: `false`
+- **Example**: `true`, `false`
+
+#### `values` (optional)
+- **Type**: Array of strings
+- **Description**: Allowed values for `enum` type parameters
+- **Required**: When `type` is `"enum"`
+- **Example**: `["small", "medium", "large"]`
+
+#### `pattern` (optional)
+- **Type**: String (regex)
+- **Description**: Validation pattern for `string` type parameters
+- **Example**: `"^[a-zA-Z0-9_]+$"` (alphanumeric and underscores only)
+
+### Parameter Examples
+
+#### String Parameter
+```json
+{
+  "name": "message",
+  "type": "string",
+  "required": true,
+  "pattern": "^[^;|&$`]+$"
+}
+```
+
+#### Number Parameter
+```json
+{
+  "name": "count",
+  "type": "number",
+  "required": false
+}
+```
+
+#### Enum Parameter
+```json
+{
+  "name": "priority",
+  "type": "enum",
+  "values": ["low", "medium", "high"],
+  "required": true
+}
+```
+
+## Security Configuration
+
+### `security` (optional)
+- **Type**: Object
+- **Description**: Security constraints and permissions
+- **Fields**:
+  - `resource_limits`: Object with execution limits
+  - `permissions`: Object with access permissions
+
+```json
+{
+  "security": {
+    "resource_limits": {
+      "max_memory_mb": 100,
+      "max_execution_time": 30
+    },
+    "permissions": {
+      "file_read": ["./src", "./tests"],
+      "network_access": false
+    }
+  }
+}
+```
+
+## Complete Skill Examples
+
+### Prompt Inline Skill
+```json
+{
+  "name": "greeting",
+  "description": "Generate personalized greetings",
+  "type": "prompt_inline",
+  "prompt_template": "Hello {name}! Welcome to {place}. Today is {day}.",
+  "parameters": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "pattern": "^[a-zA-Z\\s]+$"
+    },
+    {
+      "name": "place",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "day",
+      "type": "enum",
+      "values": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      "required": true
+    }
+  ]
+}
+```
+
+### Code Session Skill
+```json
+{
+  "name": "python-repl",
+  "description": "Interactive Python session",
+  "type": "code_session",
+  "command": "python3",
+  "session_config": {
+    "session_timeout": 1800,
+    "max_sessions": 3,
+    "cleanup_on_exit": true
+  },
+  "security": {
+    "resource_limits": {
+      "max_memory_mb": 256,
+      "max_execution_time": 60
+    },
+    "permissions": {
+      "file_read": ["./"],
+      "network_access": false
+    }
+  }
+}
+```
+
+### Conversation Skill
+```json
+{
+  "name": "code-reviewer",
+  "description": "AI-powered code review assistant",
+  "type": "conversation",
+  "prompt_template": "Review this {language} code and provide feedback: {code}",
+  "parameters": [
+    {
+      "name": "language",
+      "type": "enum",
+      "values": ["python", "javascript", "rust", "java"],
+      "required": true
+    },
+    {
+      "name": "code",
+      "type": "string",
+      "required": true
+    }
+  ],
+  "context_files": {
+    "patterns": ["*.py", "*.js", "*.rs", "*.java"],
+    "max_files": 5,
+    "max_file_size_kb": 50
+  }
+}
+```
+
+## Common Validation Errors
+
+1. **Missing required fields**: `name`, `type` must be present
+2. **Invalid skill type**: Must be one of the 5 supported types
+3. **Invalid parameter type**: Must be `string`, `number`, or `enum`
+4. **Missing enum values**: `enum` type requires `values` array
+5. **Invalid regex pattern**: `pattern` field must be valid regex
 - **Description**: Maximum execution time before termination
 - **Default**: 30 seconds
 - **Example**: `60`
@@ -124,7 +395,7 @@ This document provides the complete specification for Q CLI skill JSON files. Al
 - **Description**: Template string with parameter placeholders
 - **Supports**: Parameter substitution with `{parameter_name}`
 - **Example**: `"Hello {name}! Welcome to {place}."`
-- **Note**: Both `prompt_template` and `prompt` are accepted (alias)
+- **Note**: `prompt_template` and `prompt` are mutually exclusive aliases - use one or the other, not both
 
 ## Parameters Schema
 

@@ -23,9 +23,13 @@ pub enum CommandHandler {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandParameter {
     pub name: String,
-    pub description: String,
-    pub required: bool,
-    pub default_value: Option<String>,
+    #[serde(rename = "type")]
+    pub param_type: String,              // NEW: "string", "boolean", "number", "enum"
+    pub required: bool,                  // KEEP: Existing functionality
+    pub default_value: Option<String>,   // KEEP: Existing functionality
+    pub description: Option<String>,     // CHANGE: Make optional
+    pub values: Option<Vec<String>>,     // NEW: For enum validation
+    pub pattern: Option<String>,         // NEW: For security validation (regex)
 }
 
 #[derive(Debug)]
@@ -105,22 +109,50 @@ impl CustomCommand {
 }
 
 impl CommandParameter {
-    pub fn required(name: String, description: String) -> Self {
+    pub fn required(name: String, param_type: String) -> Self {
         Self {
             name,
-            description,
+            param_type,
             required: true,
             default_value: None,
+            description: None,
+            values: None,
+            pattern: None,
         }
     }
 
-    pub fn optional(name: String, description: String, default: Option<String>) -> Self {
+    pub fn optional(name: String, param_type: String, default: Option<String>) -> Self {
         Self {
             name,
-            description,
+            param_type,
             required: false,
             default_value: default,
+            description: None,
+            values: None,
+            pattern: None,
         }
+    }
+
+    pub fn enum_param(name: String, values: Vec<String>, required: bool) -> Self {
+        Self {
+            name,
+            param_type: "enum".to_string(),
+            required,
+            default_value: None,
+            description: None,
+            values: Some(values),
+            pattern: None,
+        }
+    }
+
+    pub fn with_pattern(mut self, pattern: String) -> Self {
+        self.pattern = Some(pattern);
+        self
+    }
+
+    pub fn with_description(mut self, description: String) -> Self {
+        self.description = Some(description);
+        self
     }
 }
 

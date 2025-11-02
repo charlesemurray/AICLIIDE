@@ -39,18 +39,17 @@ mod manual_verification_test {
             "parameters": [
                 {
                     "name": "name",
-                    "description": "Person's name",
+                    "type": "string",
                     "required": true
                 },
                 {
                     "name": "place",
-                    "description": "Location", 
-                    "required": false,
-                    "default": "Q CLI"
+                    "type": "string",
+                    "required": false
                 },
                 {
                     "name": "day",
-                    "description": "Day of the week",
+                    "type": "string",
                     "required": true
                 }
             ]

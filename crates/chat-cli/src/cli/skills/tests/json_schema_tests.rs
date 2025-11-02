@@ -145,8 +145,8 @@ mod json_schema_tests {
     }
 
     #[test]
-    fn test_both_prompt_fields() {
-        // prompt_template should take precedence
+    fn test_prompt_fields_mutually_exclusive() {
+        // Test that having both prompt_template and prompt fails (mutually exclusive aliases)
         let skill_json = json!({
             "name": "prompt-skill",
             "type": "prompt_inline",
@@ -154,8 +154,8 @@ mod json_schema_tests {
             "prompt": "Alias field"
         });
 
-        let skill: JsonSkill = serde_json::from_value(skill_json).unwrap();
-        assert_eq!(skill.prompt_template, Some("Template field".to_string()));
+        let result = serde_json::from_value::<JsonSkill>(skill_json);
+        assert!(result.is_err(), "Should fail when both prompt_template and prompt are present");
     }
 
     // Parameter Tests
