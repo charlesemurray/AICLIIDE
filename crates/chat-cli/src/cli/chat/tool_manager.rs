@@ -2279,4 +2279,38 @@ mod tests {
         // Verify skill_registry field exists and is accessible
         assert!(manager.skill_registry.len() >= 0);
     }
+
+    #[tokio::test]
+    async fn test_tool_manager_has_workflow_registry() {
+        let os = Os::new().await.unwrap();
+        let manager = ToolManager::new_with_skills(&os).await.unwrap();
+
+        // Verify workflow_registry field exists and is accessible
+        assert!(manager.workflow_registry.len() >= 0);
+    }
+
+    #[tokio::test]
+    async fn test_tool_manager_loads_skills() {
+        use std::fs;
+        use tempfile::tempdir;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+        let skill_path = dir.path().join("test_skill.json");
+
+        let skill_json = r#"{
+            "name": "test-skill",
+            "description": "A test skill",
+            "skill_type": "code_inline"
+        }"#;
+
+        fs::write(&skill_path, skill_json).unwrap();
+
+        // Create a ToolManager and manually load skills
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+
+        assert_eq!(manager.skill_registry.len(), 1);
+        assert!(manager.skill_registry.get("test-skill").is_some());
+    }
 }

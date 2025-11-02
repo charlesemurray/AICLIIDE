@@ -1,5 +1,5 @@
-pub mod types;
 pub mod logger;
+pub mod types;
 
-pub use types::*;
 pub use logger::ConversationAnalytics;
+pub use types::*;

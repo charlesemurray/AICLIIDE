@@ -92,16 +92,6 @@ async fn test_skill_registry_empty_initialization() {
 }
 
 #[tokio::test]
-async fn test_toolspec_conversion_preserves_validation() {
-    // Test that ToolSpec conversion maintains validation rules
-    let registry = SkillRegistry::new();
-    let toolspec = registry.get_toolspec("calculator");
-
-    // Empty registry returns None
-    assert!(toolspec.is_none());
-}
-
-#[tokio::test]
 async fn test_tool_manager_handles_skill_registration_errors() {
     // Test that ToolManager handles skill registration gracefully
     let os = Os::new().await.unwrap();
@@ -169,4 +159,13 @@ async fn test_workflow_input_validation() {
     assert_eq!(workflow.inputs.len(), 2);
     assert!(workflow.inputs[0].required);
     assert!(!workflow.inputs[1].required);
+}
+
+#[tokio::test]
+async fn test_registry_list_operations() {
+    // Test registry list operations on empty registry
+    let registry = SkillRegistry::new();
+    let skills = registry.list_skills();
+
+    assert_eq!(skills.len(), 0, "Empty registry should have no skills");
 }

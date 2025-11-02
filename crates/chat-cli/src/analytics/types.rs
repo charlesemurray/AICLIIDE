@@ -1,5 +1,12 @@
-use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ConversationAnalyticsEvent {
@@ -94,10 +101,7 @@ pub enum ModeTransitionTrigger {
 impl ConversationAnalyticsEvent {
     pub fn new(session_id: String, event: AnalyticsEventType) -> Self {
         Self {
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
             session_id,
             event,
         }
@@ -109,14 +113,11 @@ impl ConversationAnalyticsEvent {
         task_context: String,
         total_steps_estimated: Option<u32>,
     ) -> Self {
-        Self::new(
-            session_id,
-            AnalyticsEventType::ContinuationPrompt {
-                step_number,
-                task_context,
-                total_steps_estimated,
-            },
-        )
+        Self::new(session_id, AnalyticsEventType::ContinuationPrompt {
+            step_number,
+            task_context,
+            total_steps_estimated,
+        })
     }
 
     pub fn user_response(
@@ -125,14 +126,11 @@ impl ConversationAnalyticsEvent {
         response: UserResponseType,
         response_time_ms: u64,
     ) -> Self {
-        Self::new(
-            session_id,
-            AnalyticsEventType::UserResponse {
-                prompt_type,
-                response,
-                response_time_ms,
-            },
-        )
+        Self::new(session_id, AnalyticsEventType::UserResponse {
+            prompt_type,
+            response,
+            response_time_ms,
+        })
     }
 
     pub fn question_asked(
@@ -141,14 +139,11 @@ impl ConversationAnalyticsEvent {
         by_llm: bool,
         conversation_position: ConversationPosition,
     ) -> Self {
-        Self::new(
-            session_id,
-            AnalyticsEventType::QuestionAsked {
-                question_type,
-                by_llm,
-                conversation_position,
-            },
-        )
+        Self::new(session_id, AnalyticsEventType::QuestionAsked {
+            question_type,
+            by_llm,
+            conversation_position,
+        })
     }
 
     pub fn session_flow(
@@ -157,14 +152,11 @@ impl ConversationAnalyticsEvent {
         at_message_count: u32,
         duration_ms: Option<u64>,
     ) -> Self {
-        Self::new(
-            session_id,
-            AnalyticsEventType::SessionFlow {
-                event_type,
-                at_message_count,
-                duration_ms,
-            },
-        )
+        Self::new(session_id, AnalyticsEventType::SessionFlow {
+            event_type,
+            at_message_count,
+            duration_ms,
+        })
     }
 
     pub fn mode_transition(
@@ -173,21 +165,19 @@ impl ConversationAnalyticsEvent {
         to_mode: ConversationMode,
         trigger: ModeTransitionTrigger,
     ) -> Self {
-        Self::new(
-            session_id,
-            AnalyticsEventType::ModeTransition {
-                from_mode,
-                to_mode,
-                trigger,
-            },
-        )
+        Self::new(session_id, AnalyticsEventType::ModeTransition {
+            from_mode,
+            to_mode,
+            trigger,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_continuation_prompt_serialization() {
@@ -200,7 +190,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ConversationAnalyticsEvent = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(event, deserialized);
         assert!(json.contains("ContinuationPrompt"));
         assert!(json.contains("session_123"));
@@ -218,7 +208,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ConversationAnalyticsEvent = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(event, deserialized);
         assert!(json.contains("UserResponse"));
         assert!(json.contains("ToolApproval"));
@@ -236,7 +226,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ConversationAnalyticsEvent = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(event, deserialized);
         assert!(json.contains("QuestionAsked"));
         assert!(json.contains("Clarification"));
@@ -245,16 +235,12 @@ mod tests {
 
     #[test]
     fn test_session_flow_serialization() {
-        let event = ConversationAnalyticsEvent::session_flow(
-            "session_abc".to_string(),
-            SessionEventType::Started,
-            0,
-            None,
-        );
+        let event =
+            ConversationAnalyticsEvent::session_flow("session_abc".to_string(), SessionEventType::Started, 0, None);
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ConversationAnalyticsEvent = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(event, deserialized);
         assert!(json.contains("SessionFlow"));
         assert!(json.contains("Started"));
@@ -271,7 +257,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: ConversationAnalyticsEvent = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(event, deserialized);
         assert!(json.contains("ModeTransition"));
         assert!(json.contains("Planning"));
@@ -319,25 +305,19 @@ mod tests {
 
     #[test]
     fn test_timestamp_generation() {
-        let event1 = ConversationAnalyticsEvent::new(
-            "test".to_string(),
-            AnalyticsEventType::SessionFlow {
-                event_type: SessionEventType::Started,
-                at_message_count: 0,
-                duration_ms: None,
-            },
-        );
+        let event1 = ConversationAnalyticsEvent::new("test".to_string(), AnalyticsEventType::SessionFlow {
+            event_type: SessionEventType::Started,
+            at_message_count: 0,
+            duration_ms: None,
+        });
 
         std::thread::sleep(std::time::Duration::from_millis(1));
 
-        let event2 = ConversationAnalyticsEvent::new(
-            "test".to_string(),
-            AnalyticsEventType::SessionFlow {
-                event_type: SessionEventType::Started,
-                at_message_count: 0,
-                duration_ms: None,
-            },
-        );
+        let event2 = ConversationAnalyticsEvent::new("test".to_string(), AnalyticsEventType::SessionFlow {
+            event_type: SessionEventType::Started,
+            at_message_count: 0,
+            duration_ms: None,
+        });
 
         assert!(event2.timestamp > event1.timestamp);
     }

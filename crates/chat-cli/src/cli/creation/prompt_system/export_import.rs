@@ -105,38 +105,36 @@ pub enum ConflictStrategy {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::TempDir;
-
     use super::*;
     use crate::cli::creation::prompt_system::PromptBuilder;
-    use crate::cli::creation::prompt_system::creation_builder::CreationBuilder;
+    use tempfile::TempDir;
 
     #[test]
     fn test_export_import_roundtrip() -> Result<()> {
         let temp = TempDir::new()?;
         let export_path = temp.path().join("test.json");
-
+        
         let template = PromptBuilder::new()
-            .with_name("Test".to_string())
+            .with_name("TestExportImport".to_string())
             .with_role("Role".to_string())
             .build()?;
-
+        
         save_template(&template)?;
-
+        
         // Export
         export_assistant(&template.id, &export_path)?;
         assert!(export_path.exists());
-
+        
         // Delete original
         super::super::delete_template(&template.id)?;
-
+        
         // Import
         let imported_id = import_assistant(&export_path, ConflictStrategy::Overwrite)?;
         assert_eq!(imported_id, template.id);
-
+        
         // Cleanup
         super::super::delete_template(&imported_id)?;
-
+        
         Ok(())
     }
 
@@ -144,27 +142,27 @@ mod tests {
     fn test_export_all() -> Result<()> {
         let temp = TempDir::new()?;
         let export_dir = temp.path().join("exports");
-
+        
         let t1 = PromptBuilder::new()
-            .with_name("Test1".to_string())
+            .with_name("TestExportAll1".to_string())
             .with_role("Role".to_string())
             .build()?;
-
+        
         let t2 = PromptBuilder::new()
-            .with_name("Test2".to_string())
+            .with_name("TestExportAll2".to_string())
             .with_role("Role".to_string())
             .build()?;
-
+        
         save_template(&t1)?;
         save_template(&t2)?;
-
+        
         let exported = export_all_assistants(&export_dir)?;
         assert!(exported.len() >= 2);
-
+        
         // Cleanup
         super::super::delete_template(&t1.id)?;
         super::super::delete_template(&t2.id)?;
-
+        
         Ok(())
     }
 
@@ -172,24 +170,24 @@ mod tests {
     fn test_import_with_rename() -> Result<()> {
         let temp = TempDir::new()?;
         let export_path = temp.path().join("test.json");
-
+        
         let template = PromptBuilder::new()
-            .with_name("Test".to_string())
+            .with_name("TestImportRename".to_string())
             .with_role("Role".to_string())
             .build()?;
-
+        
         save_template(&template)?;
         export_assistant(&template.id, &export_path)?;
-
+        
         // Import again with rename strategy
         let new_id = import_assistant(&export_path, ConflictStrategy::Rename)?;
         assert_ne!(new_id, template.id);
         assert!(new_id.starts_with(&template.id));
-
+        
         // Cleanup
         super::super::delete_template(&template.id)?;
         super::super::delete_template(&new_id)?;
-
+        
         Ok(())
     }
 }
