@@ -2987,10 +2987,28 @@ impl ChatSession {
             } else {
                 // Auto-detect conversation mode for new conversations
                 if self.conversation.history().is_empty() {
-                    let detected_mode = crate::conversation_modes::ConversationMode::detect_from_context(input);
+                    // Use suggestion engine for smarter detection (Epic 4)
+                    let detected_mode = if let Some((suggested_mode, confidence)) = self.mode_suggestion_engine.suggest_mode(input) {
+                        if confidence > 0.7 {
+                            suggested_mode
+                        } else {
+                            crate::conversation_modes::ConversationMode::detect_from_context(input)
+                        }
+                    } else {
+                        crate::conversation_modes::ConversationMode::detect_from_context(input)
+                    };
+                    
                     if detected_mode != self.conversation_mode {
                         let old_mode = self.conversation_mode.clone();
                         self.conversation_mode = detected_mode.clone();
+
+                        // Track transition and learn from it (Epic 3 & 4)
+                        let _ = self.transition_manager.transition_with_confirmation(
+                            old_mode.clone(),
+                            detected_mode.clone(),
+                            crate::analytics::ModeTransitionTrigger::Auto
+                        );
+                        self.mode_suggestion_engine.learn_from_transition(old_mode.clone(), detected_mode.clone(), input);
 
                         // Log mode transition for analytics
                         if let Some(session_id) = self.analytics_session_id() {

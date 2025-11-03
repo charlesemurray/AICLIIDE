@@ -55,6 +55,10 @@ pub enum SkillsCommand {
         /// Name of the skill
         skill_name: String,
     },
+    /// Show help and examples
+    Help,
+    /// Run interactive skill creation example
+    Example,
     /// Install a skill from a file or URL
     Install {
         /// Path or URL to skill definition
@@ -119,16 +123,31 @@ impl SkillsArgs {
 
         match self.command {
             SkillsCommand::List => {
+                // Show tutorial on first run
+                use crate::cli::skills::onboarding;
+                let _ = onboarding::show_tutorial_if_needed(&mut std::io::stdout());
+
                 let skills = registry.list();
 
-                for skill in skills {
-                    let aliases = skill.aliases();
-                    if aliases.is_empty() {
-                        println!("{}: {}", skill.name(), skill.description());
-                    } else {
-                        println!("{} ({}): {}", skill.name(), aliases.join(", "), skill.description());
-                    }
+                if skills.is_empty() {
+                    println!("No skills found.\n");
+                    println!("💡 Try: q skills example");
+                    return Ok(ExitCode::SUCCESS);
                 }
+
+                println!("Available Skills:\n");
+                for skill in skills {
+                    println!("  📦 {}", skill.name());
+                    println!("     {}", skill.description());
+                    let aliases = skill.aliases();
+                    if !aliases.is_empty() {
+                        println!("     Aliases: {}", aliases.join(", "));
+                    }
+                    println!();
+                }
+
+                println!("💡 Get details: q skills info <name>");
+                println!("💡 Try example: q skills example");
 
                 Ok(ExitCode::SUCCESS)
             },
@@ -175,6 +194,23 @@ impl SkillsArgs {
                     },
                 }
 
+                Ok(ExitCode::SUCCESS)
+            },
+            SkillsCommand::Help => {
+                println!("Q Skills Help\n");
+                println!("Commands:");
+                println!("  q skills list       List all skills");
+                println!("  q skills info <name>  Show skill details");
+                println!("  q skills run <name>   Run a skill");
+                println!("  q skills example    Interactive creation");
+                println!("  q skills help       Show this help\n");
+                println!("💡 Tip: Use natural language in chat");
+                println!("💡 Tip: Skills are in ~/.q-skills/");
+                Ok(ExitCode::SUCCESS)
+            },
+            SkillsCommand::Example => {
+                use crate::cli::skills::onboarding;
+                onboarding::run_interactive_example()?;
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Install { source: _source } => {
