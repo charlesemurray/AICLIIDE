@@ -73,6 +73,12 @@ pub enum SkillsCommand {
     Create {
         /// Name of the skill to create
         name: String,
+        /// Template to use (command, script, http-api, file-processor)
+        #[arg(long)]
+        from_template: Option<String>,
+        /// Description of the skill
+        #[arg(long, short)]
+        description: Option<String>,
         /// Type of skill to create (code_inline, code_session, conversation, prompt_inline, rust)
         #[arg(long, short)]
         skill_type: Option<String>,
@@ -233,15 +239,52 @@ impl SkillsArgs {
                 println!("Skill installation not yet implemented");
                 Ok(ExitCode::SUCCESS)
             },
-            SkillsCommand::Create { name, .. } => {
-                println!("⚠️  The standalone 'skills create' command has been replaced.");
-                println!("Please use the chat interface instead:");
-                println!();
-                println!("  q chat");
-                println!("  > /skills create {} command", name);
-                println!();
-                println!("Or use the new unified creation system:");
-                println!("  q create skill {} guided", name);
+            SkillsCommand::Create { name, from_template, description, .. } => {
+                use crate::cli::skills::templates::SkillTemplate;
+
+                if let Some(template_name) = from_template {
+                    // Create from template
+                    let template = match template_name.as_str() {
+                        "command" => SkillTemplate::Command,
+                        "script" => SkillTemplate::Script,
+                        "http-api" => SkillTemplate::HttpApi,
+                        "file-processor" => SkillTemplate::FileProcessor,
+                        _ => {
+                            eprintln!("Unknown template: {}\n", template_name);
+                            eprintln!("Available templates:");
+                            for t in SkillTemplate::all() {
+                                eprintln!("  {} - {}", t.name(), t.description());
+                            }
+                            return Err(eyre::eyre!("Invalid template"));
+                        }
+                    };
+
+                    let desc = description.unwrap_or_else(|| format!("{} skill", name));
+                    let skill_json = template.generate(&name, &desc);
+
+                    // Save to ~/.q-skills/
+                    let skills_dir = dirs::home_dir()
+                        .ok_or_else(|| eyre::eyre!("Could not find home directory"))?
+                        .join(".q-skills");
+                    
+                    std::fs::create_dir_all(&skills_dir)?;
+                    let skill_file = skills_dir.join(format!("{}.json", name));
+                    std::fs::write(&skill_file, serde_json::to_string_pretty(&skill_json)?)?;
+
+                    println!("✓ Created skill: {}", skill_file.display());
+                    println!("\nUsage:");
+                    println!("  {}", template.example(&name));
+
+                    return Ok(ExitCode::SUCCESS);
+                }
+
+                // Fallback message
+                println!("⚠️  Use templates for quick creation:");
+                println!("  q skills create {} --from-template command --description 'My skill'\n", name);
+                println!("Available templates:");
+                for t in SkillTemplate::all() {
+                    println!("  {} - {}", t.name(), t.description());
+                }
 
                 Ok(ExitCode::SUCCESS)
             },
