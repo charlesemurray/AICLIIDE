@@ -7,6 +7,12 @@ use crate::git::{
     list_worktrees,
 };
 
+// Branch naming constants
+const MIN_WORD_LENGTH: usize = 3;
+const MAX_CONTEXT_WORDS: usize = 4;
+const MAX_BRANCH_NAME_LENGTH: usize = 50;
+const MAX_CONFLICT_RETRIES: u32 = 100;
+
 pub fn sanitize_branch_name(input: &str) -> Result<String> {
     // Validate input
     if input.trim().is_empty() {
@@ -28,7 +34,7 @@ pub fn sanitize_branch_name(input: &str) -> Result<String> {
         .collect::<Vec<_>>()
         .join("-")
         .chars()
-        .take(50)
+        .take(MAX_BRANCH_NAME_LENGTH)
         .collect::<String>();
     
     // Validate result
@@ -55,8 +61,8 @@ pub fn generate_branch_name(context: &str, prefix: Option<&str>) -> Result<Strin
 pub fn generate_from_conversation(first_message: &str, session_type: Option<&str>) -> Result<String> {
     let words: Vec<&str> = first_message
         .split_whitespace()
-        .filter(|w| w.len() > 3)
-        .take(4)
+        .filter(|w| w.len() > MIN_WORD_LENGTH)
+        .take(MAX_CONTEXT_WORDS)
         .collect();
 
     let context = words.join(" ");
@@ -75,8 +81,10 @@ pub fn ensure_unique_branch_name(repo_root: &Path, base_name: &str) -> Result<St
     while check_branch_conflict(repo_root, &name)? {
         name = format!("{}-{}", base_name, counter);
         counter += 1;
-        if counter > 100 {
-            return Err(GitError::CommandFailed("Too many conflicts".to_string()));
+        if counter > MAX_CONFLICT_RETRIES {
+            return Err(GitError::CommandFailed(
+                format!("Too many conflicts (tried {} names)", MAX_CONFLICT_RETRIES)
+            ));
         }
     }
     Ok(name)
