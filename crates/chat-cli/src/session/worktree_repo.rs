@@ -15,9 +15,7 @@ use super::repository::{
     SessionFilter,
     SessionRepository,
 };
-use crate::git::{
-    detect_git_context,
-};
+use crate::git::detect_git_context;
 
 /// Worktree-aware session repository
 /// Handles saving/loading session metadata in worktree directories

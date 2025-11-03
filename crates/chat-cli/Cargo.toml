@@ -21,6 +21,7 @@ amzn-codewhisperer-streaming-client.workspace = true
 amzn-consolas-client.workspace = true
 amzn-qdeveloper-streaming-client.workspace = true
 amzn-toolkit-telemetry-client.workspace = true
+cortex-memory = { path = "../cortex-memory" }
 anstream.workspace = true
 arboard.workspace = true
 async-trait.workspace = true

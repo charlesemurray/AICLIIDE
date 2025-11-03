@@ -1,6 +1,9 @@
 use std::path::Path;
 
-use crate::git::{list_worktrees, GitError};
+use crate::git::{
+    GitError,
+    list_worktrees,
+};
 
 pub fn sanitize_branch_name(input: &str) -> String {
     input

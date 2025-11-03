@@ -1489,6 +1489,7 @@ dependencies = [
  "color-print",
  "convert_case",
  "cookie",
+ "cortex-memory",
  "criterion",
  "crossterm",
  "ctrlc",

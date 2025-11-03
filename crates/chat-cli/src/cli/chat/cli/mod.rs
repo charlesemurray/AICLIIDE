@@ -264,6 +264,8 @@ impl SlashCommand {
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
             Self::Sessions(_) => "sessions",
+            Self::Memory(_) => "memory",
+            Self::Recall(_) => "recall",
             Self::Switch { .. } => "switch",
             // Self::Status(_) => "status",
             Self::Paste(_) => "paste",
@@ -277,9 +279,150 @@ impl SlashCommand {
             SlashCommand::Knowledge(sub) => Some(sub.name()),
             SlashCommand::Sessions(sub) => Some(sub.name()),
             SlashCommand::Skills(sub) => Some(sub.name()),
+            SlashCommand::Memory(sub) => Some(sub.name()),
             SlashCommand::Tools(arg) => arg.subcommand_name(),
             SlashCommand::Prompts(arg) => arg.subcommand_name(),
             _ => None,
         }
     }
+}
+
+async fn execute_memory_command(
+    subcommand: MemorySubcommand,
+    session: &mut ChatSession,
+) -> Result<ChatState, ChatError> {
+    use crossterm::{
+        execute,
+        style,
+    };
+
+    match subcommand {
+        MemorySubcommand::Config => {
+            execute!(
+                session.stderr,
+                StyledText::brand_fg(),
+                style::Print("Memory Configuration\n"),
+                StyledText::reset(),
+                style::Print("  Status: "),
+                StyledText::success_fg(),
+                style::Print(if session.cortex.is_some() {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                }),
+                StyledText::reset(),
+                style::Print("\n"),
+            )?;
+        },
+        MemorySubcommand::List(args) => {
+            execute!(
+                session.stderr,
+                style::Print(format!("Listing {} memories...\n", args.limit)),
+            )?;
+        },
+        MemorySubcommand::Search(args) => {
+            if let Some(ref mut cortex) = session.cortex {
+                match cortex.recall_context(&args.query, args.limit) {
+                    Ok(items) => {
+                        execute!(
+                            session.stderr,
+                            StyledText::brand_fg(),
+                            style::Print(format!("Found {} memories:\n", items.len())),
+                            StyledText::reset(),
+                        )?;
+                        for item in items {
+                            execute!(
+                                session.stderr,
+                                style::Print(format!("  • {} (score: {:.2})\n", item.content, item.score)),
+                            )?;
+                        }
+                    },
+                    Err(e) => {
+                        execute!(
+                            session.stderr,
+                            StyledText::error_fg(),
+                            style::Print(format!("Error: {}\n", e)),
+                            StyledText::reset(),
+                        )?;
+                    },
+                }
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::warning_fg(),
+                    style::Print("Memory is disabled\n"),
+                    StyledText::reset(),
+                )?;
+            }
+        },
+        MemorySubcommand::Stats => {
+            execute!(
+                session.stderr,
+                StyledText::brand_fg(),
+                style::Print("Memory Statistics\n"),
+                StyledText::reset(),
+                style::Print("  Total memories: N/A\n"),
+            )?;
+        },
+        MemorySubcommand::Cleanup(_args) => {
+            execute!(session.stderr, style::Print("Cleaning up old memories...\n"),)?;
+        },
+        MemorySubcommand::Toggle(args) => {
+            let status = if args.disable { "disabled" } else { "enabled" };
+            execute!(session.stderr, style::Print(format!("Memory {}\n", status)),)?;
+        },
+    }
+
+    Ok(ChatState::PromptUser {
+        skip_printing_tools: true,
+    })
+}
+
+async fn execute_recall_command(args: RecallArgs, session: &mut ChatSession) -> Result<ChatState, ChatError> {
+    use crossterm::{
+        execute,
+        style,
+    };
+
+    if let Some(ref mut cortex) = session.cortex {
+        match cortex.recall_context(&args.query, args.limit) {
+            Ok(items) => {
+                execute!(
+                    session.stderr,
+                    StyledText::brand_fg(),
+                    style::Print(format!("Recalled {} relevant memories:\n", items.len())),
+                    StyledText::reset(),
+                )?;
+                for (i, item) in items.iter().enumerate() {
+                    execute!(
+                        session.stderr,
+                        StyledText::emphasis_fg(),
+                        style::Print(format!("{}. ", i + 1)),
+                        StyledText::reset(),
+                        style::Print(format!("{}\n", item.content)),
+                        style::Print(format!("   Score: {:.2}\n\n", item.score)),
+                    )?;
+                }
+            },
+            Err(e) => {
+                execute!(
+                    session.stderr,
+                    StyledText::error_fg(),
+                    style::Print(format!("Error recalling memories: {}\n", e)),
+                    StyledText::reset(),
+                )?;
+            },
+        }
+    } else {
+        execute!(
+            session.stderr,
+            StyledText::warning_fg(),
+            style::Print("Memory is disabled\n"),
+            StyledText::reset(),
+        )?;
+    }
+
+    Ok(ChatState::PromptUser {
+        skip_printing_tools: true,
+    })
 }

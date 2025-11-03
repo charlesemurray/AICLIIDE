@@ -82,6 +82,11 @@ pub enum SkillsCommand {
         #[arg(long)]
         template: Option<String>,
     },
+    /// Remove a skill
+    Remove {
+        /// Name of the skill to remove
+        skill_name: String,
+    },
 }
 
 // Separate enum for slash commands
@@ -177,6 +182,37 @@ impl SkillsArgs {
                 println!();
                 println!("Or use the new unified creation system:");
                 println!("  q create skill {} guided", name);
+
+                Ok(ExitCode::SUCCESS)
+            },
+            SkillsCommand::Remove { skill_name } => {
+                // Find skill file in workspace
+                let skills_dir = current_dir.join(".q-skills");
+                if !skills_dir.exists() {
+                    return Err(eyre::eyre!("No skills directory found at {}", skills_dir.display()));
+                }
+
+                // Look for skill file
+                let skill_file = skills_dir.join(format!("{}.json", skill_name));
+                if !skill_file.exists() {
+                    return Err(eyre::eyre!("Skill '{}' not found", skill_name));
+                }
+
+                // Confirm removal
+                print!("Remove skill '{}'? (y/N): ", skill_name);
+                io::stdout().flush()?;
+
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+
+                if input.trim().to_lowercase() != "y" {
+                    println!("Cancelled");
+                    return Ok(ExitCode::SUCCESS);
+                }
+
+                // Remove file
+                fs::remove_file(&skill_file)?;
+                println!("✓ Removed skill '{}'", skill_name);
 
                 Ok(ExitCode::SUCCESS)
             },

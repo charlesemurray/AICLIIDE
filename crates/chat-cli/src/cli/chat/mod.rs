@@ -7,6 +7,7 @@ use spinners::{
 
 use crate::theme::StyledText;
 use crate::util::ui::should_send_structured_message;
+pub mod branch_naming;
 pub mod cli;
 mod consts;
 pub mod context;
@@ -24,7 +25,6 @@ pub mod session_commands;
 pub mod session_mode;
 pub mod terminal_state;
 pub mod worktree_strategy;
-pub mod branch_naming;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
@@ -783,24 +783,30 @@ impl ChatSession {
             .get_bool(crate::database::settings::Setting::MemoryEnabled)
             .unwrap_or(true)
         {
-            let memory_dir = crate::util::paths::logs_dir().ok().and_then(|logs| logs.parent().map(|p| p.join("memory")));
-            
+            let memory_dir = crate::util::paths::logs_dir()
+                .ok()
+                .and_then(|logs| logs.parent().map(|p| p.join("memory")));
+
             memory_dir.and_then(|dir| {
                 std::fs::create_dir_all(&dir).ok()?;
                 let db_path = dir.join("cortex.db");
                 let config = cortex_memory::MemoryConfig::default()
                     .with_enabled(true)
                     .with_retention_days(
-                        os.database.settings.get_int(crate::database::settings::Setting::MemoryRetentionDays)
+                        os.database
+                            .settings
+                            .get_int(crate::database::settings::Setting::MemoryRetentionDays)
                             .map(|v| v as u32)
-                            .unwrap_or(30)
+                            .unwrap_or(30),
                     )
                     .with_max_size_mb(
-                        os.database.settings.get_int(crate::database::settings::Setting::MemoryMaxSizeMb)
+                        os.database
+                            .settings
+                            .get_int(crate::database::settings::Setting::MemoryMaxSizeMb)
                             .map(|v| v as u32)
-                            .unwrap_or(100)
+                            .unwrap_or(100),
                     );
-                
+
                 cortex_memory::CortexMemory::new(db_path, config)
                     .map_err(|e| {
                         tracing::warn!("Failed to initialize cortex memory: {}", e);
