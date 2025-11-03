@@ -328,7 +328,13 @@ async fn execute_memory_command(
         },
         MemorySubcommand::List(args) => {
             if let Some(ref mut cortex) = session.cortex {
-                match cortex.list_recent(args.limit) {
+                let items = if let Some(session_id) = &args.session {
+                    cortex.list_by_session(session_id, args.limit)
+                } else {
+                    cortex.list_recent(args.limit)
+                };
+                
+                match items {
                     Ok(items) => {
                         if items.is_empty() {
                             execute!(
@@ -505,7 +511,17 @@ async fn execute_recall_command(args: RecallArgs, session: &mut ChatSession) -> 
     };
 
     if let Some(ref mut cortex) = session.cortex {
-        match cortex.recall_context(&args.query, args.limit) {
+        let items = if let Some(session_id) = &args.session {
+            cortex.recall_by_session(&args.query, session_id, args.limit)
+        } else if args.global {
+            cortex.recall_context(&args.query, args.limit)
+        } else {
+            // Default: current session only
+            let current_session = session.conversation.conversation_id();
+            cortex.recall_by_session(&args.query, current_session, args.limit)
+        };
+        
+        match items {
             Ok(items) => {
                 execute!(
                     session.stderr,

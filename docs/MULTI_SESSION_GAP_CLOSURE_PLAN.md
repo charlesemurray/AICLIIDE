@@ -269,6 +269,477 @@
 
 ---
 
+## Testing Strategy
+
+### Phase 1 Tests
+**P1.1: Binary Compilation**
+- [ ] Binary builds without errors
+- [ ] Binary runs with `--help`
+- [ ] Binary starts chat mode
+
+**P1.2: ConversationState Integration**
+- [ ] Unit test: Create session with real ConversationState
+- [ ] Unit test: Send message to session
+- [ ] Unit test: Verify message history
+- [ ] Integration test: Multi-turn conversation
+
+**P1.3: Session Persistence**
+- [ ] Unit test: Save session to database
+- [ ] Unit test: Load session from database
+- [ ] Integration test: Restart Q CLI, sessions restored
+- [ ] Integration test: Session metadata correct after reload
+
+**P1.4: Integration Test**
+- [ ] End-to-end test: Create 2 sessions
+- [ ] End-to-end test: Switch between sessions
+- [ ] End-to-end test: Send messages to each
+- [ ] End-to-end test: Verify isolation
+
+### Phase 2 Tests
+**P2.1: Output Buffering**
+- [ ] Unit test: Buffer captures output
+- [ ] Unit test: Buffer replays on switch
+- [ ] Integration test: Long-running command buffers
+- [ ] Integration test: Multiple switches preserve output
+
+**P2.2: Error Recovery**
+- [ ] Unit test: Detect crashed session
+- [ ] Unit test: Save state before crash
+- [ ] Integration test: Recover from crash
+- [ ] Integration test: Clean up unrecoverable session
+
+**P2.3: Session Limits**
+- [ ] Unit test: Reject 11th session
+- [ ] Unit test: Memory monitor triggers
+- [ ] Integration test: Auto-hibernate old sessions
+- [ ] Integration test: Manual cleanup works
+
+**P2.4: Telemetry**
+- [ ] Unit test: Events recorded
+- [ ] Integration test: Telemetry flows to backend
+- [ ] Integration test: All metrics captured
+
+### Phase 3 Tests
+**P3.1: Onboarding**
+- [ ] Manual test: First-time user sees tutorial
+- [ ] Manual test: Help command works
+- [ ] User test: 5 users complete onboarding
+
+**P3.2: Visual Feedback**
+- [ ] Manual test: Prompt shows active session
+- [ ] Manual test: Spinner appears for operations
+- [ ] Manual test: Colors display correctly
+
+**P3.3: Session Preview**
+- [ ] Unit test: Preview shows last message
+- [ ] Manual test: Verbose output readable
+- [ ] Manual test: Status indicators clear
+
+**P3.4: Keyboard Shortcuts**
+- [ ] Manual test: Ctrl+N creates session
+- [ ] Manual test: Ctrl+Tab switches
+- [ ] Manual test: Ctrl+W closes
+- [ ] Manual test: Ctrl+R renames
+
+**P3.5: Error Messages**
+- [ ] Manual test: All error messages helpful
+- [ ] Manual test: Suggestions work
+- [ ] User test: Users recover from errors
+
+**P3.6: User Testing**
+- [ ] 5 users recruited
+- [ ] Tasks defined
+- [ ] Observations recorded
+- [ ] Feedback incorporated
+
+### Phase 4 Tests
+**P4.1: Performance**
+- [ ] Benchmark: Session switch <500ms (p95)
+- [ ] Benchmark: Memory <125MB for 10 sessions
+- [ ] Load test: 10 concurrent sessions
+- [ ] Stress test: Rapid switching
+
+**P4.2: Security**
+- [ ] Security test: Session isolation
+- [ ] Security test: No data leaks
+- [ ] Security test: Input sanitization
+- [ ] Security review: Team approval
+
+**P4.3: Documentation**
+- [ ] Docs review: Accurate and complete
+- [ ] Video test: Users can follow
+- [ ] FAQ test: Covers real questions
+
+**P4.4: Monitoring**
+- [ ] Test: Dashboards show data
+- [ ] Test: Alerts trigger correctly
+- [ ] Test: Metrics accurate
+
+---
+
+## Git Commit Structure
+
+### Branch Strategy
+**All development on `main` branch** - no feature branches
+
+### Commit Message Format
+```
+<type>: <short description>
+
+<detailed description>
+
+Tests:
+- <test 1>
+- <test 2>
+
+Validation:
+- <validation criteria met>
+```
+
+### Commit Types
+- `feat:` - New feature implementation
+- `fix:` - Bug fix
+- `test:` - Add or update tests
+- `docs:` - Documentation only
+- `refactor:` - Code refactoring
+- `perf:` - Performance improvement
+
+### Phase 1 Commits
+```bash
+# P1.1
+git commit -m "fix: resolve binary compilation errors
+
+- Fix import errors in main.rs
+- Resolve module visibility issues
+
+Tests:
+- Binary builds successfully
+- Binary runs with --help
+
+Validation:
+- cargo build --bin chat_cli succeeds"
+
+# P1.2
+git commit -m "feat: connect real ConversationState to sessions
+
+- Remove unsafe placeholder in coordinator
+- Create proper ConversationState per session
+- Integrate with existing conversation infrastructure
+
+Tests:
+- Unit tests for ConversationState creation
+- Integration test for multi-turn conversation
+
+Validation:
+- Real conversations work in sessions"
+
+# P1.3
+git commit -m "feat: implement session persistence
+
+- Save session metadata to database
+- Load active sessions on startup
+- Restore session state from database
+
+Tests:
+- Unit tests for save/load
+- Integration test for restart persistence
+
+Validation:
+- Sessions survive Q CLI restart"
+
+# P1.4
+git commit -m "test: add end-to-end integration test
+
+- Create 2 sessions
+- Switch between them
+- Send messages to each
+- Verify isolation
+
+Validation:
+- Integration test passes in CI"
+```
+
+### Phase 2 Commits
+```bash
+# P2.1
+git commit -m "feat: implement output buffering for background sessions
+
+- Connect OutputBuffer to terminal output
+- Capture stdout/stderr in background
+- Replay buffered output on switch
+
+Tests:
+- Unit tests for buffer capture/replay
+- Integration test for long-running commands
+
+Validation:
+- Background output appears on switch"
+
+# P2.2
+git commit -m "feat: add error recovery for crashed sessions
+
+- Detect session crashes
+- Save state before crash
+- Offer recovery on startup
+
+Tests:
+- Unit tests for crash detection
+- Integration test for recovery
+
+Validation:
+- Crashed sessions recoverable"
+
+# P2.3
+git commit -m "feat: enforce session limits and cleanup
+
+- Enforce max 10 active sessions
+- Implement memory monitoring
+- Auto-hibernate old sessions
+
+Tests:
+- Unit tests for limits
+- Integration test for auto-hibernate
+
+Validation:
+- Cannot exceed 10 sessions"
+
+# P2.4
+git commit -m "feat: connect real telemetry
+
+- Integrate with existing telemetry system
+- Track session metrics
+- Add performance tracking
+
+Tests:
+- Unit tests for event recording
+- Integration test for telemetry flow
+
+Validation:
+- Telemetry data in analytics"
+```
+
+### Phase 3 Commits
+```bash
+# P3.1
+git commit -m "feat: add user onboarding
+
+- Welcome message on first use
+- Quick tutorial
+- Help command
+
+Tests:
+- Manual test of onboarding flow
+- User test with 5 users
+
+Validation:
+- 80% of users complete onboarding"
+
+# P3.2
+git commit -m "feat: improve visual feedback
+
+- Show active session in prompt
+- Add spinner for operations
+- Color-code session types
+
+Tests:
+- Manual test of all visual elements
+
+Validation:
+- Users know which session they're in"
+
+# P3.3
+git commit -m "feat: add session preview
+
+- Verbose flag shows last message
+- Show session age and count
+- Highlight error sessions
+
+Tests:
+- Unit test for preview data
+- Manual test of display
+
+Validation:
+- Users can see session state"
+
+# P3.4
+git commit -m "feat: add keyboard shortcuts
+
+- Ctrl+N for new session
+- Ctrl+Tab for next session
+- Ctrl+W to close
+- Ctrl+R to rename
+
+Tests:
+- Manual test of all shortcuts
+
+Validation:
+- Shortcuts work correctly"
+
+# P3.5
+git commit -m "feat: improve error messages
+
+- Add suggestions to errors
+- Add 'Did you mean?' for typos
+- Show examples in errors
+
+Tests:
+- Manual test of error scenarios
+- User test for error recovery
+
+Validation:
+- Users self-recover from errors"
+
+# P3.6
+git commit -m "test: user testing results and fixes
+
+- Tested with 5 users
+- Fixed issues found
+- Updated based on feedback
+
+Tests:
+- User testing completed
+
+Validation:
+- 4/5 users successful"
+```
+
+### Phase 4 Commits
+```bash
+# P4.1
+git commit -m "perf: validate and optimize performance
+
+- Benchmark session switching
+- Measure memory usage
+- Optimize hot paths
+
+Tests:
+- Performance benchmarks
+
+Validation:
+- <500ms switch, <125MB memory"
+
+# P4.2
+git commit -m "feat: security review and fixes
+
+- Review session isolation
+- Fix data leak issues
+- Validate input sanitization
+
+Tests:
+- Security test suite
+
+Validation:
+- Security team approval"
+
+# P4.3
+git commit -m "docs: complete production documentation
+
+- Update user docs
+- Create video tutorial
+- Write blog post
+
+Tests:
+- Docs review
+
+Validation:
+- Users can learn independently"
+
+# P4.4
+git commit -m "feat: add monitoring and alerts
+
+- Set up dashboards
+- Configure alerts
+- Track adoption metrics
+
+Tests:
+- Test dashboards and alerts
+
+Validation:
+- Monitoring operational"
+
+# P4.5
+git commit -m "docs: finalize rollout plan
+
+- Define rollout stages
+- Set success criteria
+- Create rollback procedure
+
+Validation:
+- Plan approved by team"
+```
+
+---
+
+## Approval Gates
+
+### Gate 1: End of Phase 1 (Day 2)
+**Review**: Working implementation
+**Validation**: 
+- [ ] Binary compiles and runs
+- [ ] Real conversations work
+- [ ] Sessions persist
+- [ ] Integration test passes
+
+**Approval Criteria**:
+- All Phase 1 tests pass
+- Code review complete
+- Demo to stakeholders successful
+
+**Decision**: Proceed to Phase 2 or iterate?
+
+---
+
+### Gate 2: End of Phase 2 (Day 4)
+**Review**: Reliable implementation
+**Validation**:
+- [ ] Output buffering works
+- [ ] Error recovery works
+- [ ] Limits enforced
+- [ ] Telemetry flowing
+
+**Approval Criteria**:
+- All Phase 2 tests pass
+- No critical bugs
+- Performance acceptable
+
+**Decision**: Proceed to Phase 3 or fix issues?
+
+---
+
+### Gate 3: End of Phase 3 (Day 7)
+**Review**: Usable MVP
+**Validation**:
+- [ ] Onboarding successful (80%)
+- [ ] Visual feedback clear
+- [ ] User testing positive (4/5)
+- [ ] Error messages helpful
+
+**Approval Criteria**:
+- All Phase 3 tests pass
+- User testing successful
+- UX designer approval
+
+**Decision**: Ship to beta or proceed to Phase 4?
+
+---
+
+### Gate 4: End of Phase 4 (Day 9)
+**Review**: Production ready
+**Validation**:
+- [ ] Performance targets met
+- [ ] Security approved
+- [ ] Monitoring operational
+- [ ] Rollout plan ready
+
+**Approval Criteria**:
+- All Phase 4 tests pass
+- Security review complete
+- PM approval for GA
+
+**Decision**: Ship to production or extend beta?
+
+---
+
 ## Summary Timeline
 
 | Phase | Focus | Duration | Cumulative |
