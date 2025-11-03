@@ -75,20 +75,16 @@ pub fn detect_conflicts(repo_root: &Path, branch: &str, target: &str) -> Result<
 
 /// Merge worktree branch back to target
 pub fn merge_branch(repo_root: &Path, branch: &str, target: &str) -> Result<()> {
+    // Save current branch for rollback
+    let original_branch = get_current_branch(repo_root)?;
+    
     // Switch to target branch
-    let status = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .arg("checkout")
-        .arg(target)
-        .status()?;
-
-    if !status.success() {
-        bail!("Failed to checkout {}", target);
+    if let Err(e) = checkout_branch(repo_root, target) {
+        return Err(e);
     }
-
-    // Merge branch
-    let status = Command::new("git")
+    
+    // Attempt merge
+    let merge_result = Command::new("git")
         .arg("-C")
         .arg(repo_root)
         .arg("merge")
@@ -96,13 +92,16 @@ pub fn merge_branch(repo_root: &Path, branch: &str, target: &str) -> Result<()> 
         .arg("--no-ff")
         .arg("-m")
         .arg(format!("Merge branch '{}'", branch))
-        .status()?;
-
-    if !status.success() {
-        bail!("Merge failed - conflicts need resolution");
+        .status();
+    
+    match merge_result {
+        Ok(status) if status.success() => Ok(()),
+        _ => {
+            // Rollback: return to original branch
+            let _ = checkout_branch(repo_root, &original_branch);
+            bail!("Merge failed - conflicts need resolution. Returned to {}", original_branch)
+        }
     }
-
-    Ok(())
 }
 
 /// Prepare worktree for merge
