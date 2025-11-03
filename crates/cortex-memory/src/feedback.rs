@@ -46,7 +46,7 @@ impl FeedbackManager {
             .as_secs() as i64;
 
         self.conn.execute(
-            "INSERT INTO memory_feedback (memory_id, helpful, timestamp) VALUES (?1, ?2, ?3)",
+            "INSERT OR REPLACE INTO memory_feedback (memory_id, helpful, timestamp) VALUES (?1, ?2, ?3)",
             [memory_id, &(helpful as i64).to_string(), &timestamp.to_string()],
         )?;
 
