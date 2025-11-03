@@ -563,7 +563,13 @@ impl ChatArgs {
                         use crate::git::create_worktree;
                         use crate::session::metadata::WorktreeInfo;
 
-                        let branch_name = sanitize_branch_name(&name);
+                        let branch_name = match sanitize_branch_name(&name) {
+                            Ok(name) => name,
+                            Err(e) => {
+                                eprintln!("✗ Invalid branch name: {}", e);
+                                return None;
+                            }
+                        };
                         let unique_branch =
                             ensure_unique_branch_name(&ctx.repo_root, &branch_name).unwrap_or(branch_name);
 
@@ -638,7 +644,13 @@ impl ChatArgs {
                                     // Will be auto-generated from first message
                                     format!("session-{}", &conversation_id[..8])
                                 } else {
-                                    sanitize_branch_name(input)
+                                    match sanitize_branch_name(input) {
+                                        Ok(name) => name,
+                                        Err(e) => {
+                                            eprintln!("✗ Invalid branch name: {}", e);
+                                            return None;
+                                        }
+                                    }
                                 };
 
                                 let unique_branch =

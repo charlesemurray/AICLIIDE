@@ -1,12 +1,19 @@
 use std::path::Path;
 
+use eyre::{Result, bail};
+
 use crate::git::{
     GitError,
     list_worktrees,
 };
 
-pub fn sanitize_branch_name(input: &str) -> String {
-    input
+pub fn sanitize_branch_name(input: &str) -> Result<String> {
+    // Validate input
+    if input.trim().is_empty() {
+        bail!("Branch name cannot be empty");
+    }
+    
+    let sanitized = input
         .trim()
         .to_lowercase()
         .chars()
@@ -22,20 +29,30 @@ pub fn sanitize_branch_name(input: &str) -> String {
         .join("-")
         .chars()
         .take(50)
-        .collect()
+        .collect::<String>();
+    
+    // Validate result
+    if sanitized.is_empty() {
+        bail!("Branch name '{}' contains no valid characters", input);
+    }
+    if sanitized.starts_with('-') || sanitized.ends_with('-') {
+        bail!("Branch name cannot start or end with '-'");
+    }
+    
+    Ok(sanitized)
 }
 
-pub fn generate_branch_name(context: &str, prefix: Option<&str>) -> String {
-    let sanitized = sanitize_branch_name(context);
+pub fn generate_branch_name(context: &str, prefix: Option<&str>) -> Result<String> {
+    let sanitized = sanitize_branch_name(context)?;
     if let Some(p) = prefix {
-        format!("{}/{}", sanitize_branch_name(p), sanitized)
+        Ok(format!("{}/{}", sanitize_branch_name(p)?, sanitized))
     } else {
-        sanitized
+        Ok(sanitized)
     }
 }
 
 /// Generate a branch name from conversation context
-pub fn generate_from_conversation(first_message: &str, session_type: Option<&str>) -> String {
+pub fn generate_from_conversation(first_message: &str, session_type: Option<&str>) -> Result<String> {
     let words: Vec<&str> = first_message
         .split_whitespace()
         .filter(|w| w.len() > 3)
