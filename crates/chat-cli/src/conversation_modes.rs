@@ -109,19 +109,19 @@ impl ConversationMode {
     }
 
     /// Get a notification message for mode transitions
-    pub fn get_transition_notification(&self, trigger: &ConversationModeTrigger) -> String {
+    pub fn get_transition_notification(&self, trigger: &crate::analytics::ModeTransitionTrigger) -> String {
         match trigger {
-            ConversationModeTrigger::Auto => {
+            crate::analytics::ModeTransitionTrigger::Auto => {
                 format!("🔄 Automatically switched to {} mode", self.get_mode_name())
             },
-            ConversationModeTrigger::UserCommand => {
+            crate::analytics::ModeTransitionTrigger::UserCommand => {
                 format!("✅ Switched to {} mode", self.get_mode_name())
             },
         }
     }
 
     /// Handle mode-related commands (/mode, /status)
-    pub fn handle_mode_command(command: &str, current_mode: &ConversationMode, mode_history: &[(ConversationMode, ConversationModeTrigger, String)]) -> String {
+    pub fn handle_mode_command(command: &str, current_mode: &ConversationMode, mode_history: &[(ConversationMode, crate::analytics::ModeTransitionTrigger, String)]) -> String {
         match command {
             "/mode" | "/status" => Self::get_mode_status_display(current_mode, mode_history),
             _ => "Unknown command. Use /mode or /status to see current mode.".to_string(),
@@ -129,7 +129,7 @@ impl ConversationMode {
     }
     
     /// Get detailed status display with current mode and history
-    pub fn get_mode_status_display(current_mode: &ConversationMode, mode_history: &[(ConversationMode, ConversationModeTrigger, String)]) -> String {
+    pub fn get_mode_status_display(current_mode: &ConversationMode, mode_history: &[(ConversationMode, crate::analytics::ModeTransitionTrigger, String)]) -> String {
         let mut status = format!("Current mode: {}\n", current_mode.get_status_display());
         
         if mode_history.is_empty() {
@@ -138,8 +138,8 @@ impl ConversationMode {
             status.push_str("Recent transitions:\n");
             for (mode, trigger, timestamp) in mode_history.iter().rev().take(3) {
                 let trigger_text = match trigger {
-                    ConversationModeTrigger::Auto => "auto",
-                    ConversationModeTrigger::UserCommand => "manual",
+                    crate::analytics::ModeTransitionTrigger::Auto => "auto",
+                    crate::analytics::ModeTransitionTrigger::UserCommand => "manual",
                 };
                 status.push_str(&format!("  {} - {} ({})\n", timestamp, mode.get_mode_name(), trigger_text));
             }
@@ -195,7 +195,7 @@ Use /help for general help or /modes for quick reference."#.to_string()
         command: &str, 
         current_mode: &mut ConversationMode,
         previous_mode: &Option<ConversationMode>,
-        last_trigger: &Option<ConversationModeTrigger>,
+        last_trigger: &Option<crate::analytics::ModeTransitionTrigger>,
         can_override: &mut bool
     ) -> String {
         match command {
@@ -222,8 +222,8 @@ Use /help for general help or /modes for quick reference."#.to_string()
     }
     
     /// Check if the last transition can be overridden
-    pub fn can_override_transition(last_trigger: &Option<ConversationModeTrigger>, can_override: bool) -> bool {
-        can_override && matches!(last_trigger, Some(ConversationModeTrigger::Auto))
+    pub fn can_override_transition(last_trigger: &Option<crate::analytics::ModeTransitionTrigger>, can_override: bool) -> bool {
+        can_override && matches!(last_trigger, Some(crate::analytics::ModeTransitionTrigger::Auto))
     }
 }
 
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_auto_transition_notification() {
         let mode = ConversationMode::ExecutePlan;
-        let notification = mode.get_transition_notification(&ConversationModeTrigger::Auto);
+        let notification = mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::Auto);
         assert!(notification.contains("ExecutePlan"));
         assert!(notification.contains("Automatically"));
         assert!(!notification.is_empty());
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_manual_transition_notification() {
         let mode = ConversationMode::Review;
-        let notification = mode.get_transition_notification(&ConversationModeTrigger::UserCommand);
+        let notification = mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::UserCommand);
         assert!(notification.contains("Review"));
         assert!(notification.contains("Switched"));
         assert!(!notification.is_empty());
@@ -280,8 +280,8 @@ mod tests {
     fn test_status_command_with_history() {
         let current_mode = ConversationMode::Review;
         let history = vec![
-            (ConversationMode::Interactive, ConversationModeTrigger::UserCommand, "2025-11-03 03:40:00".to_string()),
-            (ConversationMode::ExecutePlan, ConversationModeTrigger::Auto, "2025-11-03 03:41:00".to_string()),
+            (ConversationMode::Interactive, crate::analytics::ModeTransitionTrigger::UserCommand, "2025-11-03 03:40:00".to_string()),
+            (ConversationMode::ExecutePlan, crate::analytics::ModeTransitionTrigger::Auto, "2025-11-03 03:41:00".to_string()),
         ];
         
         let response = ConversationMode::handle_mode_command("/status", &current_mode, &history);
@@ -329,14 +329,14 @@ mod tests {
 
     #[test]
     fn test_can_override_auto_transition() {
-        let trigger = Some(ConversationModeTrigger::Auto);
+        let trigger = Some(crate::analytics::ModeTransitionTrigger::Auto);
         let can_override = true;
         assert!(ConversationMode::can_override_transition(&trigger, can_override));
     }
 
     #[test]
     fn test_cannot_override_manual_transition() {
-        let trigger = Some(ConversationModeTrigger::UserCommand);
+        let trigger = Some(crate::analytics::ModeTransitionTrigger::UserCommand);
         let can_override = true;
         assert!(!ConversationMode::can_override_transition(&trigger, can_override));
     }
@@ -345,7 +345,7 @@ mod tests {
     fn test_override_command_with_no_previous_mode() {
         let mut current_mode = ConversationMode::ExecutePlan;
         let previous_mode = None;
-        let trigger = Some(ConversationModeTrigger::Auto);
+        let trigger = Some(crate::analytics::ModeTransitionTrigger::Auto);
         let mut can_override = true;
         
         let response = ConversationMode::handle_override_command(
@@ -358,7 +358,7 @@ mod tests {
     fn test_successful_override() {
         let mut current_mode = ConversationMode::ExecutePlan;
         let previous_mode = Some(ConversationMode::Interactive);
-        let trigger = Some(ConversationModeTrigger::Auto);
+        let trigger = Some(crate::analytics::ModeTransitionTrigger::Auto);
         let mut can_override = true;
         
         let response = ConversationMode::handle_override_command(
