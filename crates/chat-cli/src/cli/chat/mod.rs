@@ -319,7 +319,7 @@ impl ChatArgs {
         }
 
         // Handle session commands if coordinator is enabled and input is a session command
-        if let (Some(ref mut coord), Some(ref inp)) = (&mut coordinator, &input) {
+        if let (Some(coord), Some(inp)) = (&mut coordinator, &input) {
             if inp.starts_with("/sessions") || inp.starts_with("/switch") || inp.starts_with("/s ") {
                 let mut stderr = std::io::stderr();
                 match session_integration::handle_session_command(inp, coord, &mut stderr).await {

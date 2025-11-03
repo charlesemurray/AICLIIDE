@@ -257,7 +257,7 @@ impl SessionsSubcommand {
                     }
                 };
                 
-                let session = if let Some(ref branch_name) = branch {
+                let session = if let Some(branch_name) = branch {
                     sessions.iter().find(|s| {
                         s.worktree_info.as_ref().map(|w| &w.branch == branch_name).unwrap_or(false)
                     })

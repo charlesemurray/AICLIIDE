@@ -420,7 +420,7 @@ impl ConversationState {
     }
 
     /// Sets the response message according to the currently set [Self::next_message].
-    pub fn push_assistant_message(
+    pub async fn push_assistant_message(
         &mut self,
         os: &mut Os,
         message: AssistantMessage,

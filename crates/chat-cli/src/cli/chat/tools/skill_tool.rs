@@ -38,7 +38,7 @@ impl SkillTool {
 
         let skill = registry
             .get(&self.skill_name)
-            .ok_or_else(|| SkillError::NotFound(self.skill_name.clone()))?;
+            .ok_or_else(|| SkillError::NotFound)?;
 
         let result = skill.execute(self.params.clone()).await;
         let duration = start.elapsed();
