@@ -16,6 +16,19 @@ pub struct GitWorktreeInfo {
     pub commit: String,
 }
 
+impl GitWorktreeInfo {
+    /// Convert to session WorktreeInfo with additional context
+    pub fn to_session_info(&self, repo_root: PathBuf, merge_target: String) -> crate::session::metadata::WorktreeInfo {
+        crate::session::metadata::WorktreeInfo {
+            path: self.path.clone(),
+            branch: self.branch.clone(),
+            repo_root,
+            is_temporary: false,
+            merge_target,
+        }
+    }
+}
+
 pub fn list_worktrees(repo_root: &Path) -> Result<Vec<GitWorktreeInfo>> {
     let output = Command::new("git")
         .current_dir(repo_root)
