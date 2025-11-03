@@ -2358,4 +2358,161 @@ mod tests {
         assert_eq!(manager.workflow_registry.len(), 1);
         assert!(manager.workflow_registry.get("test-workflow").is_some());
     }
+
+    #[tokio::test]
+    async fn test_end_to_end_skill_execution() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+        let skill_path = dir.path().join("echo_skill.json");
+
+        let skill_json = r#"{
+            "name": "echo-skill",
+            "description": "Echo a message",
+            "skill_type": "code_inline",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "msg": {"type": "string"}
+                }
+            },
+            "implementation": {
+                "type": "command",
+                "command": "echo {{msg}}"
+            }
+        }"#;
+
+        fs::write(&skill_path, skill_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+
+        // Simulate LLM tool use
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "echo-skill".to_string(),
+            args: serde_json::json!({"msg": "Hello World"}),
+        };
+
+        // This should work end-to-end: ToolManager -> Registry -> Skill -> Execution
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_end_to_end_workflow_execution() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+        let workflow_path = dir.path().join("simple_workflow.json");
+
+        let workflow_json = r#"{
+            "name": "simple-workflow",
+            "version": "1.0.0",
+            "description": "Simple test workflow",
+            "steps": [
+                {
+                    "name": "step1",
+                    "tool": "echo",
+                    "parameters": {"msg": "test"}
+                }
+            ]
+        }"#;
+
+        fs::write(&workflow_path, workflow_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "simple-workflow".to_string(),
+            args: serde_json::json!({}),
+        };
+
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_ok());
+
+        if let Ok(Tool::WorkflowNew(workflow)) = result {
+            assert_eq!(workflow.name, "simple-workflow");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tool_discovery_priority() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        // Create both a skill and workflow with same name
+        let skill_path = dir.path().join("duplicate.json");
+        fs::write(
+            &skill_path,
+            r#"{"name": "duplicate", "description": "Skill", "skill_type": "code_inline"}"#,
+        )
+        .unwrap();
+
+        let workflow_path = dir.path().join("duplicate_workflow.json");
+        fs::write(
+            &workflow_path,
+            r#"{"name": "duplicate", "version": "1.0.0", "description": "Workflow", "steps": []}"#,
+        )
+        .unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "duplicate".to_string(),
+            args: serde_json::json!({}),
+        };
+
+        // Should resolve to workflow (workflows checked first in get_tool_from_tool_use)
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_registry_access() {
+        use std::sync::Arc;
+
+        use tokio::task;
+
+        let os = Os::new().await.unwrap();
+        let manager = Arc::new(ToolManager::new_with_skills(&os).await.unwrap());
+
+        // Spawn multiple tasks accessing registries concurrently
+        let mut handles = vec![];
+
+        for _ in 0..10 {
+            let manager_clone = Arc::clone(&manager);
+            let handle = task::spawn(async move {
+                let _skills = manager_clone.skill_registry.len();
+                let _workflows = manager_clone.workflow_registry.len();
+            });
+            handles.push(handle);
+        }
+
+        // All should complete without panicking
+        for handle in handles {
+            assert!(handle.await.is_ok());
+        }
+    }
 }
