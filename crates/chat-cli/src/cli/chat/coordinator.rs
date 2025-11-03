@@ -22,7 +22,7 @@ use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
 use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
-use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
+// use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
 use crate::theme::session::{
     SessionDisplay,
     SessionStatus,

@@ -67,6 +67,11 @@ impl OutputBuffer {
         self.events.push_back(event);
     }
 
+    /// Get current buffer size in bytes
+    pub fn current_size(&self) -> usize {
+        self.current_size_bytes
+    }
+
     /// Get all buffered events
     pub fn events(&self) -> &VecDeque<OutputEvent> {
         &self.events

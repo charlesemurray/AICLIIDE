@@ -19,6 +19,7 @@ pub mod security;
 pub mod security_logging;
 pub mod security_testing;
 pub mod security_tools;
+pub mod templates;
 pub mod tests;
 pub mod toolspec_conversion;
 pub mod types;

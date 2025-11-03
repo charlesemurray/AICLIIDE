@@ -25,6 +25,7 @@ pub mod session_autocomplete;
 pub mod session_commands;
 pub mod session_lock;
 pub mod session_mode;
+pub mod session_persistence;
 pub mod session_scanner;
 pub mod terminal_state;
 pub mod worktree_session;

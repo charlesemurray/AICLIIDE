@@ -65,7 +65,7 @@ mod tests {
         };
         
         // Create a minimal Os for testing
-        let os = Os::real();
+        let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("empty"));
@@ -80,7 +80,7 @@ mod tests {
             limit: None,
         };
         
-        let os = Os::real();
+        let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
         assert!(result.is_err());
     }
@@ -94,7 +94,7 @@ mod tests {
             limit: None,
         };
         
-        let os = Os::real();
+        let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
         assert!(result.is_ok());
     }

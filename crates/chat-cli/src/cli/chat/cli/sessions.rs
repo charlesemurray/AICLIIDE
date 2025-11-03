@@ -58,6 +58,14 @@ pub enum SessionsSubcommand {
     Scan,
     /// Show worktree sessions
     Worktrees,
+    /// Merge a worktree session back to main
+    Merge {
+        /// Branch name to merge
+        branch: Option<String>,
+        /// Skip conflict detection
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 impl SessionsSubcommand {
