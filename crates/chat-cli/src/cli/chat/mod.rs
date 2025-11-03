@@ -751,6 +751,10 @@ pub struct ChatSession {
     analytics: Option<crate::analytics::ConversationAnalytics>,
     /// Current conversation mode
     conversation_mode: crate::conversation_modes::ConversationMode,
+    /// Transition manager for mode changes (Epic 3)
+    transition_manager: crate::conversation_modes::TransitionManager,
+    /// User preferences for modes (Epic 3)
+    user_preferences: crate::conversation_modes::UserPreferences,
     /// Cortex memory system
     cortex: Option<cortex_memory::CortexMemory>,
     /// Last user message for memory storage
@@ -2635,13 +2639,43 @@ impl ChatSession {
                 self.log_analytics_event(event);
             }
 
+            // Show transition notification
+            let notification = new_mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::UserCommand);
             execute!(
                 self.stderr,
                 StyledText::success_fg(),
-                style::Print(format!("✓ Switched to {:?} mode\n", new_mode)),
+                style::Print(format!("{}\n", notification)),
                 StyledText::reset(),
             )?;
 
+            return Ok(ChatState::PromptUser {
+                skip_printing_tools: false,
+            });
+        }
+
+        // Check for mode status commands (Epic 1)
+        if input == "/mode" || input == "/status" {
+            let status = self.conversation_mode.get_status_display();
+            execute!(
+                self.stderr,
+                StyledText::info_fg(),
+                style::Print(format!("Current mode: {}\n", status)),
+                StyledText::reset(),
+            )?;
+            return Ok(ChatState::PromptUser {
+                skip_printing_tools: false,
+            });
+        }
+
+        // Check for mode help commands (Epic 2)
+        if input == "/help modes" {
+            let help_text = crate::conversation_modes::ConversationMode::get_help_text();
+            execute!(
+                self.stderr,
+                StyledText::info_fg(),
+                style::Print(format!("{}\n", help_text)),
+                StyledText::reset(),
+            )?;
             return Ok(ChatState::PromptUser {
                 skip_printing_tools: false,
             });

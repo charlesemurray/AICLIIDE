@@ -2722,4 +2722,53 @@ mod tests {
             panic!("Expected Tool::SkillNew");
         }
     }
+
+    #[tokio::test]
+    async fn test_end_to_end_workflow_invocation_via_llm() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        let workflow_json = r#"{
+            "name": "simple-workflow",
+            "version": "1.0.0",
+            "description": "A simple workflow",
+            "steps": [
+                {
+                    "name": "step1",
+                    "tool": "echo",
+                    "parameters": {"message": "test"}
+                }
+            ]
+        }"#;
+        fs::write(dir.path().join("simple-workflow.json"), workflow_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        // Verify workflow is in schema
+        let schema = manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+        assert!(schema.contains_key("simple-workflow"));
+
+        // Simulate LLM requesting the workflow
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "simple-workflow".to_string(),
+            args: serde_json::json!({}),
+        };
+
+        let tool = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(tool.is_ok());
+
+        if let Ok(Tool::WorkflowNew(workflow)) = tool {
+            assert_eq!(workflow.name, "simple-workflow");
+        } else {
+            panic!("Expected Tool::WorkflowNew");
+        }
+    }
 }

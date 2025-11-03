@@ -14,6 +14,7 @@ use serde_json::json;
 
 use crate::cli::skills::validation::SkillValidator;
 use crate::cli::skills::{
+    ErrorRecovery,
     SkillError,
     SkillRegistry,
 };
@@ -133,18 +134,26 @@ impl SkillsArgs {
             },
             SkillsCommand::Run { skill_name, params } => {
                 let params = match params {
-                    Some(p) => serde_json::from_str(&p)
-                        .map_err(|e| SkillError::InvalidInput(format!("Invalid JSON: {}", e)))?,
+                    Some(p) => serde_json::from_str(&p).map_err(|e| {
+                        SkillError::InvalidInput {
+                            reason: format!("Invalid JSON: {}", e),
+                            skill_name: skill_name.clone(),
+                        }
+                    })?,
                     None => json!({}),
                 };
 
-                let result = registry
-                    .execute_skill(&skill_name, params)
-                    .await
-                    .map_err(|e| eyre::eyre!("Skill execution failed: {}", e))?;
-                println!("{}", result.output);
-
-                Ok(ExitCode::SUCCESS)
+                match registry.execute_skill(&skill_name, params).await {
+                    Ok(result) => {
+                        println!("{}", result.output);
+                        Ok(ExitCode::SUCCESS)
+                    }
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        eprintln!("{}", ErrorRecovery::format_recovery_guide(&e));
+                        Err(eyre::eyre!("Skill execution failed"))
+                    }
+                }
             },
             SkillsCommand::Info { skill_name } => {
                 match registry.get(&skill_name) {
