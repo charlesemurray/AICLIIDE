@@ -52,17 +52,20 @@ fn parse_worktree_list(output: &str) -> Result<Vec<GitWorktreeInfo>> {
 
     for line in output.lines() {
         if line.starts_with("worktree ") {
-            current_path = Some(line.strip_prefix("worktree ").unwrap().to_string());
+            if let Some(path) = line.strip_prefix("worktree ") {
+                current_path = Some(path.to_string());
+            }
         } else if line.starts_with("HEAD ") {
-            current_commit = Some(line.strip_prefix("HEAD ").unwrap().to_string());
+            if let Some(commit) = line.strip_prefix("HEAD ") {
+                current_commit = Some(commit.to_string());
+            }
         } else if line.starts_with("branch ") {
-            current_branch = Some(
-                line.strip_prefix("branch ")
-                    .unwrap()
+            if let Some(branch_ref) = line.strip_prefix("branch ") {
+                let branch = branch_ref
                     .strip_prefix("refs/heads/")
-                    .unwrap_or(line.strip_prefix("branch ").unwrap())
-                    .to_string(),
-            );
+                    .unwrap_or(branch_ref);
+                current_branch = Some(branch.to_string());
+            }
         } else if line.is_empty() {
             if let (Some(path), Some(commit), Some(branch)) =
                 (current_path.take(), current_commit.take(), current_branch.take())
