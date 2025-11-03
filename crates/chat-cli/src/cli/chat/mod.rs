@@ -1650,6 +1650,36 @@ impl ChatSession {
         // Check if we should show the whats-new announcement
         self.show_changelog_announcement(os).await?;
 
+        // Show memory welcome message on first run
+        if self.cortex.is_some()
+            && !os
+                .database
+                .settings
+                .get_bool(Setting::MemoryWelcomeShown)
+                .unwrap_or(false)
+        {
+            execute!(
+                self.stderr,
+                StyledText::brand_fg(),
+                style::Print("🧠 Memory System Enabled\n"),
+                StyledText::reset(),
+                style::Print("I'll remember context from our conversations to provide better assistance.\n"),
+                style::Print("Use "),
+                StyledText::brand_fg(),
+                style::Print("/memory"),
+                StyledText::reset(),
+                style::Print(" to manage memories or "),
+                StyledText::brand_fg(),
+                style::Print("/recall <query>"),
+                StyledText::reset(),
+                style::Print(" to search past conversations.\n\n")
+            )?;
+            os.database
+                .settings
+                .set(Setting::MemoryWelcomeShown, true)
+                .await?;
+        }
+
         if self.all_tools_trusted() {
             queue!(
                 self.stderr,
