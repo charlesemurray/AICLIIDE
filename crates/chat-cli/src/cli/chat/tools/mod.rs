@@ -239,6 +239,7 @@ impl Tool {
                 Tool::Thinking(thinking) => thinking.queue_description(&mut buf),
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(&mut buf),
+                Tool::CodeSearch(_) => Ok(()),
                 Tool::Skill(skill_tool) => {
                     writeln!(&mut buf, "Executing skill: {}", skill_tool.skill_name)?;
                     Ok(())
@@ -316,6 +317,7 @@ impl Tool {
                 },
                 Tool::Todo(_) => Ok(()),
                 Tool::Delegate(delegate) => delegate.queue_description(output),
+                Tool::CodeSearch(_) => Ok(()),
             }?;
         };
 
@@ -336,6 +338,7 @@ impl Tool {
             Tool::Thinking(think) => think.validate(os).await,
             Tool::Todo(todo) => todo.validate(os).await,
             Tool::Delegate(_) => Ok(()),
+            Tool::CodeSearch(code_search) => code_search.validate(os).await,
             Tool::Skill(_) => Ok(()),    // Skills are validated by the registry
             Tool::Workflow(_) => Ok(()), // Workflows are validated by the registry
             Tool::SkillNew(skill) => skill.validate(),

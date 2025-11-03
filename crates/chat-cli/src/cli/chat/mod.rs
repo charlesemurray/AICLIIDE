@@ -580,7 +580,7 @@ impl ChatArgs {
             None
         };
 
-        ChatSession::new(
+        let mut session = ChatSession::new(
             os,
             &conversation_id,
             agents,
@@ -1012,7 +1012,6 @@ impl ChatSession {
             mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine::new(),
             cortex,
             last_user_message: None,
-        };
         };
 
         // Log session start for analytics
