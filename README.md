@@ -173,6 +173,51 @@ Your code stays in the repository, keeping it clean and organized.
 - [User Guide](docs/SESSION_USER_GUIDE.md) - Complete command reference and best practices
 - [Architecture](docs/SESSION_MANAGEMENT_DESIGN_V2.md) - Technical design details
 
+## Memory System
+
+Amazon Q CLI includes a memory system that maintains context across conversations, making interactions more natural and efficient.
+
+### Features
+
+- **Automatic Context**: Q remembers important information from your conversations
+- **Smart Recall**: Relevant context is automatically retrieved when needed
+- **Session Isolation**: Memories are organized by session for focused context
+- **Privacy Controls**: Ephemeral mode and easy cleanup for sensitive topics
+
+### Quick Start
+
+```bash
+# Memory works automatically - just chat naturally
+q chat "Let's work on authentication"
+
+# Explicitly recall past context
+/recall "authentication implementation"
+
+# View stored memories
+/memory list
+
+# Search memories
+/memory search "database schema"
+
+# Start ephemeral session (no memory)
+q chat --no-memory "sensitive question"
+```
+
+### Commands
+
+- `/memory config` - View memory settings
+- `/memory list` - List recent memories
+- `/memory search <query>` - Search memories
+- `/memory stats` - View usage statistics
+- `/memory cleanup --force` - Clear all memories
+- `/memory toggle` - Enable/disable memory
+- `/recall <query>` - Explicitly recall context
+
+### Documentation
+
+- [User Guide](docs/memory-user-guide.md) - Complete command reference and usage
+- [Developer Guide](docs/memory-developer-guide.md) - Technical architecture and API
+
 ## Security
 
 For security related concerns, see [here](SECURITY.md).
