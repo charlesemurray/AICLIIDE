@@ -65,6 +65,10 @@ pub struct MultiSessionCoordinator {
     rate_limiter: ApiRateLimiter,
     /// Memory monitor
     memory_monitor: MemoryMonitor,
+    /// Session persistence with error handling
+    persistence: Option<SessionPersistence>,
+    /// Lock manager for race condition protection
+    lock_manager: SessionLockManager,
 }
 
 impl MultiSessionCoordinator {
@@ -82,6 +86,8 @@ impl MultiSessionCoordinator {
             state_tx,
             rate_limiter,
             memory_monitor,
+            persistence: None,
+            lock_manager: SessionLockManager::default(),
         }
     }
 
@@ -167,6 +173,26 @@ impl MultiSessionCoordinator {
         *active_id = Some(target_id);
 
         Ok(())
+    }
+
+    /// Acquire lock for session (prevents concurrent access)
+    pub async fn lock_session(&self, session_id: &str, holder: &str) -> Result<crate::cli::chat::session_lock::SessionLockGuard> {
+        self.lock_manager.try_lock(session_id, holder).await
+    }
+
+    /// Check if session is currently locked
+    pub async fn is_session_locked(&self, session_id: &str) -> bool {
+        self.lock_manager.is_locked(session_id).await
+    }
+
+    /// Get all locked sessions
+    pub async fn get_locked_sessions(&self) -> Vec<String> {
+        self.lock_manager.locked_sessions().await
+    }
+
+    /// Clean up stale locks
+    pub async fn cleanup_stale_locks(&self) -> usize {
+        self.lock_manager.cleanup_stale_locks().await
     }
 
     /// Close a session

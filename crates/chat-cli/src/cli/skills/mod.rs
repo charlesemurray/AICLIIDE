@@ -11,6 +11,8 @@ use crate::cli::chat::tools::ToolSpec;
 
 pub mod builtin;
 pub mod creation_assistant;
+pub mod error_recovery;
+pub mod onboarding;
 pub mod platform;
 pub mod registry;
 pub mod security;

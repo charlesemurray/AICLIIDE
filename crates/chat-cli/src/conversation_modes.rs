@@ -237,6 +237,131 @@ impl TransitionManager {
         let to_symbol = to.get_visual_style().1;
         format!("{} → {}", from_symbol, to_symbol)
     }
+}
+
+/// User preferences for conversation modes with persistence
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct UserPreferences {
+    pub default_mode: ConversationMode,
+    pub auto_detection_enabled: bool,
+    pub visual_indicators_enabled: bool,
+    pub transition_confirmations: bool,
+    pub preferred_colors: HashMap<ConversationMode, String>,
+}
+
+impl UserPreferences {
+    pub fn new() -> Self {
+        Self {
+            default_mode: ConversationMode::Interactive,
+            auto_detection_enabled: true,
+            visual_indicators_enabled: true,
+            transition_confirmations: true,
+            preferred_colors: HashMap::new(),
+        }
+    }
+    
+    pub fn with_defaults() -> Self {
+        let mut prefs = Self::new();
+        prefs.preferred_colors.insert(ConversationMode::Interactive, "blue".to_string());
+        prefs.preferred_colors.insert(ConversationMode::ExecutePlan, "green".to_string());
+        prefs.preferred_colors.insert(ConversationMode::Review, "yellow".to_string());
+        prefs
+    }
+    
+    pub fn load_from_config() -> Result<Self, String> {
+        // Mock implementation - in real code would read from ~/.q/config
+        Ok(Self::with_defaults())
+    }
+    
+    pub fn save_to_config(&self) -> Result<(), String> {
+        // Mock implementation - in real code would write to ~/.q/config
+        Ok(())
+    }
+    
+    pub fn from_config_string(config: &str) -> Result<Self, String> {
+        let mut prefs = Self::new();
+        
+        for line in config.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') { continue; }
+            
+            if let Some((key, value)) = line.split_once('=') {
+                let key = key.trim();
+                let value = value.trim().trim_matches('"');
+                
+                match key {
+                    "default_mode" => {
+                        prefs.default_mode = match value {
+                            "Interactive" => ConversationMode::Interactive,
+                            "ExecutePlan" => ConversationMode::ExecutePlan,
+                            "Review" => ConversationMode::Review,
+                            _ => return Err(format!("Invalid default_mode: {}", value)),
+                        };
+                    },
+                    "auto_detection_enabled" => {
+                        prefs.auto_detection_enabled = value.parse().map_err(|_| "Invalid auto_detection_enabled")?;
+                    },
+                    "visual_indicators_enabled" => {
+                        prefs.visual_indicators_enabled = value.parse().map_err(|_| "Invalid visual_indicators_enabled")?;
+                    },
+                    "transition_confirmations" => {
+                        prefs.transition_confirmations = value.parse().map_err(|_| "Invalid transition_confirmations")?;
+                    },
+                    _ => {} // Ignore unknown keys
+                }
+            }
+        }
+        
+        Ok(prefs)
+    }
+    
+    pub fn to_config_string(&self) -> String {
+        let mode_str = match self.default_mode {
+            ConversationMode::Interactive => "Interactive",
+            ConversationMode::ExecutePlan => "ExecutePlan", 
+            ConversationMode::Review => "Review",
+        };
+        
+        format!(
+            r#"default_mode = "{}"
+auto_detection_enabled = {}
+visual_indicators_enabled = {}
+transition_confirmations = {}
+"#,
+            mode_str,
+            self.auto_detection_enabled,
+            self.visual_indicators_enabled,
+            self.transition_confirmations
+        )
+    }
+    
+    pub fn reset_to_defaults(&mut self) {
+        *self = Self::with_defaults();
+    }
+    
+    pub fn apply_to_session<T>(&self, session: &mut T) 
+    where T: SessionConfigurable {
+        session.set_mode(self.default_mode.clone());
+        session.set_auto_detection(self.auto_detection_enabled);
+    }
+    
+    pub fn set_preferred_color(&mut self, mode: ConversationMode, color: &str) -> Result<(), String> {
+        let valid_colors = ["blue", "green", "yellow", "red", "cyan", "magenta"];
+        if !valid_colors.contains(&color) {
+            return Err(format!("Invalid color: {}. Valid colors: {:?}", color, valid_colors));
+        }
+        self.preferred_colors.insert(mode, color.to_string());
+        Ok(())
+    }
+}
+
+/// Trait for objects that can be configured with user preferences
+pub trait SessionConfigurable {
+    fn set_mode(&mut self, mode: ConversationMode);
+    fn set_auto_detection(&mut self, enabled: bool);
+}
 
     fn get_mode_name(&self) -> &str {
         match self {
