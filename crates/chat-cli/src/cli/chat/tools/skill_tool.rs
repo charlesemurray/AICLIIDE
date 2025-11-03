@@ -11,6 +11,7 @@ use crate::cli::skills::{
     SkillError,
     SkillRegistry,
 };
+use crate::cli::skills::security::{SecurityContext, TrustLevel};
 
 #[derive(Debug, Clone)]
 pub struct SkillTool {
@@ -39,11 +40,15 @@ impl SkillTool {
 
         let start = Instant::now();
 
+        // Create security context for skill execution
+        let security_context = SecurityContext::for_trust_level(TrustLevel::UserVerified);
+
         let skill = registry
             .get(&self.skill_name)
             .ok_or_else(|| SkillError::NotFound(self.skill_name.clone()))?;
 
-        let result = skill.execute(self.params.clone()).await;
+        // Execute with security context
+        let result = skill.execute_with_security(self.params.clone(), &security_context).await;
         let duration = start.elapsed();
 
         match result {

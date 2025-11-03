@@ -454,8 +454,57 @@ impl TwoTierCacheManager {
 
 #[async_trait]
 impl TemplateRenderer for SafeTemplateRenderer {
-    async fn render(&self, template: &PromptTemplate, _params: &HashMap<String, String>) -> Result<String> {
-        Ok(template.role.clone())
+    async fn render(&self, template: &PromptTemplate, params: &HashMap<String, String>) -> Result<String> {
+        let mut result = String::new();
+        
+        // Render role
+        result.push_str(&self.substitute_params(&template.role, params));
+        result.push_str("\n\n");
+        
+        // Render capabilities
+        if !template.capabilities.is_empty() {
+            result.push_str("Capabilities:\n");
+            for capability in &template.capabilities {
+                result.push_str("- ");
+                result.push_str(&self.substitute_params(capability, params));
+                result.push('\n');
+            }
+            result.push('\n');
+        }
+        
+        // Render constraints
+        if !template.constraints.is_empty() {
+            result.push_str("Constraints:\n");
+            for constraint in &template.constraints {
+                result.push_str("- ");
+                result.push_str(&self.substitute_params(constraint, params));
+                result.push('\n');
+            }
+            result.push('\n');
+        }
+        
+        // Render context if present
+        if let Some(context) = &template.context {
+            result.push_str("Context:\n");
+            result.push_str(&self.substitute_params(context, params));
+            result.push_str("\n\n");
+        }
+        
+        Ok(result)
+    }
+}
+
+impl SafeTemplateRenderer {
+    fn substitute_params(&self, text: &str, params: &HashMap<String, String>) -> String {
+        let mut result = text.to_string();
+        
+        // Replace all {{param_name}} with values from params
+        for (key, value) in params {
+            let placeholder = format!("{{{{{}}}}}", key);
+            result = result.replace(&placeholder, value);
+        }
+        
+        result
     }
 }
 

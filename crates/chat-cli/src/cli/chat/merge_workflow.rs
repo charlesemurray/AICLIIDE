@@ -79,6 +79,29 @@ pub fn detect_conflicts(repo_root: &Path, branch: &str, target: &str) -> Result<
     Ok(conflicts)
 }
 
+/// Print conflict resolution guidance
+pub fn print_conflict_resolution_guide(conflicts: &[String], branch: &str, target: &str) {
+    println!("⚠️  Conflicts detected in {} file(s):", conflicts.len());
+    for file in conflicts.iter().take(5) {
+        println!("  • {}", file);
+    }
+    if conflicts.len() > 5 {
+        println!("  ... and {} more", conflicts.len() - 5);
+    }
+    
+    println!("\n📋 Resolution options:");
+    println!("  1. Resolve manually:");
+    println!("     git checkout {}", target);
+    println!("     git merge {}", branch);
+    println!("     # Fix conflicts, then:");
+    println!("     git add .");
+    println!("     git commit");
+    println!("\n  2. Force merge (requires manual resolution):");
+    println!("     /sessions merge --force");
+    println!("\n  3. Cancel and continue working:");
+    println!("     /sessions list");
+}
+
 /// Merge worktree branch back to target
 pub fn merge_branch(repo_root: &Path, branch: &str, target: &str) -> Result<()> {
     // Save current branch for rollback

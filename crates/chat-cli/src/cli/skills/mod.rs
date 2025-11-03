@@ -90,6 +90,17 @@ pub trait Skill: Send + Sync {
         vec![]
     }
     async fn execute(&self, params: serde_json::Value) -> Result<SkillResult>;
+    
+    /// Execute skill with security context (default implementation delegates to execute)
+    async fn execute_with_security(
+        &self,
+        params: serde_json::Value,
+        _security_context: &security::SecurityContext,
+    ) -> Result<SkillResult> {
+        // Default: just execute (security checks will be added in later steps)
+        self.execute(params).await
+    }
+    
     async fn render_ui(&self) -> Result<SkillUI>;
     fn supports_interactive(&self) -> bool {
         false

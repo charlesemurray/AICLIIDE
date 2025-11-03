@@ -139,7 +139,6 @@ impl<R: SessionRepository> SessionManager<R> {
         let session_path = std::path::PathBuf::from(".amazonq/sessions").join(session_id);
         SessionPreview::new(metadata, session_path)
     }
-    }
 
     /// Archive a session
     #[instrument(skip(self))]
