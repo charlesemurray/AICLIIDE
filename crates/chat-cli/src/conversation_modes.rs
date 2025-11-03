@@ -189,6 +189,42 @@ Use /help for general help or /modes for quick reference."#.to_string()
 /mode - Show current mode
 /status - Show mode status"#.to_string()
     }
+
+    /// Handle override commands for cancelling automatic mode transitions
+    pub fn handle_override_command(
+        command: &str, 
+        current_mode: &mut ConversationMode,
+        previous_mode: &Option<ConversationMode>,
+        last_trigger: &Option<ConversationModeTrigger>,
+        can_override: &mut bool
+    ) -> String {
+        match command {
+            "/cancel" | "/undo" | "/revert" => {
+                if !Self::can_override_transition(last_trigger, *can_override) {
+                    if last_trigger.is_none() {
+                        return "No recent transition to cancel.".to_string();
+                    } else {
+                        return "Cannot override manual mode transitions.".to_string();
+                    }
+                }
+                
+                // Revert to previous mode
+                if let Some(prev_mode) = previous_mode {
+                    *current_mode = prev_mode.clone();
+                    *can_override = false;
+                    "Cancelled automatic mode transition. Reverted to previous mode.".to_string()
+                } else {
+                    "No previous mode to revert to.".to_string()
+                }
+            },
+            _ => format!("Unknown override command: {}. Use /cancel, /undo, or /revert.", command),
+        }
+    }
+    
+    /// Check if the last transition can be overridden
+    pub fn can_override_transition(last_trigger: &Option<ConversationModeTrigger>, can_override: bool) -> bool {
+        can_override && matches!(last_trigger, Some(ConversationModeTrigger::Auto))
+    }
 }
 
 #[cfg(test)]
@@ -289,5 +325,47 @@ mod tests {
         assert!(reference.contains("/interactive"));
         assert!(reference.contains("/mode"));
         assert!(reference.len() < 500);
+    }
+
+    #[test]
+    fn test_can_override_auto_transition() {
+        let trigger = Some(ConversationModeTrigger::Auto);
+        let can_override = true;
+        assert!(ConversationMode::can_override_transition(&trigger, can_override));
+    }
+
+    #[test]
+    fn test_cannot_override_manual_transition() {
+        let trigger = Some(ConversationModeTrigger::UserCommand);
+        let can_override = true;
+        assert!(!ConversationMode::can_override_transition(&trigger, can_override));
+    }
+
+    #[test]
+    fn test_override_command_with_no_previous_mode() {
+        let mut current_mode = ConversationMode::ExecutePlan;
+        let previous_mode = None;
+        let trigger = Some(ConversationModeTrigger::Auto);
+        let mut can_override = true;
+        
+        let response = ConversationMode::handle_override_command(
+            "/cancel", &mut current_mode, &previous_mode, &trigger, &mut can_override
+        );
+        assert!(response.contains("No previous mode"));
+    }
+
+    #[test]
+    fn test_successful_override() {
+        let mut current_mode = ConversationMode::ExecutePlan;
+        let previous_mode = Some(ConversationMode::Interactive);
+        let trigger = Some(ConversationModeTrigger::Auto);
+        let mut can_override = true;
+        
+        let response = ConversationMode::handle_override_command(
+            "/undo", &mut current_mode, &previous_mode, &trigger, &mut can_override
+        );
+        assert!(response.contains("Cancelled"));
+        assert_eq!(current_mode, ConversationMode::Interactive);
+        assert!(!can_override);
     }
 }
