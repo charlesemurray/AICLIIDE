@@ -4,6 +4,7 @@ pub mod manager;
 pub mod metadata;
 pub mod repository;
 pub mod worktree_repo;
+pub mod session_id;
 
 #[cfg(test)]
 mod integration_tests;
@@ -26,3 +27,5 @@ pub use repository::{
     SessionFilter,
     SessionRepository,
 };
+pub use session_id::resolve_session_id;
+pub use worktree_repo::WorktreeSessionRepository;
