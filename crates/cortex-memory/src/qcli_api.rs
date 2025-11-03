@@ -79,7 +79,7 @@ impl CortexMemory {
     /// Recall context filtered by session
     pub fn recall_by_session(&mut self, query: &str, session_id: &str, limit: usize) -> Result<Vec<ContextItem>> {
         let all_items = self.recall_context(query, limit * 2)?;
-        
+
         let filtered: Vec<ContextItem> = all_items
             .into_iter()
             .filter(|item| {
@@ -91,7 +91,7 @@ impl CortexMemory {
             })
             .take(limit)
             .collect();
-        
+
         Ok(filtered)
     }
 
@@ -132,7 +132,7 @@ impl CortexMemory {
     /// List memories filtered by session
     pub fn list_by_session(&mut self, session_id: &str, limit: usize) -> Result<Vec<ContextItem>> {
         let all_items = self.list_recent(limit * 2)?;
-        
+
         let filtered: Vec<ContextItem> = all_items
             .into_iter()
             .filter(|item| {
@@ -144,7 +144,7 @@ impl CortexMemory {
             })
             .take(limit)
             .collect();
-        
+
         Ok(filtered)
     }
 

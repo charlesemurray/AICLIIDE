@@ -27,7 +27,7 @@ impl ConversationMode {
         if trimmed.is_empty() {
             return None;
         }
-        
+
         let input_lower = trimmed.to_lowercase();
         match input_lower.as_str() {
             "/execute" | "/plan" | "/auto" | "/exec" | "/e" => Some(ConversationMode::ExecutePlan),
@@ -43,27 +43,30 @@ impl ConversationMode {
         if trimmed.is_empty() {
             return ConversationMode::Interactive;
         }
-        
+
         let input_lower = trimmed.to_lowercase();
 
         // Look for plan execution indicators - prioritize complete implementation requests
-        if (input_lower.contains("implement") && (input_lower.contains("entire") || input_lower.contains("complete") || input_lower.contains("full"))) ||
-           input_lower.contains("build everything") ||
-           input_lower.contains("create complete") ||
-           input_lower.contains("develop full") ||
-           input_lower.contains("execute entire") {
+        if (input_lower.contains("implement")
+            && (input_lower.contains("entire") || input_lower.contains("complete") || input_lower.contains("full")))
+            || input_lower.contains("build everything")
+            || input_lower.contains("create complete")
+            || input_lower.contains("develop full")
+            || input_lower.contains("execute entire")
+        {
             return ConversationMode::ExecutePlan;
         }
 
         // Look for review indicators - analysis and examination requests
-        if input_lower.contains("review") || 
-           input_lower.contains("analyze") || 
-           input_lower.contains("feedback") ||
-           input_lower.contains("examine") ||
-           input_lower.contains("check") ||
-           input_lower.contains("audit") ||
-           input_lower.contains("inspect") ||
-           input_lower.contains("evaluate") {
+        if input_lower.contains("review")
+            || input_lower.contains("analyze")
+            || input_lower.contains("feedback")
+            || input_lower.contains("examine")
+            || input_lower.contains("check")
+            || input_lower.contains("audit")
+            || input_lower.contains("inspect")
+            || input_lower.contains("evaluate")
+        {
             return ConversationMode::Review;
         }
 

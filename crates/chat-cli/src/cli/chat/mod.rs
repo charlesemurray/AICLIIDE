@@ -460,30 +460,32 @@ impl ChatArgs {
 
         // Handle worktree creation based on strategy
         let worktree_path = if !self.no_worktree {
+            use crate::cli::chat::branch_naming::{
+                ensure_unique_branch_name,
+                generate_from_conversation,
+            };
+            use crate::cli::chat::worktree_strategy::{
+                WorktreeStrategy,
+                resolve_worktree_strategy,
+            };
             use crate::git::detect_git_context;
-            use crate::cli::chat::worktree_strategy::{resolve_worktree_strategy, WorktreeStrategy};
-            use crate::cli::chat::branch_naming::{generate_from_conversation, ensure_unique_branch_name};
-            
+
             let current_dir = os.env.current_dir()?;
             let git_context = detect_git_context(&current_dir).ok();
-            
+
             // Resolve strategy
-            let strategy = resolve_worktree_strategy(
-                self.worktree.as_ref(),
-                self.no_worktree,
-                git_context.as_ref()
-            );
-            
+            let strategy = resolve_worktree_strategy(self.worktree.as_ref(), self.no_worktree, git_context.as_ref());
+
             match strategy {
                 WorktreeStrategy::Create(name) => {
                     if let Some(ref ctx) = git_context {
-                        use crate::git::create_worktree;
                         use crate::cli::chat::branch_naming::sanitize_branch_name;
-                        
+                        use crate::git::create_worktree;
+
                         let branch_name = sanitize_branch_name(&name);
-                        let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
-                            .unwrap_or(branch_name);
-                        
+                        let unique_branch =
+                            ensure_unique_branch_name(&ctx.repo_root, &branch_name).unwrap_or(branch_name);
+
                         match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
                             Ok(path) => {
                                 eprintln!("✓ Created worktree at: {}", path.display());
@@ -493,7 +495,7 @@ impl ChatArgs {
                             Err(e) => {
                                 eprintln!("✗ Failed to create worktree: {}", e);
                                 None
-                            }
+                            },
                         }
                     } else {
                         eprintln!("✗ Not in a git repository");
@@ -736,6 +738,7 @@ impl ChatSession {
         wrap: Option<WrapMode>,
         auto_approve: Option<u32>,
         batch_mode: bool,
+        no_memory: bool,
     ) -> Result<Self> {
         // Only load prior conversation if we need to resume
         let mut existing_conversation = false;
@@ -836,12 +839,13 @@ impl ChatSession {
             None
         };
 
-        // Initialize cortex memory if enabled
-        let cortex = if os
-            .database
-            .settings
-            .get_bool(crate::database::settings::Setting::MemoryEnabled)
-            .unwrap_or(true)
+        // Initialize cortex memory if enabled and not in ephemeral mode
+        let cortex = if !no_memory
+            && os
+                .database
+                .settings
+                .get_bool(crate::database::settings::Setting::MemoryEnabled)
+                .unwrap_or(true)
         {
             let memory_dir = crate::util::paths::logs_dir()
                 .ok()
@@ -1674,10 +1678,7 @@ impl ChatSession {
                 StyledText::reset(),
                 style::Print(" to search past conversations.\n\n")
             )?;
-            os.database
-                .settings
-                .set(Setting::MemoryWelcomeShown, true)
-                .await?;
+            os.database.settings.set(Setting::MemoryWelcomeShown, true).await?;
         }
 
         if self.all_tools_trusted() {
@@ -2924,11 +2925,7 @@ impl ChatSession {
 
                 // Recall relevant context from memory
                 if let Some(ref mut cortex) = self.cortex {
-                    let verbose = os
-                        .database
-                        .settings
-                        .get_bool(Setting::MemoryVerbose)
-                        .unwrap_or(false);
+                    let verbose = os.database.settings.get_bool(Setting::MemoryVerbose).unwrap_or(false);
 
                     if self.interactive {
                         self.spinner = Some(Spinner::new(Spinners::Dots, "Recalling context...".to_owned()));
@@ -2962,10 +2959,7 @@ impl ChatSession {
                                 self.spinner = None;
                             }
                             if verbose && self.interactive {
-                                execute!(
-                                    self.stderr,
-                                    style::Print("🧠 No relevant memories found\n\n")
-                                )?;
+                                execute!(self.stderr, style::Print("🧠 No relevant memories found\n\n"))?;
                             }
                         },
                         Err(e) => {

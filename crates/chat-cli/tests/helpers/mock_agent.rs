@@ -5,7 +5,10 @@
 
 use chat_cli::cli::chat::tools::ToolSpec;
 use chat_cli::cli::skills::SkillRegistry;
-use serde_json::{json, Value};
+use serde_json::{
+    Value,
+    json,
+};
 
 /// Response from the mock agent
 #[derive(Debug, Clone)]
@@ -41,9 +44,7 @@ impl MockAgent {
     /// Create a mock agent with skills from a registry
     pub fn with_skills(registry: &SkillRegistry) -> Self {
         let tools = registry.get_all_toolspecs();
-        Self {
-            available_tools: tools,
-        }
+        Self { available_tools: tools }
     }
 
     /// Process natural language input and return a response
@@ -108,10 +109,7 @@ impl MockAgent {
     /// Extract calculation from natural language
     fn extract_calculation(&self, input: &str) -> (f64, f64, String) {
         // Simple extraction: look for numbers
-        let numbers: Vec<f64> = input
-            .split_whitespace()
-            .filter_map(|s| s.parse::<f64>().ok())
-            .collect();
+        let numbers: Vec<f64> = input.split_whitespace().filter_map(|s| s.parse::<f64>().ok()).collect();
 
         let a = numbers.get(0).copied().unwrap_or(0.0);
         let b = numbers.get(1).copied().unwrap_or(0.0);
