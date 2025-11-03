@@ -197,3 +197,20 @@ fn format_duration(timestamp: time::OffsetDateTime) -> String {
         "just now".to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_duration() {
+        let now = time::OffsetDateTime::now_utc();
+        assert_eq!(format_duration(now), "just now");
+
+        let one_hour_ago = now - time::Duration::hours(1);
+        assert_eq!(format_duration(one_hour_ago), "1 hours");
+
+        let two_days_ago = now - time::Duration::days(2);
+        assert_eq!(format_duration(two_days_ago), "2 days");
+    }
+}
