@@ -791,6 +791,15 @@ impl ToolManager {
                 }
             }
 
+            // Add workflows to schema
+            for workflow_name in self.workflow_registry.list() {
+                if let Some(definition) = self.workflow_registry.get(&workflow_name) {
+                    let workflow_tool = crate::cli::chat::tools::workflow::WorkflowTool::from_definition(definition);
+                    let tool_spec = workflow_tool.definition_to_toolspec(definition);
+                    tool_specs.insert(workflow_name.clone(), tool_spec);
+                }
+            }
+
             tool_specs
         };
 
@@ -2550,5 +2559,31 @@ mod tests {
 
         assert!(schema.contains_key("test-skill"));
         assert_eq!(schema.get("test-skill").unwrap().name, "test-skill");
+    }
+
+    #[tokio::test]
+    async fn test_workflows_in_tool_schema() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        let workflow_json = r#"{
+            "name": "test-workflow",
+            "version": "1.0.0",
+            "description": "Test workflow",
+            "steps": []
+        }"#;
+        fs::write(dir.path().join("test-workflow.json"), workflow_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let schema = manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+
+        assert!(schema.contains_key("test-workflow"));
+        assert_eq!(schema.get("test-workflow").unwrap().name, "test-workflow");
     }
 }
