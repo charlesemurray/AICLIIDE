@@ -252,27 +252,9 @@ impl SkillsArgs {
                 use crate::cli::skills::onboarding;
                 let _ = onboarding::show_tutorial_if_needed(&mut std::io::stdout());
 
-                let skills = registry.list();
-
-                if skills.is_empty() {
-                    println!("{}\n", constants::messages::NO_SKILLS_FOUND);
-                    println!("{}", constants::messages::TIP_TRY_EXAMPLE);
-                    return Ok(ExitCode::SUCCESS);
-                }
-
-                println!("{}\n", constants::messages::AVAILABLE_SKILLS_HEADER);
-                for skill in skills {
-                    println!("  📦 {}", skill.name());
-                    println!("     {}", skill.description());
-                    let aliases = skill.aliases();
-                    if !aliases.is_empty() {
-                        println!("     Aliases: {}", aliases.join(", "));
-                    }
-                    println!();
-                }
-
-                println!("{}", constants::messages::TIP_GET_DETAILS);
-                println!("{}", constants::messages::TIP_TRY_EXAMPLE);
+                handlers::list_command(&registry, &mut std::io::stdout())
+                    .await
+                    .map_err(|e| eyre::eyre!(e))?;
 
                 Ok(ExitCode::SUCCESS)
             },

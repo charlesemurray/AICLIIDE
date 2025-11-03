@@ -255,19 +255,19 @@ impl MultiDimensionalValidator {
         let numbered_count = (1..=10).filter(|i| prompt.contains(&format!("\n{}.", i))).count();
         let item_count = bullet_count + numbered_count;
         
-        // Quantity score (0-0.6): More capabilities is better
+        // Quantity score (0-0.7): More capabilities is better
         let quantity_score = match item_count {
             0 => 0.0,
             1 => 0.15,
-            2 => 0.25,
-            3 => 0.35,
-            4 => 0.45,
-            5 => 0.6,
-            _ => 0.6,
+            2 => 0.3,
+            3 => 0.45,
+            4 => 0.6,
+            5 => 0.7,
+            _ => 0.7,
         };
         score += quantity_score;
         
-        // Specificity score (0-0.4): Check for action verbs and technical terms
+        // Specificity score (0-0.3): Check for action verbs and technical terms
         let action_verbs = [
             "analyze", "detect", "find", "identify", "review", "validate",
             "suggest", "recommend", "optimize", "refactor", "implement",
