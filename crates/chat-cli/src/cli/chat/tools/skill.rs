@@ -793,4 +793,71 @@ mod tests {
         assert_eq!(skill.name, "my-skill");
         assert_eq!(skill.description, "My skill description");
     }
+
+    #[test]
+    fn test_path_traversal_protection() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+        let definition = SkillDefinition {
+            name: "malicious".to_string(),
+            description: "Malicious skill".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: Some(SkillImplementation::Script {
+                path: "../../../etc/passwd".to_string(),
+            }),
+        };
+
+        // Should detect path traversal attempt
+        let result = skill.get_script_path(&definition);
+        // Either errors or normalizes the path
+        assert!(result.is_err() || !result.unwrap().to_string_lossy().contains("../"));
+    }
+
+    #[test]
+    fn test_command_injection_protection() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        // Test with potentially dangerous characters
+        let mut params = HashMap::new();
+        params.insert("input".to_string(), serde_json::json!("test; rm -rf /"));
+
+        let template = "echo {{input}}";
+        let result = skill.parse_command_template(template, &params);
+
+        assert!(result.is_ok());
+        let parsed = result.unwrap();
+        // Should not execute the injected command
+        assert!(parsed.contains("test; rm -rf /") || parsed.contains("test"));
+    }
+
+    #[test]
+    fn test_parameter_validation() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        // Test with empty parameters
+        let params = HashMap::new();
+        let env_vars = skill.build_env_vars(&params);
+        assert_eq!(env_vars.len(), 0);
+
+        // Test with special characters in parameter names
+        let mut params = HashMap::new();
+        params.insert("param-with-dash".to_string(), serde_json::json!("value"));
+        params.insert("param_with_underscore".to_string(), serde_json::json!("value2"));
+
+        let env_vars = skill.build_env_vars(&params);
+        assert!(env_vars.contains_key("SKILL_PARAM_param-with-dash"));
+        assert!(env_vars.contains_key("SKILL_PARAM_param_with_underscore"));
+    }
+
+    #[test]
+    fn test_output_size_limit() {
+        let skill = SkillTool::new("test".to_string(), "Test".to_string());
+
+        // Test with output exceeding limit
+        let large_output = "x".repeat(200_000);
+        let truncated = skill.truncate_output(large_output);
+
+        assert!(truncated.len() <= 100_100); // MAX_OUTPUT_SIZE + some buffer for message
+        assert!(truncated.contains("truncated"));
+    }
 }

@@ -145,4 +145,58 @@ mod tests {
         let workflows = registry.list_workflows();
         assert_eq!(workflows.len(), 2);
     }
+
+    #[tokio::test]
+    async fn test_load_from_nonexistent_directory() {
+        use std::path::PathBuf;
+
+        let mut registry = WorkflowRegistry::new();
+        let nonexistent = PathBuf::from("/nonexistent/workflow/directory");
+
+        let result = registry.load_from_directory(&nonexistent).await;
+        assert!(result.is_err() || registry.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_load_malformed_workflow_json() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let workflow_path = dir.path().join("malformed.json");
+
+        fs::write(&workflow_path, "{ not valid json }").unwrap();
+
+        let mut registry = WorkflowRegistry::new();
+        let result = registry.load_from_directory(dir.path()).await;
+
+        assert!(result.is_ok());
+        assert_eq!(registry.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_load_duplicate_workflow_names() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+
+        let workflow_json = r#"{
+            "name": "duplicate",
+            "version": "1.0.0",
+            "description": "Duplicate workflow",
+            "steps": []
+        }"#;
+
+        fs::write(dir.path().join("workflow1.json"), workflow_json).unwrap();
+        fs::write(dir.path().join("workflow2.json"), workflow_json).unwrap();
+
+        let mut registry = WorkflowRegistry::new();
+        registry.load_from_directory(dir.path()).await.unwrap();
+
+        assert_eq!(registry.len(), 1);
+        assert!(registry.get("duplicate").is_some());
+    }
 }
