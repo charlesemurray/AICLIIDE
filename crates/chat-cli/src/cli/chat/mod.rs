@@ -259,6 +259,12 @@ pub struct ChatArgs {
     /// Batch mode: approve all tools until user types 'stop' or 'pause'
     #[arg(long)]
     pub batch_mode: bool,
+    /// Create or use a worktree with specified name
+    #[arg(long)]
+    pub worktree: Option<String>,
+    /// Disable worktree creation
+    #[arg(long)]
+    pub no_worktree: bool,
     /// The first question to ask
     pub input: Option<String>,
     /// Control line wrapping behavior (default: auto-detect)
@@ -646,6 +652,8 @@ pub struct ChatSession {
     analytics: Option<crate::analytics::ConversationAnalytics>,
     /// Current conversation mode
     conversation_mode: crate::conversation_modes::ConversationMode,
+    /// Cortex memory system
+    cortex: Option<cortex_memory::CortexMemory>,
 }
 
 impl ChatSession {
