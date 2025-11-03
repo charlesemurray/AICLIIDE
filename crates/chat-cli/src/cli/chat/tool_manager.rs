@@ -70,8 +70,8 @@ use crate::cli::chat::server_messenger::{
     ServerMessengerBuilder,
     UpdateEventMessage,
 };
-use crate::cli::chat::tools::custom_tool::CustomTool;
 use crate::cli::chat::tools::code_search::CodeSearch;
+use crate::cli::chat::tools::custom_tool::CustomTool;
 use crate::cli::chat::tools::delegate::Delegate;
 use crate::cli::chat::tools::execute::ExecuteCommand;
 use crate::cli::chat::tools::fs_read::FsRead;
@@ -2665,5 +2665,61 @@ mod tests {
         let result = manager.get_tool_from_tool_use(tool_use).await;
         assert!(result.is_ok());
         assert!(matches!(result.unwrap(), Tool::WorkflowNew(_)));
+    }
+
+    #[tokio::test]
+    async fn test_end_to_end_skill_invocation_via_llm() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        // Create a simple echo skill
+        let skill_json = r#"{
+            "name": "echo-skill",
+            "description": "Echo a message",
+            "skill_type": "command",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string"}
+                }
+            },
+            "implementation": {
+                "type": "command",
+                "command": "echo {{message}}"
+            }
+        }"#;
+        fs::write(dir.path().join("echo-skill.json"), skill_json).unwrap();
+
+        // Load skill into manager
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+
+        // Verify skill is in schema
+        let schema = manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+        assert!(schema.contains_key("echo-skill"));
+
+        // Simulate LLM requesting the skill
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "echo-skill".to_string(),
+            args: serde_json::json!({"message": "Hello World"}),
+        };
+
+        // Get tool from tool use (this is what happens when LLM invokes)
+        let tool = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(tool.is_ok());
+
+        // Verify it's a skill
+        if let Ok(Tool::SkillNew(skill)) = tool {
+            assert_eq!(skill.name, "echo-skill");
+        } else {
+            panic!("Expected Tool::SkillNew");
+        }
     }
 }

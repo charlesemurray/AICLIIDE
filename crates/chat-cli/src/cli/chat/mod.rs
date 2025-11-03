@@ -3012,7 +3012,7 @@ impl ChatSession {
                     }
                 }
 
-                self.conversation.set_next_user_message(enhanced_input).await;
+                self.conversation.set_next_user_message(enhanced_input, os).await;
             }
 
             self.reset_user_turn();
@@ -3631,6 +3631,7 @@ impl ChatSession {
                                 .set_next_user_message(
                                     "You took too long to respond - try to split up the work into smaller steps."
                                         .to_string(),
+                                    os,
                                 )
                                 .await;
                             self.send_tool_use_telemetry(os).await;

@@ -378,7 +378,7 @@ impl ConversationState {
         self.next_message = None;
     }
 
-    pub async fn set_next_user_message(&mut self, input: String) {
+    pub async fn set_next_user_message(&mut self, input: String, os: &Os) {
         debug_assert!(self.next_message.is_none(), "next_message should not exist");
         if let Some(next_message) = self.next_message.as_ref() {
             warn!(?next_message, "next_message should not exist");
@@ -390,6 +390,23 @@ impl ConversationState {
         } else {
             input
         };
+
+        // Update session metadata with first message if this is the first message
+        if self.history.is_empty() {
+            use crate::session::{load_metadata, save_metadata};
+            let session_dir = os
+                .env
+                .current_dir()
+                .ok()
+                .map(|d| d.join(".amazonq/sessions").join(&self.conversation_id));
+            
+            if let Some(dir) = session_dir {
+                if let Ok(mut metadata) = load_metadata(&dir).await {
+                    metadata.first_message = input.clone();
+                    let _ = save_metadata(&dir, &metadata).await;
+                }
+            }
+        }
 
         let msg = UserMessage::new_prompt(input, Some(Local::now().fixed_offset()));
         self.next_message = Some(msg);
@@ -1461,7 +1478,7 @@ mod tests {
 
         // First, build a large conversation history. We need to ensure that the order is always
         // User -> Assistant -> User -> Assistant ...and so on.
-        conversation.set_next_user_message("start".to_string()).await;
+        conversation.set_next_user_message("start".to_string(), &os).await;
         for i in 0..=200 {
             let s = conversation
                 .as_sendable_conversation_state(&os, &mut vec![], true)
@@ -1469,7 +1486,7 @@ mod tests {
                 .unwrap();
             assert_conversation_state_invariants(s, i);
             conversation.push_assistant_message(&mut os, AssistantMessage::new_response(None, i.to_string()), None);
-            conversation.set_next_user_message(i.to_string()).await;
+            conversation.set_next_user_message(i.to_string(), &os).await;
         }
     }
 
