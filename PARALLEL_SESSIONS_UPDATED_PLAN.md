@@ -1,7 +1,9 @@
 # Parallel Sessions with Worktrees - Updated Implementation Plan
 
 **Development Branch**: `main`  
-**Status**: Phases 1-4 Complete ✅ (62/142 hours = 44%)
+**Status**: Phases 1-4 Complete ✅ (62/137 hours = 45%)  
+**Critical Path to MVP**: 12 hours remaining (Phases 2.5 + 3.5)  
+**Full Feature**: 75 hours remaining
 
 ## Context & Integration
 
@@ -185,6 +187,90 @@ pub fn resolve_session_id(
 - Test with existing SessionRepository implementations
 - Test worktree-specific storage
 - Test discovery
+
+---
+
+### Phase 2.5: Worktree Session Lifecycle (Week 2.5) ⚠️ CRITICAL
+**Status**: Build from scratch
+**Effort**: 8 hours
+
+**Purpose**: Make sessions actually work in worktrees - persist, resume, and manage lifecycle
+
+**Why Critical**: Without this, sessions don't survive terminal close and can't be resumed in worktrees.
+
+**Tasks**:
+
+#### Task 2.5.1: Persist Session to Worktree (2 hours)
+```rust
+// Modify ChatSession::new() to save metadata to worktree
+impl ChatSession {
+    pub async fn new(..., worktree_path: Option<PathBuf>) -> Result<Self> {
+        // ... existing code ...
+        
+        // NEW: If in worktree, save session metadata
+        if let Some(wt_path) = worktree_path {
+            let session_file = wt_path.join(".amazonq/session.json");
+            std::fs::create_dir_all(session_file.parent().unwrap())?;
+            save_metadata(&metadata, &session_file).await?;
+        }
+        
+        // ... continue ...
+    }
+}
+```
+
+#### Task 2.5.2: Resume from Worktree (3 hours)
+```rust
+// Detect worktree on startup and load session
+impl ChatArgs {
+    pub async fn execute(self, os: &mut Os) -> Result<ExitCode> {
+        // NEW: Check if in worktree
+        let current_dir = os.env.current_dir()?;
+        if let Ok(git_ctx) = detect_git_context(&current_dir) {
+            if git_ctx.is_worktree {
+                // Try to load session from worktree
+                let session_file = current_dir.join(".amazonq/session.json");
+                if session_file.exists() {
+                    let metadata = load_metadata(&session_file).await?;
+                    return resume_worktree_session(metadata, os).await;
+                }
+            }
+        }
+        
+        // ... existing flow ...
+    }
+}
+```
+
+#### Task 2.5.3: Change Directory to Worktree (1 hour)
+```rust
+// After creating worktree, change to it
+if let Some(worktree_path) = created_worktree {
+    std::env::set_current_dir(&worktree_path)?;
+    eprintln!("✓ Changed to worktree: {}", worktree_path.display());
+}
+```
+
+#### Task 2.5.4: Error Recovery (2 hours)
+```rust
+// Clean up on worktree creation failure
+match create_worktree(&repo_root, &branch, &base, None) {
+    Ok(path) => path,
+    Err(e) => {
+        // Clean up partial worktree if it exists
+        if path.exists() {
+            let _ = remove_worktree(&path);
+        }
+        return Err(e.into());
+    }
+}
+```
+
+**Deliverables**:
+- ✅ Sessions persist to worktree `.amazonq/session.json`
+- ✅ Resume works in worktrees
+- ✅ Directory automatically changes to worktree
+- ✅ Failed worktrees are cleaned up
 
 ---
 

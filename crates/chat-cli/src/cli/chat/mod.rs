@@ -2924,6 +2924,12 @@ impl ChatSession {
 
                 // Recall relevant context from memory
                 if let Some(ref mut cortex) = self.cortex {
+                    let verbose = os
+                        .database
+                        .settings
+                        .get_bool(Setting::MemoryVerbose)
+                        .unwrap_or(false);
+
                     if self.interactive {
                         self.spinner = Some(Spinner::new(Spinners::Dots, "Recalling context...".to_owned()));
                     }
@@ -2933,11 +2939,33 @@ impl ChatSession {
                             if self.interactive {
                                 self.spinner = None;
                             }
+                            if verbose && self.interactive {
+                                execute!(
+                                    self.stderr,
+                                    StyledText::brand_fg(),
+                                    style::Print(format!("🧠 Recalled {} relevant memories\n", items.len())),
+                                    StyledText::reset()
+                                )?;
+                                for (i, item) in items.iter().enumerate() {
+                                    let preview = item.content.chars().take(60).collect::<String>();
+                                    execute!(
+                                        self.stderr,
+                                        style::Print(format!("  {}. {} (score: {:.2})\n", i + 1, preview, item.score))
+                                    )?;
+                                }
+                                execute!(self.stderr, style::Print("\n"))?;
+                            }
                             tracing::debug!("Recalled {} relevant memories", items.len());
                         },
                         Ok(_) => {
                             if self.interactive {
                                 self.spinner = None;
+                            }
+                            if verbose && self.interactive {
+                                execute!(
+                                    self.stderr,
+                                    style::Print("🧠 No relevant memories found\n\n")
+                                )?;
                             }
                         },
                         Err(e) => {

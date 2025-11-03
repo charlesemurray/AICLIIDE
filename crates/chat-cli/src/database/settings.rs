@@ -111,6 +111,8 @@ pub enum Setting {
     MemoryWarnThreshold,
     #[strum(message = "Track if memory welcome message has been shown (boolean)")]
     MemoryWelcomeShown,
+    #[strum(message = "Show detailed memory operation information (boolean)")]
+    MemoryVerbose,
 }
 
 impl AsRef<str> for Setting {
@@ -163,6 +165,7 @@ impl AsRef<str> for Setting {
             Self::MemoryAutoPromote => "memory.autoPromote",
             Self::MemoryWarnThreshold => "memory.warnThreshold",
             Self::MemoryWelcomeShown => "memory.welcomeShown",
+            Self::MemoryVerbose => "memory.verbose",
         }
     }
 }
@@ -224,6 +227,7 @@ impl TryFrom<&str> for Setting {
             "memory.autoPromote" => Ok(Self::MemoryAutoPromote),
             "memory.warnThreshold" => Ok(Self::MemoryWarnThreshold),
             "memory.welcomeShown" => Ok(Self::MemoryWelcomeShown),
+            "memory.verbose" => Ok(Self::MemoryVerbose),
             _ => Err(DatabaseError::InvalidSetting(value.to_string())),
         }
     }

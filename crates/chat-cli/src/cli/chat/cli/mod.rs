@@ -326,6 +326,22 @@ async fn execute_memory_command(
                 style::Print("\n"),
             )?;
         },
+        MemorySubcommand::Set(args) => {
+            match args.setting {
+                memory::MemorySetting::Verbose => {
+                    let value = args.value.as_deref().unwrap_or("true");
+                    let enabled = value == "true" || value == "1" || value == "on";
+                    
+                    execute!(
+                        session.stderr,
+                        StyledText::success_fg(),
+                        style::Print(format!("Verbose mode {}\n", if enabled { "enabled" } else { "disabled" })),
+                        StyledText::reset(),
+                        style::Print("Note: Setting will take effect in next session\n"),
+                    )?;
+                },
+            }
+        },
         MemorySubcommand::List(args) => {
             if let Some(ref mut cortex) = session.cortex {
                 let items = if let Some(session_id) = &args.session {

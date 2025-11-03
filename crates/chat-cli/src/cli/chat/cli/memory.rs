@@ -7,6 +7,8 @@ use clap::{
 pub enum MemorySubcommand {
     /// Show memory configuration
     Config,
+    /// Update memory settings
+    Set(SetArgs),
     /// List stored memories
     List(ListArgs),
     /// Search memories
@@ -23,6 +25,7 @@ impl MemorySubcommand {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Config => "config",
+            Self::Set(_) => "set",
             Self::List(_) => "list",
             Self::Search(_) => "search",
             Self::Stats => "stats",
@@ -30,6 +33,22 @@ impl MemorySubcommand {
             Self::Toggle(_) => "toggle",
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Args)]
+pub struct SetArgs {
+    /// Setting to update
+    #[arg(value_enum)]
+    pub setting: MemorySetting,
+
+    /// Value to set (for boolean settings, omit for true)
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, clap::ValueEnum)]
+pub enum MemorySetting {
+    /// Enable/disable verbose mode
+    Verbose,
 }
 
 #[derive(Debug, Clone, PartialEq, Args)]

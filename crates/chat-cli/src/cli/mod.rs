@@ -410,6 +410,10 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
+                worktree: None,
+                no_worktree: false,
             })),
             verbose: 2,
             help_all: false,
@@ -452,6 +456,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -471,6 +477,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -490,6 +498,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -509,6 +519,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
         assert_parse!(
@@ -524,6 +536,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -543,6 +557,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -562,6 +578,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
@@ -581,6 +599,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: None,
+                worktree: None,
+                no_worktree: false,
             })
         );
     }

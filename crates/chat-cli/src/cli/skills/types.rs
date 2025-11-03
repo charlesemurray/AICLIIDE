@@ -305,6 +305,7 @@ mod tests {
             prompt_template: None,
             context_files: None,
             parameters: None,
+            requires_worktree: false,
             extra: HashMap::new(),
         };
 
@@ -334,6 +335,7 @@ mod tests {
                 values: None,
                 pattern: None,
             }]),
+            requires_worktree: false,
             extra: HashMap::new(),
         };
 
@@ -363,6 +365,7 @@ mod tests {
                 values: Some(vec!["a".to_string(), "b".to_string()]),
                 pattern: None,
             }]),
+            requires_worktree: false,
             extra: HashMap::new(),
         };
 
@@ -393,6 +396,7 @@ mod tests {
                 values: None,
                 pattern: Some("^[a-z]+@[a-z]+\\.[a-z]+$".to_string()),
             }]),
+            requires_worktree: false,
             extra: HashMap::new(),
         };
 
@@ -415,6 +419,7 @@ mod tests {
             prompt_template: None,
             context_files: None,
             parameters: None,
+            requires_worktree: false,
             extra: HashMap::new(),
         };
 
