@@ -12,7 +12,7 @@ pub fn resolve_session_id(path: &Path, override_id: Option<&str>) -> String {
     // Layer 2: Git context (repo/branch)
     if let Ok(context) = detect_git_context(path) {
         let repo_name = context.repo_root.file_name().and_then(|n| n.to_str()).unwrap_or("repo");
-        return format!("{}/{}", repo_name, context.current_branch);
+        return format!("{}/{}", repo_name, context.branch_name);
     }
 
     // Layer 3: Fallback to path-based ID
