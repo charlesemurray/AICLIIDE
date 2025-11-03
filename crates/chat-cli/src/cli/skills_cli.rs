@@ -59,6 +59,11 @@ pub enum SkillsCommand {
     Help,
     /// Run interactive skill creation example
     Example,
+    /// Validate a skill file
+    Validate {
+        /// Path to skill file
+        file: std::path::PathBuf,
+    },
     /// Install a skill from a file or URL
     Install {
         /// Path or URL to skill definition

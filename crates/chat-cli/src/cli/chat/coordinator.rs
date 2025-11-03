@@ -410,7 +410,6 @@ mod tests {
         // For now, we just verify the signature compiles
         assert!(coordinator.sessions.lock().await.is_empty());
     }
-}
 
     #[tokio::test]
     async fn test_create_session() {
