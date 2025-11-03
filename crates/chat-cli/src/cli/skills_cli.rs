@@ -333,40 +333,30 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Remove { skill_name } => {
-                // Find skill file in workspace
                 let skills_dir = current_dir.join(constants::SKILLS_DIR_NAME);
-                if !skills_dir.exists() {
-                    return Err(eyre::eyre!(
-                        "{} {}",
-                        constants::messages::NO_SKILLS_DIR_FOUND,
-                        skills_dir.display()
-                    ));
-                }
 
-                // Look for skill file
-                let skill_file = skills_dir.join(format!("{}.{}", skill_name, constants::SKILL_FILE_EXTENSION));
-                if !skill_file.exists() {
-                    return Err(eyre::eyre!("Skill '{}' not found", skill_name));
-                }
+                // Confirmation function that reads from stdin
+                let confirm_fn = || {
+                    print!(
+                        "{}",
+                        constants::messages::REMOVE_CONFIRM_PROMPT.replace("{}", &skill_name)
+                    );
+                    io::stdout().flush()?;
 
-                // Confirm removal
-                print!(
-                    "{}",
-                    constants::messages::REMOVE_CONFIRM_PROMPT.replace("{}", &skill_name)
-                );
-                io::stdout().flush()?;
+                    let mut input = String::new();
+                    io::stdin().read_line(&mut input)?;
 
-                let mut input = String::new();
-                io::stdin().read_line(&mut input)?;
+                    Ok(input.trim().to_lowercase() == "y")
+                };
 
-                if input.trim().to_lowercase() != "y" {
-                    println!("{}", constants::messages::CANCELLED);
-                    return Ok(ExitCode::SUCCESS);
-                }
-
-                // Remove file
-                fs::remove_file(&skill_file)?;
-                println!("{} '{}'", constants::messages::SKILL_REMOVED, skill_name);
+                handlers::remove_command(
+                    &skill_name,
+                    &skills_dir,
+                    confirm_fn,
+                    &mut std::io::stdout()
+                )
+                .await
+                .map_err(|e| eyre::eyre!(e))?;
 
                 Ok(ExitCode::SUCCESS)
             },
@@ -1245,6 +1235,43 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the remove command
+    pub async fn remove_command<F>(
+        skill_name: &str,
+        skills_dir: &std::path::Path,
+        confirm_fn: F,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError>
+    where
+        F: FnOnce() -> Result<bool, std::io::Error>,
+    {
+        if !skills_dir.exists() {
+            return Err(error::SkillsCliError::FileNotFound(format!(
+                "{} {}",
+                constants::messages::NO_SKILLS_DIR_FOUND,
+                skills_dir.display()
+            )));
+        }
+
+        let skill_file = skills_dir.join(format!("{}.{}", skill_name, constants::SKILL_FILE_EXTENSION));
+        if !skill_file.exists() {
+            return Err(error::SkillsCliError::SkillNotFound(skill_name.to_string()));
+        }
+
+        // Confirm removal
+        let confirmed = confirm_fn()?;
+        if !confirmed {
+            writeln!(output, "{}", constants::messages::CANCELLED)?;
+            return Ok(());
+        }
+
+        // Remove file
+        std::fs::remove_file(&skill_file)?;
+        writeln!(output, "{} '{}'", constants::messages::SKILL_REMOVED, skill_name)?;
+
+        Ok(())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1407,6 +1434,103 @@ mod handlers {
             assert!(result.is_ok());
             let output_str = String::from_utf8(output).unwrap();
             assert!(output_str.contains("✓ Skill file is valid"));
+        }
+
+        #[tokio::test]
+        async fn test_remove_nonexistent_skill() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(temp_dir.path()).unwrap();
+            let mut output = Vec::new();
+            
+            let result = remove_command(
+                "nonexistent",
+                temp_dir.path(),
+                || Ok(true),
+                &mut output
+            ).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::SkillNotFound(name) => {
+                    assert_eq!(name, "nonexistent");
+                }
+                _ => panic!("Expected SkillNotFound error"),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_remove_skill_cancelled() {
+            use std::io::Write;
+            let temp_dir = tempfile::tempdir().unwrap();
+            let skill_file = temp_dir.path().join("test.json");
+            let mut file = std::fs::File::create(&skill_file).unwrap();
+            file.write_all(b"{}").unwrap();
+            drop(file);
+
+            let mut output = Vec::new();
+            
+            let result = remove_command(
+                "test",
+                temp_dir.path(),
+                || Ok(false), // User cancels
+                &mut output
+            ).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("Cancelled"));
+            
+            // File should still exist
+            assert!(skill_file.exists());
+        }
+
+        #[tokio::test]
+        async fn test_remove_skill_confirmed() {
+            use std::io::Write;
+            let temp_dir = tempfile::tempdir().unwrap();
+            let skill_file = temp_dir.path().join("test.json");
+            let mut file = std::fs::File::create(&skill_file).unwrap();
+            file.write_all(b"{}").unwrap();
+            drop(file);
+
+            let mut output = Vec::new();
+            
+            let result = remove_command(
+                "test",
+                temp_dir.path(),
+                || Ok(true), // User confirms
+                &mut output
+            ).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("✓ Removed skill:"));
+            assert!(output_str.contains("test"));
+            
+            // File should be deleted
+            assert!(!skill_file.exists());
+        }
+
+        #[tokio::test]
+        async fn test_remove_no_skills_dir() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let nonexistent_dir = temp_dir.path().join("nonexistent");
+            let mut output = Vec::new();
+            
+            let result = remove_command(
+                "test",
+                &nonexistent_dir,
+                || Ok(true),
+                &mut output
+            ).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::FileNotFound(msg) => {
+                    assert!(msg.contains("No skills directory found"));
+                }
+                _ => panic!("Expected FileNotFound error"),
+            }
         }
     }
 }

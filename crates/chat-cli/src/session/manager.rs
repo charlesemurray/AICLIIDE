@@ -20,15 +20,15 @@ use super::metrics::SessionMetrics;
 use crate::os::Os;
 
 /// Session manager for high-level session operations
-pub struct SessionManager<'a> {
-    os: &'a Os,
+pub struct SessionManager<R: SessionRepository> {
+    repository: R,
     metrics: SessionMetrics,
 }
 
-impl<'a> SessionManager<'a> {
-    pub fn new(os: &'a Os) -> Self {
-        Self { 
-            os,
+impl<R: SessionRepository> SessionManager<R> {
+    pub fn new(repository: R) -> Self {
+        Self {
+            repository,
             metrics: SessionMetrics::new(),
         }
     }
