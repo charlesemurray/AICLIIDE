@@ -278,24 +278,15 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Help => {
-                println!("{}\n", constants::help::HEADER);
-                println!("{}", constants::help::COMMANDS_HEADER);
-                println!("{}", constants::help::CMD_LIST);
-                println!("{}", constants::help::CMD_INFO);
-                println!("{}", constants::help::CMD_RUN);
-                println!("{}", constants::help::CMD_EXAMPLE);
-                println!("{}\n", constants::help::CMD_HELP);
-                println!("{}", constants::messages::TIP_USE_NATURAL_LANGUAGE);
-                println!("{}", constants::messages::TIP_SKILLS_LOCATION);
+                handlers::help_command(&mut std::io::stdout())
+                    .map_err(|e| eyre::eyre!(e))?;
+
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Example => {
-                println!("{}\n", constants::example::HEADER);
-                println!("{}", constants::example::STEP_1);
-                println!("{}\n", constants::example::STEP_1_CMD);
-                println!("{}", constants::example::STEP_2);
-                println!("{}\n", constants::example::STEP_2_CMD);
-                println!("{}", constants::example::STEP_3);
+                handlers::example_command(&mut std::io::stdout())
+                    .map_err(|e| eyre::eyre!(e))?;
+
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Validate { file } => {
@@ -1272,6 +1263,31 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the help command
+    pub fn help_command(output: &mut dyn Write) -> Result<(), error::SkillsCliError> {
+        writeln!(output, "{}\n", constants::help::HEADER)?;
+        writeln!(output, "{}", constants::help::COMMANDS_HEADER)?;
+        writeln!(output, "{}", constants::help::CMD_LIST)?;
+        writeln!(output, "{}", constants::help::CMD_INFO)?;
+        writeln!(output, "{}", constants::help::CMD_RUN)?;
+        writeln!(output, "{}", constants::help::CMD_EXAMPLE)?;
+        writeln!(output, "{}\n", constants::help::CMD_HELP)?;
+        writeln!(output, "{}", constants::messages::TIP_USE_NATURAL_LANGUAGE)?;
+        writeln!(output, "{}", constants::messages::TIP_SKILLS_LOCATION)?;
+        Ok(())
+    }
+
+    /// Handle the example command
+    pub fn example_command(output: &mut dyn Write) -> Result<(), error::SkillsCliError> {
+        writeln!(output, "{}\n", constants::example::HEADER)?;
+        writeln!(output, "{}", constants::example::STEP_1)?;
+        writeln!(output, "{}\n", constants::example::STEP_1_CMD)?;
+        writeln!(output, "{}", constants::example::STEP_2)?;
+        writeln!(output, "{}\n", constants::example::STEP_2_CMD)?;
+        writeln!(output, "{}", constants::example::STEP_3)?;
+        Ok(())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1531,6 +1547,41 @@ mod handlers {
                 }
                 _ => panic!("Expected FileNotFound error"),
             }
+        }
+
+        #[test]
+        fn test_help_command_output() {
+            let mut output = Vec::new();
+            
+            let result = help_command(&mut output);
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("Q Skills Help"));
+            assert!(output_str.contains("Commands:"));
+            assert!(output_str.contains("q skills list"));
+            assert!(output_str.contains("q skills info"));
+            assert!(output_str.contains("q skills run"));
+            assert!(output_str.contains("q skills example"));
+            assert!(output_str.contains("q skills help"));
+            assert!(output_str.contains("💡 Tip: Use natural language"));
+            assert!(output_str.contains("~/.q-skills/"));
+        }
+
+        #[test]
+        fn test_example_command_output() {
+            let mut output = Vec::new();
+            
+            let result = example_command(&mut output);
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("Interactive skill creation example:"));
+            assert!(output_str.contains("1. Create a simple command skill:"));
+            assert!(output_str.contains("q skills create hello --from-template command"));
+            assert!(output_str.contains("2. View available templates:"));
+            assert!(output_str.contains("q skills create --help"));
+            assert!(output_str.contains("3. See examples in: examples/skills/"));
         }
     }
 }

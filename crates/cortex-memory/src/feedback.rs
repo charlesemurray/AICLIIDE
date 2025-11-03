@@ -28,7 +28,7 @@ impl FeedbackManager {
         // Create feedback table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS memory_feedback (
-                memory_id TEXT NOT NULL,
+                memory_id TEXT PRIMARY KEY,
                 helpful INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL
             )",

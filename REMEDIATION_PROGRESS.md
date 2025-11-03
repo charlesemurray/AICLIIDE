@@ -91,3 +91,8 @@ f8a75685 refactor: rename git::WorktreeInfo to GitWorktreeInfo
 **Phase 1 Progress**: 2/5 tasks (40%)  
 **Estimated Remaining**: 3 hours
 
+
+### Phase 1, Task 1.4: Add Rollback to Merge Operations ✅
+**Time**: 20 min | **Commits**: 4
+- Merge failures now rollback to original branch
+- No more inconsistent repo state

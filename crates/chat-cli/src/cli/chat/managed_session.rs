@@ -2,6 +2,7 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::time::Instant;
 
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -11,6 +12,14 @@ use crate::theme::session::{
     SessionDisplay,
     SessionStatus,
 };
+
+/// Metadata for session lifecycle tracking
+#[derive(Debug, Clone)]
+pub struct SessionMetadata {
+    pub created_at: Instant,
+    pub last_active: Instant,
+    pub message_count: usize,
+}
 
 /// Events that can be buffered for background sessions
 #[derive(Debug, Clone)]
@@ -132,6 +141,8 @@ pub struct ManagedSession {
     pub task_handle: Option<JoinHandle<()>>,
     /// Last error encountered
     pub last_error: Option<String>,
+    /// Session metadata for lifecycle tracking
+    pub metadata: SessionMetadata,
 }
 
 impl ManagedSession {
