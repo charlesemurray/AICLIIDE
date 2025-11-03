@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_auto_transition_notification() {
         let mode = ConversationMode::ExecutePlan;
-        let notification = mode.get_transition_notification(&ConversationModeTrigger::Auto);
+        let notification = mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::Auto);
         assert!(notification.contains("ExecutePlan"));
         assert!(notification.contains("Automatically"));
         assert!(!notification.is_empty());
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn test_manual_transition_notification() {
         let mode = ConversationMode::Review;
-        let notification = mode.get_transition_notification(&ConversationModeTrigger::UserCommand);
+        let notification = mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::UserCommand);
         assert!(notification.contains("Review"));
         assert!(notification.contains("Switched"));
         assert!(!notification.is_empty());
