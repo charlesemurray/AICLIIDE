@@ -24,6 +24,7 @@ pub mod session_commands;
 pub mod session_mode;
 pub mod terminal_state;
 pub mod worktree_strategy;
+pub mod branch_naming;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
