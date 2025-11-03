@@ -1,4 +1,4 @@
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, warn};
 
 use super::error::SessionError;
 use super::metadata::{SessionMetadata, SessionStatus};
@@ -24,27 +24,61 @@ impl<R: SessionRepository> SessionManager<R> {
         &self.metrics
     }
 
-    /// List all sessions
+    /// List sessions with smart precomputation
     #[instrument(skip(self), fields(session_count))]
     pub async fn list_sessions(&self) -> Result<Vec<SessionPreview>, SessionError> {
         let start = std::time::Instant::now();
-        debug!("Listing sessions");
+        debug!("Listing sessions with smart precomputation");
 
         let filter = SessionFilter::default();
         let sessions = self.repository.list(filter).await?;
 
-        // Convert to lazy previews - O(1) operation
-        let previews: Vec<SessionPreview> = sessions.into_iter().map(|metadata| {
+        // Convert to smart previews - O(1) per session but with approximations
+        let mut previews = Vec::new();
+        for metadata in sessions {
             let session_path = std::path::PathBuf::from(".amazonq/sessions").join(&metadata.id);
-            SessionPreview::new(metadata, session_path)
-        }).collect();
+            match SessionPreview::new(metadata, session_path) {
+                Ok(preview) => previews.push(preview),
+                Err(e) => {
+                    warn!("Failed to create preview: {}", e);
+                    // Continue with other sessions
+                }
+            }
+        }
 
         let duration_ms = start.elapsed().as_millis() as u64;
         self.metrics.record_list(duration_ms, previews.len());
-        info!(count = previews.len(), duration_ms, "Listed sessions successfully");
+        info!(count = previews.len(), duration_ms, "Listed sessions with approximations");
         tracing::Span::current().record("session_count", previews.len());
 
         Ok(previews)
+    }
+
+    /// Fast sort by approximate size - O(n log n) but with fast comparisons
+    pub async fn list_sessions_by_size(&self) -> Result<Vec<SessionPreview>, SessionError> {
+        let mut previews = self.list_sessions().await?;
+        
+        // Sort by approximation first (fast)
+        previews.sort_by_key(|p| p.approximation.estimated_size);
+        
+        Ok(previews)
+    }
+
+    /// Fast search in conversation previews
+    pub async fn search_sessions(&self, query: &str) -> Result<Vec<SessionPreview>, SessionError> {
+        let previews = self.list_sessions().await?;
+        let mut results = Vec::new();
+        
+        for preview in previews {
+            if preview.approximation.has_conversation {
+                let content = preview.searchable_preview().await?;
+                if content.to_lowercase().contains(&query.to_lowercase()) {
+                    results.push(preview);
+                }
+            }
+        }
+        
+        Ok(results)
     }
 
     /// List sessions filtered by status

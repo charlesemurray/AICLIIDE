@@ -343,7 +343,7 @@ impl MultiDimensionalValidator {
         let mut feedback = Vec::new();
 
         // Role clarity feedback
-        if role_clarity < 0.2 {
+        if role_clarity < 0.15 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Error,
                 message: "Role definition is missing or extremely vague".to_string(),
@@ -358,7 +358,7 @@ impl MultiDimensionalValidator {
         }
 
         // Capability feedback
-        if capability_completeness < 0.2 {
+        if capability_completeness < 0.15 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Error,
                 message: "Capabilities section is missing or severely incomplete".to_string(),
