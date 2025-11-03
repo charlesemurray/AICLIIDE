@@ -782,6 +782,15 @@ impl ToolManager {
                 });
             }
 
+            // Add skills to schema
+            for skill_name in self.skill_registry.list() {
+                if let Some(definition) = self.skill_registry.get(&skill_name) {
+                    let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(definition);
+                    let tool_spec = skill_tool.definition_to_toolspec(definition);
+                    tool_specs.insert(skill_name.clone(), tool_spec);
+                }
+            }
+
             tool_specs
         };
 
@@ -2514,5 +2523,32 @@ mod tests {
         for handle in handles {
             assert!(handle.await.is_ok());
         }
+    }
+
+    #[tokio::test]
+    async fn test_skills_in_tool_schema() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        // Create a test skill
+        let skill_json = r#"{
+            "name": "test-skill",
+            "description": "Test skill",
+            "skill_type": "command",
+            "implementation": {"type": "command", "command": "echo test"}
+        }"#;
+        fs::write(dir.path().join("test-skill.json"), skill_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let schema = manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+
+        assert!(schema.contains_key("test-skill"));
+        assert_eq!(schema.get("test-skill").unwrap().name, "test-skill");
     }
 }
