@@ -343,13 +343,13 @@ impl MultiDimensionalValidator {
         let mut feedback = Vec::new();
 
         // Role clarity feedback
-        if role_clarity < 0.3 {
+        if role_clarity < 0.2 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Error,
-                message: "Role definition is too vague or missing".to_string(),
+                message: "Role definition is missing or extremely vague".to_string(),
                 suggestion: Some("Add a clear role statement like 'You are an expert [domain] with knowledge of [specifics]'".to_string()),
             });
-        } else if role_clarity < 0.6 {
+        } else if role_clarity < 0.5 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Warning,
                 message: "Role definition could be more specific".to_string(),
@@ -358,13 +358,13 @@ impl MultiDimensionalValidator {
         }
 
         // Capability feedback
-        if capability_completeness < 0.3 {
+        if capability_completeness < 0.2 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Error,
-                message: "Capabilities section is missing or incomplete".to_string(),
+                message: "Capabilities section is missing or severely incomplete".to_string(),
                 suggestion: Some("Add a 'Capabilities:' section with specific, actionable items using verbs like 'analyze', 'review', 'suggest'".to_string()),
             });
-        } else if capability_completeness < 0.6 {
+        } else if capability_completeness < 0.5 {
             feedback.push(QualityFeedback {
                 severity: FeedbackSeverity::Warning,
                 message: "Capabilities could be more detailed".to_string(),

@@ -1,738 +1,347 @@
-# Skills & Workflows - Gap Closure Plan
+# Gap Closure Plan
 
-## Overview
-
-**Goal**: Close critical gaps identified by senior engineer and UX designer assessments
-
-**Timeline**: 30-60 hours total work
-- **Phase 1 (Critical)**: 15-25 hours
-- **Phase 2 (Important)**: 10-20 hours  
-- **Phase 3 (Polish)**: 5-15 hours
+**Goal:** Address all CRITICAL and HIGH severity findings from adversarial review
 
 ---
 
-## Phase 1: Critical Gaps (Must Have)
+## Priority 1: CRITICAL (Blocks Production)
 
-**Timeline**: 15-25 hours  
-**Priority**: 🔴 Blocking production release
+### Gap #1: No Parameter Validation
+**Finding:** Skills accept any args without validation  
+**Impact:** Runtime failures with poor error messages  
+**Fix:** Add validation before constructing SkillTool
 
-### 1.1: Natural Language Invocation Validation (6-8 hours)
-
-**Goal**: Prove users can invoke skills through natural language
-
-#### Step 1.1.1: Create Agent Mock (2h)
-**Files to Create**:
-- `crates/chat-cli/tests/helpers/mock_agent.rs`
-
-**Implementation**:
+**Implementation:**
 ```rust
-pub struct MockAgent {
-    available_tools: Vec<ToolSpec>,
+// In tool_manager.rs:928, before constructing SkillTool
+if let Some(definition) = self.skill_registry.get(name) {
+    // NEW: Validate args against definition.parameters
+    validate_skill_args(&value.args, &definition.parameters)
+        .map_err(|e| ToolResult {
+            tool_use_id: value.id.clone(),
+            content: vec![ToolResultContentBlock::Text(format!(
+                "Invalid parameters for skill '{}': {}", name, e
+            ))],
+            status: ToolResultStatus::Error,
+        })?;
+    
+    let skill_tool = SkillTool::from_definition(definition);
+    return Ok(Tool::SkillNew(skill_tool));
 }
 
-impl MockAgent {
-    pub fn with_skills(registry: &SkillRegistry) -> Self {
-        let tools = registry.get_all_toolspecs();
-        Self { available_tools: tools }
+// NEW: Add validation function
+fn validate_skill_args(args: &Value, parameters: &[Parameter]) -> Result<(), String> {
+    // Check required parameters present
+    // Check parameter types match
+    // Check no extra parameters
+}
+```
+
+**Test:**
+```rust
+#[test]
+fn test_skill_parameter_validation_missing_required() {
+    // Skill requires "expression"
+    // LLM sends empty args
+    // Should return error
+}
+
+#[test]
+fn test_skill_parameter_validation_wrong_type() {
+    // Skill requires string
+    // LLM sends number
+    // Should return error
+}
+```
+
+**Effort:** 2-3 hours
+
+---
+
+## Priority 2: HIGH (Causes Incorrect Behavior)
+
+### Gap #2: No Collision Detection
+**Finding:** Skills can shadow built-ins, schema/routing inconsistent  
+**Impact:** Wrong tool executes, user confusion  
+**Fix:** Add collision detection and namespace or error
+
+**Option A: Namespace (Recommended)**
+```rust
+// In load_tools(), prefix skill names
+for skill_def in self.skill_registry.list_skills() {
+    let tool_spec = SkillTool::definition_to_toolspec(&skill_def);
+    self.schema.insert(
+        format!("skill:{}", skill_def.name),  // ← Namespace
+        tool_spec
+    );
+}
+
+// In get_tool_from_tool_use(), check namespaced name
+name if name.starts_with("skill:") => {
+    let skill_name = name.strip_prefix("skill:").unwrap();
+    if let Some(definition) = self.skill_registry.get(skill_name) {
+        // ...
     }
-    
-    pub async fn process_input(&self, input: &str) -> AgentResponse {
-        // Simple pattern matching for testing
-        // "calculate 5 + 3" -> selects calculator tool
+}
+```
+
+**Option B: Error on Collision**
+```rust
+// In load_tools(), check before insert
+for skill_def in self.skill_registry.list_skills() {
+    if self.schema.contains_key(&skill_def.name) {
+        return Err(format!(
+            "Skill '{}' collides with existing tool", 
+            skill_def.name
+        ));
     }
+    // ...
 }
 ```
 
-**Tests**:
-- Agent can discover skills
-- Agent selects correct skill from natural language
-- Agent invokes skill with correct parameters
-
-**Validation**:
-```bash
-cargo test mock_agent
-```
-
-**Git Commit**: `test: add mock agent for natural language testing`
-
----
-
-#### Step 1.1.2: Natural Language to Skill Test (2h)
-**Files to Create**:
-- `crates/chat-cli/tests/natural_language_invocation_e2e.rs`
-
-**Implementation**:
+**Test:**
 ```rust
-#[tokio::test]
-async fn test_user_invokes_skill_via_natural_language() {
-    // Setup
-    let registry = SkillRegistry::with_builtins();
-    let agent = MockAgent::with_skills(&registry);
-    
-    // User input
-    let input = "calculate 5 plus 3";
-    
-    // Agent processes
-    let response = agent.process_input(input).await;
-    
-    // Verify
-    assert!(response.used_tool("calculator"));
-    assert!(response.result().contains("8"));
+#[test]
+fn test_skill_collision_with_builtin() {
+    // Create skill named "fs_read"
+    // Should error or use namespace
 }
 ```
 
-**Tests**:
-- Simple calculation request
-- Skill with parameters
-- Skill not found scenario
-- Ambiguous request handling
-
-**Validation**:
-```bash
-cargo test natural_language_invocation_e2e
-```
-
-**Git Commit**: `test: add natural language to skill invocation tests`
+**Effort:** 3-4 hours
 
 ---
 
-#### Step 1.1.3: ChatSession Integration Test (2-4h)
-**Files to Create**:
-- `crates/chat-cli/tests/chat_session_skill_integration.rs`
+## Priority 3: MEDIUM (Quality/Reliability)
 
-**Implementation**:
+### Gap #3: Schema/Registry Mismatch
+**Finding:** Silent fallback when skill in schema but not registry  
+**Impact:** Confusing errors, wrong tool execution  
+**Fix:** Track tool source in schema, error on mismatch
+
+**Implementation:**
 ```rust
-#[tokio::test]
-async fn test_skill_invocation_in_chat_session() {
-    let mut os = Os::new().await.unwrap();
-    let agents = get_test_agents(&os).await;
-    let tool_manager = ToolManager::new_with_skills(&os).await.unwrap();
-    
-    // Simulate chat session with skill invocation
-    let session = ChatSession::new(
-        &mut os,
-        "test_conv",
-        agents,
-        Some("calculate 10 + 5".to_string()),
-        // ... other params
-    ).await.unwrap();
-    
-    // Verify skill was invoked
-    // Verify result returned to user
+// Add source tracking to schema
+struct ToolEntry {
+    spec: ToolSpec,
+    source: ToolSource,  // NEW
 }
-```
 
-**Tests**:
-- Skill invocation within chat
-- Error handling in chat context
-- Multiple skill invocations
-- Skill + native tool usage
+enum ToolSource {
+    Builtin,
+    Skill,
+    Workflow,
+    Mcp(String),
+}
 
-**Validation**:
-```bash
-cargo test chat_session_skill_integration
-```
-
-**Git Commit**: `test: add ChatSession skill integration tests`
-
----
-
-### 1.2: User Feedback Mechanisms (4-6 hours)
-
-**Goal**: Users know what's happening at each step
-
-#### Step 1.2.1: Skill Loading Feedback (2h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/chat/skill_registry.rs`
-- `crates/chat-cli/src/cli/chat/tool_manager.rs`
-
-**Implementation**:
-```rust
-// In SkillRegistry::load_from_directory
-pub async fn load_from_directory(&mut self, path: &Path) -> Result<LoadingSummary> {
-    let mut summary = LoadingSummary::new();
-    
-    // Load skills
-    for entry in entries {
-        match self.load_skill(&entry).await {
-            Ok(skill) => {
-                summary.add_success(&skill.name);
-                println!("✓ Loaded skill: {}", skill.name);
-            }
-            Err(e) => {
-                summary.add_error(&entry, e);
-                eprintln!("✗ Failed to load {}: {}", entry, e);
+// In get_tool_from_tool_use()
+if let Some(entry) = self.schema.get(name) {
+    match entry.source {
+        ToolSource::Skill => {
+            // Must be in registry
+            if let Some(def) = self.skill_registry.get(name) {
+                return Ok(Tool::SkillNew(...));
+            } else {
+                return Err(ToolResult {
+                    content: vec![ToolResultContentBlock::Text(
+                        format!("Skill '{}' in schema but not in registry", name)
+                    )],
+                    status: ToolResultStatus::Error,
+                });
             }
         }
+        // ...
     }
-    
-    summary.print_summary();
-    Ok(summary)
 }
 ```
 
-**Features**:
-- Print skill loading progress
-- Show success/failure for each skill
-- Summary at end
-- Clear error messages
-
-**Validation**:
-```bash
-cargo run --bin chat_cli
-# Should see: "✓ Loaded skill: calculator"
-```
-
-**Git Commit**: `feat: add skill loading feedback`
-
----
-
-#### Step 1.2.2: Skill Execution Feedback (2-4h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/chat/tools/skill_tool.rs`
-
-**Implementation**:
+**Test:**
 ```rust
-pub async fn invoke(&self, registry: &SkillRegistry, stdout: &mut impl Write) -> Result<InvokeOutput> {
-    // Show what's happening
-    writeln!(stdout, "🔧 Executing skill: {}", self.skill_name)?;
-    
-    let start = Instant::now();
-    let result = self.execute_skill(registry).await?;
-    let duration = start.elapsed();
-    
-    writeln!(stdout, "✓ Skill completed in {:.2}s", duration.as_secs_f64())?;
-    
-    Ok(result)
+#[test]
+fn test_schema_registry_mismatch() {
+    // Add to schema manually
+    // Don't add to registry
+    // Should error with specific message
 }
 ```
 
-**Features**:
-- Show skill name being executed
-- Show execution time
-- Show success/failure
-- Show result preview
-
-**Validation**:
-```bash
-cargo test skill_execution_feedback
-```
-
-**Git Commit**: `feat: add skill execution feedback`
+**Effort:** 2-3 hours
 
 ---
 
-### 1.3: Error UX Redesign (4-6 hours)
+### Gap #4: Incomplete End-to-End Test
+**Finding:** Test stops at routing, doesn't execute skill  
+**Impact:** No proof skill execution works  
+**Fix:** Extend test to execute and verify result
 
-**Goal**: User-friendly errors with actionable guidance
-
-#### Step 1.3.1: Error Message Redesign (2-3h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/skills/toolspec_conversion.rs`
-- `crates/chat-cli/src/cli/chat/tools/skill_tool.rs`
-
-**Implementation**:
+**Implementation:**
 ```rust
-#[derive(Debug, thiserror::Error)]
-pub enum SkillError {
-    #[error("Skill '{name}' not found.\n\n\
-             💡 Tip: Check available skills with: q skills list\n\
-             💡 Tip: Make sure your skill file is in ~/.q-skills/")]
-    NotFound { name: String },
+#[tokio::test]
+async fn test_end_to_end_skill_invocation_via_llm() {
+    // ... existing setup ...
     
-    #[error("Skill '{name}' failed to execute: {reason}\n\n\
-             💡 Tip: Check the skill definition in ~/.q-skills/{name}.json\n\
-             💡 Tip: Try running the command manually: {command}")]
-    ExecutionFailed { name: String, reason: String, command: String },
+    // Get tool from tool use
+    let tool = manager.get_tool_from_tool_use(tool_use).await.unwrap();
     
-    #[error("Invalid skill parameter '{param}': {reason}\n\n\
-             💡 Tip: Check the skill's parameter requirements\n\
-             💡 Tip: Use: q skills info {name}")]
-    InvalidParameter { param: String, reason: String, name: String },
-}
-```
-
-**Features**:
-- Plain English errors
-- Actionable tips
-- Recovery suggestions
-- Relevant commands
-
-**Validation**:
-```bash
-cargo test error_messages
-```
-
-**Git Commit**: `feat: redesign error messages for better UX`
-
----
-
-#### Step 1.3.2: Error Recovery Paths (2-3h)
-**Files to Create**:
-- `crates/chat-cli/src/cli/skills/error_recovery.rs`
-
-**Implementation**:
-```rust
-pub struct ErrorRecovery;
-
-impl ErrorRecovery {
-    pub fn suggest_fix(error: &SkillError) -> Vec<String> {
-        match error {
-            SkillError::NotFound { name } => vec![
-                format!("Check if skill exists: ls ~/.q-skills/{}.json", name),
-                "List available skills: q skills list".to_string(),
-                "Create a new skill: q create skill".to_string(),
-            ],
-            // ... other error types
+    // NEW: Actually execute the skill
+    let result = match tool {
+        Tool::SkillNew(skill) => {
+            skill.execute(&manager, &args).await
         }
-    }
+        _ => panic!("Expected SkillNew"),
+    };
+    
+    // NEW: Verify result
+    assert!(result.is_ok());
+    let tool_result = result.unwrap();
+    assert_eq!(tool_result.status, ToolResultStatus::Success);
+    assert!(tool_result.content[0].contains("Hello World"));
 }
 ```
 
-**Features**:
-- Specific suggestions per error type
-- Commands user can run
-- Links to documentation
-- Examples
-
-**Validation**:
-```bash
-cargo test error_recovery
-```
-
-**Git Commit**: `feat: add error recovery suggestions`
+**Effort:** 1-2 hours
 
 ---
 
-### 1.4: Skill Discovery UX (3-5 hours)
+### Gap #5: Inefficient Allocation
+**Finding:** Clones strings on every invocation  
+**Impact:** Performance degradation at scale  
+**Fix:** Cache SkillTool instances
 
-**Goal**: Users can find and learn about skills
-
-#### Step 1.4.1: Enhanced Skills List Command (2-3h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/skills_cli.rs`
-
-**Implementation**:
+**Implementation:**
 ```rust
-pub async fn list_skills(registry: &SkillRegistry) -> Result<()> {
-    let skills = registry.list_skills();
+// In ToolManager
+struct ToolManager {
+    skill_cache: HashMap<String, Arc<SkillTool>>,  // NEW
+    // ...
+}
+
+// In get_tool_from_tool_use()
+if let Some(definition) = self.skill_registry.get(name) {
+    // Check cache first
+    let skill_tool = self.skill_cache
+        .entry(name.to_string())
+        .or_insert_with(|| {
+            Arc::new(SkillTool::from_definition(definition))
+        });
     
-    if skills.is_empty() {
-        println!("No skills found.");
-        println!("\n💡 Create your first skill:");
-        println!("   q create skill my-skill");
-        return Ok(());
-    }
-    
-    println!("Available Skills:\n");
-    
-    for skill in skills {
-        println!("  📦 {}", skill.name);
-        println!("     {}", skill.description.as_deref().unwrap_or("No description"));
-        
-        if let Some(params) = &skill.parameters {
-            println!("     Parameters: {}", params.len());
-        }
-        
-        println!();
-    }
-    
-    println!("💡 Get details: q skills info <name>");
-    println!("💡 Use in chat: 'use <skill-name> to do X'");
-    
-    Ok(())
+    return Ok(Tool::SkillNew(Arc::clone(skill_tool)));
 }
 ```
 
-**Features**:
-- Clear skill listing
-- Descriptions shown
-- Parameter counts
-- Usage hints
-- Empty state guidance
-
-**Validation**:
-```bash
-cargo run --bin chat_cli -- skills list
-```
-
-**Git Commit**: `feat: enhance skills list command UX`
-
----
-
-#### Step 1.4.2: Skill Info Command (1-2h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/skills_cli.rs`
-
-**Implementation**:
+**Test:**
 ```rust
-pub async fn show_skill_info(registry: &SkillRegistry, name: &str) -> Result<()> {
-    let skill = registry.get_skill(name)
-        .ok_or_else(|| eyre::eyre!("Skill '{}' not found", name))?;
-    
-    println!("Skill: {}", skill.name);
-    println!("Description: {}", skill.description.as_deref().unwrap_or("None"));
-    println!();
-    
-    if let Some(params) = &skill.parameters {
-        println!("Parameters:");
-        for param in params {
-            println!("  • {} ({}){}", 
-                param.name, 
-                param.type_,
-                if param.required { " - required" } else { "" }
-            );
-        }
-        println!();
-    }
-    
-    println!("Usage Example:");
-    println!("  q chat \"use {} to do something\"", skill.name);
-    
-    Ok(())
+#[test]
+fn test_skill_caching() {
+    // Invoke same skill twice
+    // Verify only one allocation
 }
 ```
 
-**Features**:
-- Detailed skill information
-- Parameter details
-- Usage examples
-- Clear formatting
-
-**Validation**:
-```bash
-cargo run --bin chat_cli -- skills info calculator
-```
-
-**Git Commit**: `feat: add skill info command`
+**Effort:** 1-2 hours
 
 ---
 
-## Phase 2: Important Gaps (Should Have)
+## Priority 4: LOW (Code Quality)
 
-**Timeline**: 10-20 hours  
-**Priority**: 🟡 Important for GA
+### Gap #6: Unused `self` Parameter
+**Finding:** definition_to_toolspec doesn't use self  
+**Impact:** API confusion  
+**Fix:** Make it a static method
 
-### 2.1: User Testing & Validation (8-12 hours)
-
-#### Step 2.1.1: User Testing Protocol (2h)
-**Files to Create**:
-- `docs/USER_TESTING_PROTOCOL.md`
-
-**Content**:
-- Test scenarios
-- Success criteria
-- Observation checklist
-- Feedback collection form
-
-**Git Commit**: `docs: add user testing protocol`
-
----
-
-#### Step 2.1.2: Conduct User Testing (4-6h)
-**Activities**:
-- Recruit 5 test users
-- Run testing sessions
-- Observe and document
-- Collect feedback
-
-**Deliverable**: User testing report
-
----
-
-#### Step 2.1.3: Iterate Based on Feedback (2-4h)
-**Activities**:
-- Analyze feedback
-- Prioritize issues
-- Fix critical UX issues
-- Re-test if needed
-
-**Git Commit**: `fix: address user testing feedback`
-
----
-
-### 2.2: Onboarding Experience (4-6 hours)
-
-#### Step 2.2.1: First-Run Tutorial (2-3h)
-**Files to Create**:
-- `crates/chat-cli/src/cli/skills/onboarding.rs`
-
-**Implementation**:
+**Implementation:**
 ```rust
-pub async fn show_first_run_tutorial() -> Result<()> {
-    println!("Welcome to Q Skills! 🎉\n");
-    println!("Skills let you extend Q with custom capabilities.\n");
-    
-    println!("Quick Start:");
-    println!("  1. Create a skill: q create skill my-skill");
-    println!("  2. Use it in chat: q chat 'use my-skill'");
-    println!("  3. List skills: q skills list\n");
-    
-    println!("Example skills are in: examples/skills/");
-    println!("Learn more: docs/SKILLS_QUICKSTART.md\n");
-    
-    // Mark tutorial as shown
-    mark_tutorial_shown()?;
-    
-    Ok(())
-}
+// Change from:
+pub fn definition_to_toolspec(&self, definition: &SkillDefinition) -> ToolSpec
+
+// To:
+pub fn definition_to_toolspec(definition: &SkillDefinition) -> ToolSpec
 ```
 
-**Features**:
-- Show on first run
-- Quick start steps
-- Example references
-- Documentation links
-
-**Git Commit**: `feat: add first-run tutorial`
+**Effort:** 15 minutes
 
 ---
 
-#### Step 2.2.2: Interactive Example (2-3h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/skills_cli.rs`
+## Execution Plan
 
-**Implementation**:
-```rust
-pub async fn run_interactive_example() -> Result<()> {
-    println!("Let's create your first skill!\n");
-    
-    // Guide user through creation
-    let name = prompt("Skill name")?;
-    let description = prompt("Description")?;
-    
-    // Create simple skill
-    create_example_skill(name, description)?;
-    
-    println!("\n✓ Skill created!");
-    println!("Try it: q chat 'use {} to test'", name);
-    
-    Ok(())
-}
-```
+### Phase 1: Critical Fixes (Day 1)
+1. ✅ Fix compilation errors (DONE)
+2. ⏳ Add parameter validation (#1) - 2-3 hours
+3. ⏳ Add collision detection (#2) - 3-4 hours
 
-**Git Commit**: `feat: add interactive skill creation example`
+**Checkpoint:** Run tests, verify critical gaps closed
 
----
+### Phase 2: Quality Fixes (Day 2)
+4. ⏳ Fix schema/registry mismatch (#3) - 2-3 hours
+5. ⏳ Complete end-to-end test (#4) - 1-2 hours
+6. ⏳ Add caching (#5) - 1-2 hours
 
-### 2.3: Help System (2-4 hours)
+**Checkpoint:** Run full test suite, verify all tests pass
 
-#### Step 2.3.1: In-App Help (1-2h)
-**Files to Modify**:
-- `crates/chat-cli/src/cli/skills_cli.rs`
+### Phase 3: Polish (Day 2)
+7. ⏳ Fix unused self (#6) - 15 minutes
+8. ⏳ Run adversarial review again
+9. ⏳ Document remaining gaps (if any)
 
-**Implementation**:
-```rust
-pub fn show_help() {
-    println!("Q Skills Help\n");
-    println!("Commands:");
-    println!("  q skills list              List all skills");
-    println!("  q skills info <name>       Show skill details");
-    println!("  q create skill <name>      Create new skill");
-    println!("  q chat 'use <skill>'       Use skill in chat\n");
-    println!("Documentation: docs/SKILLS_QUICKSTART.md");
-    println!("Examples: examples/skills/");
-}
-```
-
-**Git Commit**: `feat: add in-app help for skills`
-
----
-
-#### Step 2.3.2: Troubleshooting Guide (1-2h)
-**Files to Create**:
-- `docs/SKILLS_TROUBLESHOOTING.md`
-
-**Content**:
-- Common issues
-- Solutions
-- Debugging steps
-- FAQ
-
-**Git Commit**: `docs: add skills troubleshooting guide`
-
----
-
-## Phase 3: Polish (Nice to Have)
-
-**Timeline**: 5-15 hours  
-**Priority**: 🟢 Post-launch improvements
-
-### 3.1: Advanced Features (3-5 hours)
-
-- Skill templates
-- Skill validation tool
-- Performance monitoring
-- Usage analytics
-
-### 3.2: Enhanced Documentation (2-4 hours)
-
-- Video tutorials
-- Interactive examples
-- Best practices guide
-- Community examples
-
-### 3.3: Visual Improvements (2-4 hours)
-
-- Better CLI formatting
-- Color coding
-- Progress bars
-- Animations
-
-### 3.4: User Education (2-4 hours)
-
-- Webinar content
-- Blog posts
-- Tutorial series
-- Community resources
-
----
-
-## Implementation Schedule
-
-### Week 1: Critical Gaps (Phase 1)
-**Days 1-2**: Natural Language Invocation (6-8h)
-- Mock agent
-- NL to skill tests
-- ChatSession integration
-
-**Days 3-4**: Feedback Mechanisms (4-6h)
-- Loading feedback
-- Execution feedback
-
-**Days 4-5**: Error UX (4-6h)
-- Error redesign
-- Recovery paths
-
-**Day 5**: Discovery UX (3-5h)
-- Enhanced list command
-- Info command
-
-### Week 2: Important Gaps (Phase 2)
-**Days 1-2**: User Testing (8-12h)
-- Protocol
-- Testing
-- Iteration
-
-**Days 3-4**: Onboarding (4-6h)
-- Tutorial
-- Interactive example
-
-**Day 5**: Help System (2-4h)
-- In-app help
-- Troubleshooting guide
-
-### Week 3: Polish (Phase 3)
-**Optional**: Advanced features and polish
+**Checkpoint:** Re-run adversarial checklist, verify all items pass
 
 ---
 
 ## Success Criteria
 
-### Phase 1 Complete When:
-- ✅ Natural language invocation test passes
-- ✅ Users see feedback at each step
-- ✅ Error messages are user-friendly
-- ✅ Users can discover skills easily
+### Before Claiming "Production Ready"
+- [ ] All CRITICAL gaps closed
+- [ ] All HIGH gaps closed
+- [ ] All tests run and pass (GREEN output)
+- [ ] End-to-end test executes skill
+- [ ] Parameter validation works
+- [ ] Collision detection works
+- [ ] Adversarial review passes
 
-### Phase 2 Complete When:
-- ✅ 5 users successfully complete test scenarios
-- ✅ First-run tutorial implemented
-- ✅ Help system available
-
-### Phase 3 Complete When:
-- ✅ Advanced features implemented
-- ✅ Documentation enhanced
-- ✅ Visual polish complete
-
----
-
-## Validation Checklist
-
-### After Phase 1:
-- [ ] Natural language invocation test passes
-- [ ] Skill loading shows feedback
-- [ ] Skill execution shows progress
-- [ ] Errors are user-friendly
-- [ ] `q skills list` shows clear output
-- [ ] `q skills info` shows details
-
-### After Phase 2:
-- [ ] 5 users complete test scenarios
-- [ ] First-run tutorial works
-- [ ] Help system accessible
-- [ ] Troubleshooting guide complete
-
-### After Phase 3:
-- [ ] Advanced features working
-- [ ] Documentation enhanced
-- [ ] Visual polish complete
+### Evidence Required
+- [ ] `cargo test --lib skill` output (GREEN)
+- [ ] `cargo test --lib workflow` output (GREEN)
+- [ ] Test output showing skill execution
+- [ ] Test output showing parameter validation
+- [ ] Test output showing collision detection
 
 ---
 
-## Risk Mitigation
+## Timeline
 
-### Risk 1: User Testing Delays
-**Mitigation**: Have backup test users ready
+**Total effort:** 10-15 hours  
+**Timeline:** 2 days  
+**Blockers:** None (compilation fixed)
 
-### Risk 2: Technical Blockers
-**Mitigation**: Prioritize critical tests first
+**Day 1:**
+- Morning: Parameter validation (3 hours)
+- Afternoon: Collision detection (4 hours)
+- Evening: Test and verify (1 hour)
 
-### Risk 3: Scope Creep
-**Mitigation**: Stick to plan, defer nice-to-haves
-
----
-
-## Resource Requirements
-
-### Development Time
-- Phase 1: 15-25 hours
-- Phase 2: 10-20 hours
-- Phase 3: 5-15 hours
-- **Total**: 30-60 hours
-
-### Testing Resources
-- 5 test users
-- Testing environment
-- Feedback collection tools
-
-### Documentation
-- Technical writer (optional)
-- Video production (optional)
-
----
-
-## Deliverables
-
-### Phase 1:
-- Natural language invocation tests
-- Feedback mechanisms
-- User-friendly errors
-- Discovery UX
-
-### Phase 2:
-- User testing report
-- Onboarding tutorial
-- Help system
-- Troubleshooting guide
-
-### Phase 3:
-- Advanced features
-- Enhanced documentation
-- Visual polish
+**Day 2:**
+- Morning: Schema/registry fix (3 hours)
+- Afternoon: Complete e2e test + caching (3 hours)
+- Evening: Polish + re-review (2 hours)
 
 ---
 
 ## Next Steps
 
-1. **Review and approve plan**
-2. **Allocate resources**
-3. **Begin Phase 1, Step 1.1.1**
-4. **Daily standups to track progress**
-5. **Weekly reviews to adjust plan**
+**Immediate:**
+1. Start with Gap #1 (parameter validation) - highest impact
+2. Write test first (TDD)
+3. Implement validation
+4. Verify test passes
+5. Move to Gap #2
 
----
+**After each gap:**
+1. Write test
+2. Implement fix
+3. Run test (show GREEN)
+4. Commit with evidence
+5. Update this document
 
-**Plan Created**: 2025-11-03  
-**Estimated Completion**: 2-3 weeks  
-**Priority**: High - Blocking production release
+**Final step:**
+- Re-run adversarial review
+- Show all gaps closed
+- Provide evidence for all claims

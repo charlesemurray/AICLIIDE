@@ -5,6 +5,7 @@ pub mod lock;
 pub mod manager;
 pub mod metadata;
 pub mod metrics;
+pub mod preview;
 pub mod repository;
 pub mod session_id;
 pub mod worktree_repo;

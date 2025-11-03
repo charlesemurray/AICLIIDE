@@ -55,29 +55,57 @@ pub fn show_tutorial_if_needed(output: &mut impl Write) -> Result<bool> {
 
 /// Run an interactive example to create a skill
 pub fn run_interactive_example() -> Result<()> {
-    use std::io::{self, Write};
+    use std::io::{self, Write, IsTerminal};
+
+    // Check if running in interactive terminal
+    if !io::stdin().is_terminal() {
+        println!("❌ This command requires an interactive terminal");
+        println!("💡 Use: q skills create <name> --from-template <template>");
+        return Ok(());
+    }
 
     println!("🎓 Interactive Skill Creation Example\n");
     println!("Let's create a simple skill together!\n");
 
-    // Get skill name
-    print!("Enter skill name (e.g., 'hello'): ");
-    io::stdout().flush()?;
-    let mut name = String::new();
-    io::stdin().read_line(&mut name)?;
-    let name = name.trim();
+    // Get skill name with validation
+    let name = loop {
+        print!("Enter skill name (alphanumeric, hyphens, underscores only): ");
+        io::stdout().flush()?;
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let name = input.trim();
 
-    if name.is_empty() {
-        println!("❌ Skill name cannot be empty");
-        return Ok(());
-    }
+        if name.is_empty() {
+            println!("❌ Skill name cannot be empty");
+            continue;
+        }
+
+        // Validate name: alphanumeric, hyphens, underscores only
+        if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            println!("❌ Invalid characters. Use only letters, numbers, hyphens, underscores");
+            continue;
+        }
+
+        // Check for path traversal
+        if name.contains("..") || name.contains('/') || name.contains('\\') {
+            println!("❌ Invalid skill name");
+            continue;
+        }
+
+        break name.to_string();
+    };
 
     // Get description
-    print!("Enter description (e.g., 'Greet a person'): ");
+    print!("Enter description: ");
     io::stdout().flush()?;
     let mut description = String::new();
     io::stdin().read_line(&mut description)?;
     let description = description.trim();
+
+    if description.is_empty() {
+        println!("❌ Description cannot be empty");
+        return Ok(());
+    }
 
     // Choose template
     println!("\nAvailable templates:");
@@ -86,19 +114,21 @@ pub fn run_interactive_example() -> Result<()> {
     println!("  3. http-api - Call an HTTP API");
     println!("  4. file-processor - Process files");
 
-    print!("\nChoose template (1-4): ");
-    io::stdout().flush()?;
-    let mut choice = String::new();
-    io::stdin().read_line(&mut choice)?;
+    let template = loop {
+        print!("\nChoose template (1-4): ");
+        io::stdout().flush()?;
+        let mut choice = String::new();
+        io::stdin().read_line(&mut choice)?;
 
-    let template = match choice.trim() {
-        "1" => "command",
-        "2" => "script",
-        "3" => "http-api",
-        "4" => "file-processor",
-        _ => {
-            println!("❌ Invalid choice");
-            return Ok(());
+        match choice.trim() {
+            "1" => break "command",
+            "2" => break "script",
+            "3" => break "http-api",
+            "4" => break "file-processor",
+            _ => {
+                println!("❌ Invalid choice. Enter 1, 2, 3, or 4");
+                continue;
+            }
         }
     };
 
@@ -129,7 +159,7 @@ pub fn run_interactive_example() -> Result<()> {
         _ => unreachable!(),
     };
 
-    let skill_json = skill_template.generate(name, description);
+    let skill_json = skill_template.generate(&name, description);
 
     // Save to ~/.q-skills/
     let skills_dir = dirs::home_dir()
@@ -138,6 +168,13 @@ pub fn run_interactive_example() -> Result<()> {
 
     std::fs::create_dir_all(&skills_dir)?;
     let skill_file = skills_dir.join(format!("{}.json", name));
+    
+    // Check if file already exists
+    if skill_file.exists() {
+        println!("❌ Skill '{}' already exists at {}", name, skill_file.display());
+        return Ok(());
+    }
+    
     std::fs::write(&skill_file, serde_json::to_string_pretty(&skill_json)?)?;
 
     println!("\n✅ Created skill: {}", skill_file.display());

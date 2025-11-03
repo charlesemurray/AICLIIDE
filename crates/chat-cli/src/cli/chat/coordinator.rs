@@ -32,6 +32,45 @@ use crate::theme::session::{
     SessionType,
 };
 
+/// Validation constants
+mod validation {
+    pub const MAX_SESSION_NAME_LENGTH: usize = 64;
+    pub const MIN_SESSION_NAME_LENGTH: usize = 1;
+    pub const MAX_CONVERSATION_ID_LENGTH: usize = 128;
+    pub const MIN_CONVERSATION_ID_LENGTH: usize = 1;
+}
+
+/// Validate session name
+fn validate_session_name(name: &str) -> Result<()> {
+    if name.is_empty() {
+        bail!("Session name cannot be empty");
+    }
+    if name.len() > validation::MAX_SESSION_NAME_LENGTH {
+        bail!("Session name too long (max {} characters)", validation::MAX_SESSION_NAME_LENGTH);
+    }
+    if name.len() < validation::MIN_SESSION_NAME_LENGTH {
+        bail!("Session name too short (min {} characters)", validation::MIN_SESSION_NAME_LENGTH);
+    }
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ') {
+        bail!("Session name contains invalid characters (use a-z, A-Z, 0-9, -, _, space)");
+    }
+    Ok(())
+}
+
+/// Validate conversation ID
+fn validate_conversation_id(id: &str) -> Result<()> {
+    if id.is_empty() {
+        bail!("Conversation ID cannot be empty");
+    }
+    if id.len() > validation::MAX_CONVERSATION_ID_LENGTH {
+        bail!("Conversation ID too long (max {} characters)", validation::MAX_CONVERSATION_ID_LENGTH);
+    }
+    if id.len() < validation::MIN_CONVERSATION_ID_LENGTH {
+        bail!("Conversation ID too short (min {} characters)", validation::MIN_CONVERSATION_ID_LENGTH);
+    }
+    Ok(())
+}
+
 /// Configuration for multi-session coordinator
 #[derive(Debug, Clone)]
 pub struct CoordinatorConfig {
@@ -45,6 +84,8 @@ pub struct CoordinatorConfig {
     pub session_timeout: Duration,
     /// Cleanup interval
     pub cleanup_interval: Duration,
+    /// State change channel capacity
+    pub state_channel_capacity: usize,
 }
 
 impl Default for CoordinatorConfig {
@@ -55,6 +96,7 @@ impl Default for CoordinatorConfig {
             max_concurrent_api_calls: 5,
             session_timeout: Duration::from_secs(3600), // 1 hour
             cleanup_interval: Duration::from_secs(300), // 5 minutes
+            state_channel_capacity: 100,
         }
     }
 }
@@ -75,9 +117,9 @@ pub struct MultiSessionCoordinator {
     /// Configuration
     config: CoordinatorConfig,
     /// State change receiver
-    state_rx: mpsc::UnboundedReceiver<SessionStateChange>,
+    state_rx: mpsc::Receiver<SessionStateChange>,
     /// State change sender (cloned for each session)
-    state_tx: mpsc::UnboundedSender<SessionStateChange>,
+    state_tx: mpsc::Sender<SessionStateChange>,
     /// API rate limiter
     rate_limiter: ApiRateLimiter,
     /// Memory monitor
@@ -88,12 +130,14 @@ pub struct MultiSessionCoordinator {
     lock_manager: SessionLockManager,
     /// Resource cleanup manager
     cleanup_manager: ResourceCleanupManager,
+    /// Dropped events counter
+    dropped_events: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl MultiSessionCoordinator {
     /// Create a new coordinator
     pub fn new(config: CoordinatorConfig) -> Self {
-        let (state_tx, state_rx) = mpsc::unbounded_channel();
+        let (state_tx, state_rx) = mpsc::channel(config.state_channel_capacity);
         let rate_limiter = ApiRateLimiter::new(config.max_concurrent_api_calls);
         let memory_monitor = MemoryMonitor::new();
 
@@ -110,6 +154,7 @@ impl MultiSessionCoordinator {
             persistence: None,
             lock_manager: SessionLockManager::default(),
             cleanup_manager: ResourceCleanupManager::default(),
+            dropped_events: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         }
     }
 
@@ -172,6 +217,9 @@ impl MultiSessionCoordinator {
         tool_manager: crate::cli::chat::tool_manager::ToolManager,
         model_id: Option<String>,
     ) -> Result<String> {
+        // Validate inputs
+        validate_conversation_id(&conversation_id)?;
+        
         let mut state = self.state.lock().await;
 
         // Check session limit
@@ -181,6 +229,9 @@ impl MultiSessionCoordinator {
 
         // Generate name if not provided
         let session_name = name.unwrap_or_else(|| format!("session-{}", state.sessions.len() + 1));
+        
+        // Validate session name
+        validate_session_name(&session_name)?;
 
         // Check for duplicate names
         if state.sessions.values().any(|s| s.display.name == session_name) {
@@ -234,6 +285,9 @@ impl MultiSessionCoordinator {
 
     /// Switch to a different session
     pub async fn switch_session(&mut self, name: &str) -> Result<()> {
+        // Validate input
+        validate_session_name(name)?;
+        
         let mut state = self.state.lock().await;
 
         // Find session by name
@@ -257,6 +311,9 @@ impl MultiSessionCoordinator {
 
     /// Update last_active timestamp for a session
     pub async fn touch_session(&mut self, session_id: &str) -> Result<()> {
+        // Validate input
+        validate_conversation_id(session_id)?;
+        
         let mut state = self.state.lock().await;
         if let Some(session) = state.sessions.get_mut(session_id) {
             session.metadata.last_active = std::time::Instant::now();
@@ -347,6 +404,9 @@ impl MultiSessionCoordinator {
 
     /// Close a session
     pub async fn close_session(&mut self, name: &str) -> Result<()> {
+        // Validate input
+        validate_session_name(name)?;
+        
         let mut state = self.state.lock().await;
 
         // Find session by name
@@ -425,8 +485,28 @@ impl MultiSessionCoordinator {
     }
 
     /// Get state change sender for new sessions
-    pub fn state_sender(&self) -> mpsc::UnboundedSender<SessionStateChange> {
+    pub fn state_sender(&self) -> mpsc::Sender<SessionStateChange> {
         self.state_tx.clone()
+    }
+
+    /// Get dropped events count
+    pub fn dropped_events_count(&self) -> usize {
+        self.dropped_events.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Send state change with backpressure handling
+    pub async fn send_state_change(&self, change: SessionStateChange) -> Result<()> {
+        match self.state_tx.try_send(change) {
+            Ok(_) => Ok(()),
+            Err(mpsc::error::TrySendError::Full(_)) => {
+                self.dropped_events.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                tracing::warn!("State channel full, dropping event");
+                Ok(())
+            }
+            Err(mpsc::error::TrySendError::Closed(_)) => {
+                bail!("State channel closed")
+            }
+        }
     }
 
     /// Get rate limiter for API calls
@@ -786,4 +866,84 @@ mod tests {
         let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
         let result = coordinator.touch_session("nonexistent").await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_bounded_channel_capacity() {
+        let config = CoordinatorConfig {
+            state_channel_capacity: 5,
+            ..Default::default()
+        };
+        let coordinator = MultiSessionCoordinator::new(config);
+        assert_eq!(coordinator.dropped_events_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_send_state_change_with_backpressure() {
+        let config = CoordinatorConfig {
+            state_channel_capacity: 2,
+            ..Default::default()
+        };
+        let coordinator = MultiSessionCoordinator::new(config);
+        
+        // Send changes
+        let result = coordinator.send_state_change(
+            SessionStateChange::Processing("test".to_string())
+        ).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_dropped_events_counter() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        let initial = coordinator.dropped_events_count();
+        assert_eq!(initial, 0);
+    }
+
+    #[tokio::test]
+    async fn test_validate_session_name_empty() {
+        let result = validate_session_name("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("cannot be empty"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_session_name_too_long() {
+        let long_name = "a".repeat(65);
+        let result = validate_session_name(&long_name);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too long"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_session_name_invalid_chars() {
+        let result = validate_session_name("test@session");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid characters"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_session_name_valid() {
+        assert!(validate_session_name("test-session_1").is_ok());
+        assert!(validate_session_name("my session").is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_conversation_id_empty() {
+        let result = validate_conversation_id("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("cannot be empty"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_conversation_id_too_long() {
+        let long_id = "a".repeat(129);
+        let result = validate_conversation_id(&long_id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too long"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_conversation_id_valid() {
+        assert!(validate_conversation_id("abc123").is_ok());
     }

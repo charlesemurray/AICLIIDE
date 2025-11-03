@@ -42,6 +42,12 @@ fn checkout_branch(repo_root: &Path, branch: &str) -> Result<()> {
 }
 
 /// Check if worktree has uncommitted changes
+/// 
+/// # Arguments
+/// * `worktree_path` - Path to the worktree directory
+/// 
+/// # Returns
+/// `true` if there are uncommitted changes, `false` otherwise
 pub fn has_uncommitted_changes(worktree_path: &Path) -> Result<bool> {
     let output = Command::new("git")
         .arg("-C")
