@@ -71,6 +71,8 @@ impl SessionsSubcommand {
             SessionsSubcommand::Recover { .. } => "recover",
             SessionsSubcommand::Scan => "scan",
             SessionsSubcommand::Worktrees => "worktrees",
+            SessionsSubcommand::Scan => "scan",
+            SessionsSubcommand::Worktrees => "worktrees",
         }
     }
 
@@ -129,16 +131,43 @@ impl SessionsSubcommand {
                 })
             },
             SessionsSubcommand::Cleanup { completed, older_than } => {
+                use crate::cli::chat::session_scanner::get_current_repo_sessions;
+                use crate::git::remove_worktree;
+                
+                println!("🧹 Cleaning up sessions...");
+                
                 let mut cleaned = 0;
-                if *completed {
-                    println!("🧹 Cleaning up completed sessions...");
-                    cleaned += 1;
+                
+                if let Ok(sessions) = get_current_repo_sessions() {
+                    for session in sessions {
+                        let should_clean = if *completed {
+                            // Clean if status is archived or no recent activity
+                            session.status == crate::session::metadata::SessionStatus::Archived
+                        } else if let Some(days) = older_than {
+                            // Clean if older than specified days
+                            let age = time::OffsetDateTime::now_utc() - session.last_active;
+                            age.whole_days() > *days as i64
+                        } else {
+                            false
+                        };
+                        
+                        if should_clean {
+                            if let Some(wt) = &session.worktree_info {
+                                if remove_worktree(&wt.path).is_ok() {
+                                    println!("  ✓ Removed worktree: {}", wt.branch);
+                                    cleaned += 1;
+                                }
+                            }
+                        }
+                    }
                 }
-                if let Some(days) = older_than {
-                    println!("🧹 Cleaning up sessions older than {} days...", days);
-                    cleaned += 1;
+                
+                if cleaned == 0 {
+                    println!("  No sessions to clean up");
+                } else {
+                    println!("✓ Cleaned up {} session(s)", cleaned);
                 }
-                println!("✓ Cleaned up {} sessions", cleaned);
+                
                 Ok(ChatState::PromptUser {
                     skip_printing_tools: true,
                 })

@@ -156,6 +156,87 @@ impl ConversationMode {
             symbol
         )
     }
+}
+
+/// Enhanced transition management for conversation modes
+use std::time::SystemTime;
+
+#[derive(Debug, Clone)]
+pub struct ModeTransition {
+    pub from: ConversationMode,
+    pub to: ConversationMode,
+    pub trigger: crate::analytics::ModeTransitionTrigger,
+    pub timestamp: SystemTime,
+    pub user_confirmed: bool,
+}
+
+#[derive(Debug)]
+pub struct TransitionManager {
+    history: Vec<ModeTransition>,
+}
+
+impl TransitionManager {
+    pub fn new() -> Self {
+        Self { history: Vec::new() }
+    }
+    
+    pub fn transition_with_confirmation(&mut self, from: ConversationMode, to: ConversationMode, trigger: crate::analytics::ModeTransitionTrigger) -> Result<bool, String> {
+        let requires_confirmation = self.requires_confirmation(&from, &to);
+        let user_confirmed = !requires_confirmation || trigger == crate::analytics::ModeTransitionTrigger::UserCommand;
+        
+        self.add_transition(ModeTransition {
+            from, to, trigger, 
+            timestamp: SystemTime::now(),
+            user_confirmed,
+        });
+        
+        Ok(true)
+    }
+    
+    pub fn show_transition_preview(&self, from: ConversationMode, to: ConversationMode) -> String {
+        let from_symbol = from.get_visual_style().1;
+        let to_symbol = to.get_visual_style().1;
+        let to_desc = match to {
+            ConversationMode::Interactive => "step-by-step confirmations",
+            ConversationMode::ExecutePlan => "execute entire plan without confirmation",
+            ConversationMode::Review => "analyze and provide feedback without execution",
+        };
+        format!("{} → {} {}: {}", from_symbol, to_symbol, to.get_mode_name(), to_desc)
+    }
+    
+    pub fn add_transition(&mut self, transition: ModeTransition) {
+        self.history.push(transition);
+        if self.history.len() > 10 { self.history.remove(0); }
+    }
+    
+    pub fn get_transition_history(&self, limit: usize) -> &[ModeTransition] {
+        let start = if self.history.len() > limit { self.history.len() - limit } else { 0 };
+        &self.history[start..]
+    }
+    
+    pub fn undo_last_transition(&mut self) -> Result<ConversationMode, String> {
+        if let Some(last) = self.history.last() {
+            if last.user_confirmed {
+                return Err("Cannot undo user-confirmed transitions".to_string());
+            }
+            Ok(last.from.clone())
+        } else {
+            Err("No transitions to undo".to_string())
+        }
+    }
+    
+    pub fn requires_confirmation(&self, from: &ConversationMode, to: &ConversationMode) -> bool {
+        matches!((from, to), 
+            (ConversationMode::ExecutePlan, ConversationMode::Review) |
+            (ConversationMode::ExecutePlan, ConversationMode::Interactive)
+        )
+    }
+    
+    pub fn get_transition_indicator(&self, from: ConversationMode, to: ConversationMode) -> String {
+        let from_symbol = from.get_visual_style().1;
+        let to_symbol = to.get_visual_style().1;
+        format!("{} → {}", from_symbol, to_symbol)
+    }
 
     fn get_mode_name(&self) -> &str {
         match self {
