@@ -39,7 +39,9 @@ impl SkillTool {
 
         let start = Instant::now();
 
-        let skill = registry.get(&self.skill_name).ok_or_else(|| SkillError::NotFound)?;
+        let skill = registry
+            .get(&self.skill_name)
+            .ok_or_else(|| SkillError::NotFound(self.skill_name.clone()))?;
 
         let result = skill.execute(self.params.clone()).await;
         let duration = start.elapsed();

@@ -274,7 +274,7 @@ impl SkillsArgs {
                         
                         // Convert SkillsCliError to SkillError for recovery guide
                         let skill_error = match &e {
-                            error::SkillsCliError::SkillNotFound(name) => SkillError::NotFound,
+                            error::SkillsCliError::SkillNotFound(name) => SkillError::NotFound(name.clone()),
                             error::SkillsCliError::InvalidInput(msg) => SkillError::InvalidInput(msg.clone()),
                             error::SkillsCliError::ExecutionFailed(msg) => SkillError::ExecutionFailed(msg.clone()),
                             _ => SkillError::ExecutionFailed(e.to_string()),

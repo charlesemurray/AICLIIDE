@@ -332,6 +332,72 @@ impl MultiDimensionalValidator {
         
         score.min(1.0)
     }
+
+    fn generate_feedback(
+        &self,
+        role_clarity: f64,
+        capability_completeness: f64,
+        constraint_clarity: f64,
+        example_quality: f64
+    ) -> Vec<QualityFeedback> {
+        let mut feedback = Vec::new();
+
+        // Role clarity feedback
+        if role_clarity < 0.3 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Error,
+                message: "Role definition is too vague or missing".to_string(),
+                suggestion: Some("Add a clear role statement like 'You are an expert [domain] with knowledge of [specifics]'".to_string()),
+            });
+        } else if role_clarity < 0.6 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Warning,
+                message: "Role definition could be more specific".to_string(),
+                suggestion: Some("Include domain expertise, specializations, or specific knowledge areas".to_string()),
+            });
+        }
+
+        // Capability feedback
+        if capability_completeness < 0.3 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Error,
+                message: "Capabilities section is missing or incomplete".to_string(),
+                suggestion: Some("Add a 'Capabilities:' section with specific, actionable items using verbs like 'analyze', 'review', 'suggest'".to_string()),
+            });
+        } else if capability_completeness < 0.6 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Warning,
+                message: "Capabilities could be more detailed".to_string(),
+                suggestion: Some("Add more specific capabilities or use action verbs to describe what the assistant can do".to_string()),
+            });
+        }
+
+        // Constraint feedback
+        if constraint_clarity < 0.3 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Warning,
+                message: "Constraints section is missing or unclear".to_string(),
+                suggestion: Some("Add a 'Constraints:' section with measurable rules like 'Always cite sources' or 'Limit responses to 500 words'".to_string()),
+            });
+        } else if constraint_clarity < 0.5 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Info,
+                message: "Constraints could be more specific".to_string(),
+                suggestion: Some("Use measurable terms like 'always', 'never', 'must', or specific limits".to_string()),
+            });
+        }
+
+        // Example feedback
+        if example_quality < 0.3 {
+            feedback.push(QualityFeedback {
+                severity: FeedbackSeverity::Info,
+                message: "Examples section is missing or incomplete".to_string(),
+                suggestion: Some("Add example conversations with 'Input:' and 'Output:' pairs to demonstrate expected behavior".to_string()),
+            });
+        }
+
+        feedback
+    }
 }
 
 impl QualityValidator for MultiDimensionalValidator {
@@ -354,10 +420,18 @@ impl QualityValidator for MultiDimensionalValidator {
         let overall_score = (role_clarity * 0.3) + (capability_completeness * 0.25) + 
                            (constraint_clarity * 0.25) + (example_quality * 0.2);
 
+        // Generate feedback based on component scores
+        let feedback = self.generate_feedback(
+            role_clarity,
+            capability_completeness,
+            constraint_clarity,
+            example_quality
+        );
+
         QualityScore {
             overall_score,
             component_scores,
-            feedback: vec![],
+            feedback,
             confidence: 0.8,
         }
     }

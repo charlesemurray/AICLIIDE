@@ -7,12 +7,15 @@ impl ErrorRecovery {
     /// Format a recovery guide for the given error
     pub fn format_recovery_guide(error: &SkillError) -> String {
         match error {
-            SkillError::NotFound => {
-                "💡 Recovery suggestions:\n\
-                 • List available skills: q skills list\n\
-                 • Check skill name spelling\n\
-                 • Create a new skill: q skills create <name> --from-template command"
-                    .to_string()
+            SkillError::NotFound(name) => {
+                format!(
+                    "💡 Recovery suggestions:\n\
+                     • Skill '{}' not found\n\
+                     • List available skills: q skills list\n\
+                     • Check skill name spelling\n\
+                     • Create a new skill: q skills create {} --from-template command",
+                    name, name
+                )
             }
             SkillError::InvalidInput(msg) => {
                 format!(
@@ -87,8 +90,9 @@ mod tests {
 
     #[test]
     fn test_not_found_recovery() {
-        let error = SkillError::NotFound;
+        let error = SkillError::NotFound("test-skill".to_string());
         let guide = ErrorRecovery::format_recovery_guide(&error);
+        assert!(guide.contains("test-skill"));
         assert!(guide.contains("q skills list"));
         assert!(guide.contains("Recovery suggestions"));
     }

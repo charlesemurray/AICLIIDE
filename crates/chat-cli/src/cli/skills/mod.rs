@@ -64,8 +64,8 @@ pub enum UIElement {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SkillError {
-    #[error("Skill not found")]
-    NotFound,
+    #[error("Skill '{0}' not found")]
+    NotFound(String),
     #[error("Invalid input: {0}")]
     InvalidInput(String),
     #[error("Invalid configuration: {0}")]

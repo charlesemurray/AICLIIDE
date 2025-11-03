@@ -206,6 +206,7 @@ impl MultiSessionCoordinator {
         .await;
 
         // Create managed session with real ConversationState
+        let now = std::time::Instant::now();
         let session = ManagedSession {
             display,
             conversation,
@@ -214,6 +215,11 @@ impl MultiSessionCoordinator {
             output_buffer: buffer,
             task_handle: None,
             last_error: None,
+            metadata: crate::cli::chat::managed_session::SessionMetadata {
+                created_at: now,
+                last_active: now,
+                message_count: 0,
+            },
         };
 
         state.sessions.insert(conversation_id.clone(), session);
@@ -474,26 +480,11 @@ impl MultiSessionCoordinator {
     }
 
     /// Start background cleanup task
-    pub fn start_cleanup_task(self: Arc<Self>) {
-        let coordinator = self.clone();
-        let interval = self.config.cleanup_interval;
-        let max_age = self.config.session_timeout;
-        
-        tokio::spawn(async move {
-            let mut interval_timer = tokio::time::interval(interval);
-            loop {
-                interval_timer.tick().await;
-                if let Ok(count) = Arc::get_mut(&mut coordinator.clone())
-                    .map(|c| c.cleanup_inactive_sessions(max_age))
-                {
-                    if let Ok(removed) = count.await {
-                        if removed > 0 {
-                            tracing::info!("Cleaned up {} inactive sessions", removed);
-                        }
-                    }
-                }
-            }
-        });
+    /// Note: Requires coordinator to be wrapped in Arc<Mutex<>> for background task
+    /// For now, call cleanup_inactive_sessions() manually or from main loop
+    pub fn start_cleanup_task(&self) {
+        // TODO: Implement background task when coordinator is Arc<Mutex<>>
+        tracing::warn!("Background cleanup task not yet implemented");
     }
 
     /// Process state changes from background sessions
