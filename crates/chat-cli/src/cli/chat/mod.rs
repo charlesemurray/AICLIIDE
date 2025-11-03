@@ -321,8 +321,33 @@ impl ChatArgs {
             )?;
         }
 
-        let conversation_id = uuid::Uuid::new_v4().to_string();
-        info!(?conversation_id, "Generated new conversation id");
+        // Check if we're in a worktree with an existing session
+        let (conversation_id, resume_from_worktree) = {
+            use crate::git::detect_git_context;
+            use crate::cli::chat::worktree_session::load_from_worktree;
+            
+            let current_dir = os.env.current_dir()?;
+            if let Ok(git_ctx) = detect_git_context(&current_dir) {
+                if git_ctx.is_worktree {
+                    if let Ok(metadata) = load_from_worktree(&current_dir) {
+                        eprintln!("✓ Resuming session in worktree: {}", git_ctx.branch_name);
+                        (metadata.id, true)
+                    } else {
+                        (uuid::Uuid::new_v4().to_string(), false)
+                    }
+                } else {
+                    (uuid::Uuid::new_v4().to_string(), false)
+                }
+            } else {
+                (uuid::Uuid::new_v4().to_string(), false)
+            }
+        };
+        
+        if !resume_from_worktree {
+            info!(?conversation_id, "Generated new conversation id");
+        } else {
+            info!(?conversation_id, "Resuming conversation from worktree");
+        }
 
         // Check MCP status once at the beginning of the session
         let mcp_enabled = match os.client.is_mcp_enabled().await {

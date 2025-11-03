@@ -2631,4 +2631,37 @@ mod tests {
         assert!(result.is_ok());
         assert!(matches!(result.unwrap(), Tool::SkillNew(_)));
     }
+
+    #[tokio::test]
+    async fn test_get_workflow_from_tool_use() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        let workflow_json = r#"{
+            "name": "test-workflow",
+            "version": "1.0.0",
+            "description": "Test workflow",
+            "steps": []
+        }"#;
+        fs::write(dir.path().join("test-workflow.json"), workflow_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.workflow_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "test-workflow".to_string(),
+            args: serde_json::json!({}),
+        };
+
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), Tool::WorkflowNew(_)));
+    }
 }
