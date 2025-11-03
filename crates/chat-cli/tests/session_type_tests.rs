@@ -5,7 +5,7 @@ fn test_worktree_required_types() {
     assert!(SessionType::Feature.requires_worktree());
     assert!(SessionType::Refactor.requires_worktree());
     assert!(SessionType::Experiment.requires_worktree());
-    
+
     assert!(!SessionType::Debug.requires_worktree());
     assert!(!SessionType::Planning.requires_worktree());
     assert!(!SessionType::Development.requires_worktree());
@@ -22,7 +22,7 @@ fn test_interactive_types() {
     assert!(SessionType::Hotfix.is_interactive());
     assert!(SessionType::Refactor.is_interactive());
     assert!(SessionType::Experiment.is_interactive());
-    
+
     assert!(!SessionType::Development.is_interactive());
 }
 

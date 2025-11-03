@@ -51,6 +51,10 @@ impl WorkflowTool {
         PermissionEvalResult::Allow
     }
 
+    pub fn invoke(&self, _params: std::collections::HashMap<String, serde_json::Value>) -> Result<String> {
+        Ok("not implemented".to_string())
+    }
+
     fn format_error(&self, step_num: usize, step_name: &str, error: &eyre::Error) -> String {
         format!("Workflow failed at step {} ('{}'): {}", step_num, step_name, error)
     }
@@ -361,5 +365,18 @@ mod tests {
 
         // Output should include timing information (ms or µs)
         assert!(output.contains("ms") || output.contains("µs") || output.contains("step1"));
+    }
+
+    #[test]
+    fn test_workflow_tool_invoke() {
+        use std::collections::HashMap;
+
+        let workflow = WorkflowTool::new("test-workflow".to_string(), "Test workflow".to_string());
+        let params = HashMap::new();
+
+        // invoke() should return not implemented for now
+        let result = workflow.invoke(params);
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("not implemented"));
     }
 }

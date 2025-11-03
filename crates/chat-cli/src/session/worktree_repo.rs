@@ -17,7 +17,6 @@ use super::repository::{
 };
 use crate::git::{
     detect_git_context,
-    is_worktree,
 };
 
 /// Worktree-aware session repository
@@ -66,14 +65,14 @@ impl WorktreeSessionRepository {
     pub async fn load_current_worktree(&self) -> Result<Option<SessionMetadata>, SessionError> {
         let current_dir = std::env::current_dir().map_err(|e| SessionError::IoError(e.to_string()))?;
 
-        // Check if we're in a worktree
-        match is_worktree(&current_dir) {
-            Ok(true) => match self.load_from_worktree(&current_dir).await {
+        // Check if we're in a worktree by detecting git context
+        match detect_git_context(&current_dir) {
+            Ok(Some(_)) => match self.load_from_worktree(&current_dir).await {
                 Ok(metadata) => Ok(Some(metadata)),
-                Err(SessionError::NotFound) => Ok(None),
+                Err(SessionError::NotFound(_)) => Ok(None),
                 Err(e) => Err(e),
             },
-            Ok(false) => Ok(None),
+            Ok(None) => Ok(None),
             Err(_) => Ok(None), // Not a git repo, that's fine
         }
     }

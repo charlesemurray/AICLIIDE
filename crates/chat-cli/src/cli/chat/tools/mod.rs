@@ -200,10 +200,11 @@ impl Tool {
                     output: OutputKind::Text("Skill execution not yet implemented".to_string()),
                 })
             },
-            Tool::WorkflowNew(_workflow) => {
-                // Minimal implementation - not yet functional
+            Tool::WorkflowNew(workflow) => {
+                let params = std::collections::HashMap::new();
+                let result = workflow.invoke(params)?;
                 Ok(InvokeOutput {
-                    output: OutputKind::Text("Workflow execution not yet implemented".to_string()),
+                    output: OutputKind::Text(result),
                 })
             },
         }
