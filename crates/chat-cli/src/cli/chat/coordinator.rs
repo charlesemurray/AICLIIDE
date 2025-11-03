@@ -22,7 +22,7 @@ use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
 use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
-// use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
+use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
 use crate::theme::session::{
     SessionDisplay,
     SessionStatus,
@@ -53,7 +53,7 @@ impl Default for CoordinatorConfig {
 /// Coordinates multiple chat sessions
 pub struct MultiSessionCoordinator {
     /// All managed sessions by conversation_id
-    sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
+    pub(crate) sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
     /// Currently active session ID
     active_session_id: Arc<Mutex<Option<String>>>,
     /// Configuration
@@ -89,7 +89,7 @@ impl MultiSessionCoordinator {
             state_tx,
             rate_limiter,
             memory_monitor,
-            persistence: None,
+            // persistence: None,
             lock_manager: SessionLockManager::default(),
             cleanup_manager: ResourceCleanupManager::default(),
         }

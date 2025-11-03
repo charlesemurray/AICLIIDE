@@ -339,8 +339,6 @@ impl SessionsSubcommand {
                     skip_printing_tools: true,
                 })
             },
-                })
-            },
         }
     }
 }

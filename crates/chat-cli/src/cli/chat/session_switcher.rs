@@ -5,18 +5,26 @@ use std::io::Write;
 use eyre::Result;
 
 use crate::cli::chat::coordinator::MultiSessionCoordinator;
+use crate::cli::chat::session_transition::SessionTransition;
 use crate::cli::chat::terminal_ui::TerminalUI;
 
 /// Handles session switching with UX
 pub struct SessionSwitcher {
     ui: TerminalUI,
+    transition: SessionTransition,
 }
 
 impl SessionSwitcher {
     pub fn new() -> Self {
         Self {
             ui: TerminalUI::new(),
+            transition: SessionTransition::new(),
         }
+    }
+
+    /// Enable/disable smooth transitions
+    pub fn set_smooth_transitions(&mut self, enabled: bool) {
+        self.transition.set_replay_buffer(enabled);
     }
 
     /// Switch to a different session with visual feedback
@@ -36,6 +44,13 @@ impl SessionSwitcher {
 
         // Perform switch
         coordinator.switch_session(target_name).await?;
+
+        // Get new session ID
+        let new_id = coordinator.active_session_id().await
+            .ok_or_else(|| eyre::eyre!("Failed to get new session ID"))?;
+
+        // Perform transition
+        self.transition.transition_to(coordinator, &new_id, writer).await?;
 
         // Show feedback
         if let Some(from) = current_name {
@@ -115,5 +130,12 @@ mod tests {
 
         let result = switcher.clear_screen(&mut buffer);
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_set_smooth_transitions() {
+        let mut switcher = SessionSwitcher::new();
+        switcher.set_smooth_transitions(false);
+        assert!(!switcher.transition.replay_buffer);
     }
 }

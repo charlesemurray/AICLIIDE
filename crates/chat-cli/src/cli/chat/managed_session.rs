@@ -72,6 +72,20 @@ impl OutputBuffer {
         self.current_size_bytes
     }
 
+    /// Replay buffered events to writer
+    pub fn replay<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        for event in &self.events {
+            match event {
+                OutputEvent::Text(s) => writeln!(writer, "{}", s)?,
+                OutputEvent::StyledText(s, _) => writeln!(writer, "{}", s)?,
+                OutputEvent::ToolStart(name) => writeln!(writer, "→ Tool: {}", name)?,
+                OutputEvent::ToolEnd(name, result) => writeln!(writer, "✓ {}: {}", name, result)?,
+                OutputEvent::Error(e) => writeln!(writer, "Error: {}", e)?,
+            }
+        }
+        Ok(())
+    }
+
     /// Get all buffered events
     pub fn events(&self) -> &VecDeque<OutputEvent> {
         &self.events

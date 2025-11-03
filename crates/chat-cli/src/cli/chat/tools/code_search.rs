@@ -139,3 +139,27 @@ mod tests {
         assert_eq!(result, PermissionEvalResult::Allow);
     }
 }
+    #[test]
+    fn test_tool_registration() {
+        // Test tool can be created from JSON
+        let json = r#"{"query": "test"}"#;
+        let tool: CodeSearch = serde_json::from_str(json).unwrap();
+        assert_eq!(tool.query, "test");
+    }
+
+    #[test]
+    fn test_tool_registration_with_all_fields() {
+        // Test tool can be created from JSON with all fields
+        let json = r#"{
+            "query": "function",
+            "path": "./src",
+            "file_types": ["rs", "py"],
+            "limit": 10
+        }"#;
+        let tool: CodeSearch = serde_json::from_str(json).unwrap();
+        assert_eq!(tool.query, "function");
+        assert_eq!(tool.path, Some("./src".to_string()));
+        assert_eq!(tool.file_types, Some(vec!["rs".to_string(), "py".to_string()]));
+        assert_eq!(tool.limit, Some(10));
+    }
+}
