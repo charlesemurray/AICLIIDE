@@ -618,6 +618,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: Some(Never),
+                worktree: None,
+                no_worktree: false,
             })
         );
         assert_parse!(
@@ -633,6 +635,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: Some(Always),
+                worktree: None,
+                no_worktree: false,
             })
         );
         assert_parse!(
@@ -648,6 +652,8 @@ mod test {
                 auto_approve: None,
                 batch_mode: false,
                 wrap: Some(Auto),
+                worktree: None,
+                no_worktree: false,
             })
         );
     }
