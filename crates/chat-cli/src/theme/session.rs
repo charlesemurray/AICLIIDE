@@ -1,7 +1,8 @@
 use crossterm::style::Color;
+use serde::{Deserialize, Serialize};
 
 /// Types of sessions in Q CLI
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SessionType {
     Debug,
     Planning,
@@ -48,7 +49,7 @@ pub struct SessionDisplay {
     pub status: SessionStatus,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SessionStatus {
     Active,
     WaitingForInput,
