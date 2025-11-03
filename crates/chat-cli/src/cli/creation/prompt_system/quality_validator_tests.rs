@@ -191,4 +191,75 @@ mod quality_validator_tests {
         assert!(many_score.component_scores["example_quality"] > 
                 few_score.component_scores["example_quality"]);
     }
+
+    #[test]
+    fn test_quality_validator_provides_feedback() {
+        let validator = MultiDimensionalValidator::new();
+        let vague_prompt = "You help with things.";
+        
+        let score = validator.validate(vague_prompt);
+        
+        assert!(!score.feedback.is_empty(), "Should provide feedback for low-quality prompt");
+        assert!(score.feedback.iter().any(|f| 
+            f.message.to_lowercase().contains("role") && 
+            matches!(f.severity, crate::cli::creation::prompt_system::types::FeedbackSeverity::Warning)
+        ), "Should have warning about role clarity");
+        assert!(score.feedback.iter().any(|f| f.suggestion.is_some()),
+            "Should provide at least one suggestion");
+    }
+
+    #[test]
+    fn test_feedback_for_missing_capabilities() {
+        let validator = MultiDimensionalValidator::new();
+        let no_capabilities = "You are an expert. Do your best.";
+        
+        let score = validator.validate(no_capabilities);
+        
+        assert!(score.feedback.iter().any(|f| 
+            f.message.to_lowercase().contains("capabilit")
+        ), "Should provide feedback about missing capabilities");
+    }
+
+    #[test]
+    fn test_feedback_for_missing_constraints() {
+        let validator = MultiDimensionalValidator::new();
+        let no_constraints = "You are an expert. Capabilities:\n- Help users";
+        
+        let score = validator.validate(no_constraints);
+        
+        assert!(score.feedback.iter().any(|f| 
+            f.message.to_lowercase().contains("constraint")
+        ), "Should provide feedback about missing constraints");
+    }
+
+    #[test]
+    fn test_feedback_severity_levels() {
+        let validator = MultiDimensionalValidator::new();
+        let very_poor = "Help.";
+        
+        let score = validator.validate(very_poor);
+        
+        // Should have at least one error-level feedback for very poor quality
+        assert!(score.feedback.iter().any(|f| 
+            matches!(f.severity, crate::cli::creation::prompt_system::types::FeedbackSeverity::Error)
+        ), "Very poor prompt should have error-level feedback");
+    }
+
+    #[test]
+    fn test_high_quality_has_minimal_feedback() {
+        let validator = MultiDimensionalValidator::new();
+        let high_quality = "You are an expert Rust developer specializing in async programming.\n\
+            Capabilities:\n- Analyze code for bugs\n- Review performance\n- Suggest improvements\n\
+            Constraints:\n- Be concise\n- Cite sources\n- Avoid speculation\n\
+            Examples:\nInput: Review code\nOutput: Here's my analysis";
+        
+        let score = validator.validate(high_quality);
+        
+        // High quality should have few or no warnings/errors
+        let serious_feedback = score.feedback.iter().filter(|f| 
+            !matches!(f.severity, crate::cli::creation::prompt_system::types::FeedbackSeverity::Info)
+        ).count();
+        
+        assert!(serious_feedback <= 1, "High quality prompt should have minimal serious feedback");
+    }
 }

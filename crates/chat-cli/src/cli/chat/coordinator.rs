@@ -239,9 +239,25 @@ impl MultiSessionCoordinator {
             .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
 
         // Update active session
-        state.active_session_id = Some(target_id);
+        state.active_session_id = Some(target_id.clone());
+        
+        // Update last_active timestamp
+        if let Some(session) = state.sessions.get_mut(&target_id) {
+            session.metadata.last_active = std::time::Instant::now();
+        }
 
         Ok(())
+    }
+
+    /// Update last_active timestamp for a session
+    pub async fn touch_session(&mut self, session_id: &str) -> Result<()> {
+        let mut state = self.state.lock().await;
+        if let Some(session) = state.sessions.get_mut(session_id) {
+            session.metadata.last_active = std::time::Instant::now();
+            Ok(())
+        } else {
+            bail!("Session not found: {}", session_id)
+        }
     }
 
     /// Acquire lock for session (prevents concurrent access)
@@ -432,6 +448,52 @@ impl MultiSessionCoordinator {
     /// Check for sessions that should be hibernated
     pub async fn check_memory_pressure(&self) -> Vec<String> {
         self.memory_monitor.sessions_to_hibernate().await
+    }
+
+    /// Clean up inactive sessions based on timeout
+    pub async fn cleanup_inactive_sessions(&mut self, max_age: Duration) -> Result<usize> {
+        let mut state = self.state.lock().await;
+        let now = std::time::Instant::now();
+        
+        let to_remove: Vec<_> = state.sessions
+            .iter()
+            .filter(|(_, session)| {
+                now.duration_since(session.metadata.last_active) > max_age
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        
+        for id in &to_remove {
+            state.sessions.remove(id);
+            if let Some(p) = &self.persistence {
+                let _ = p.delete_session(id);
+            }
+        }
+        
+        Ok(to_remove.len())
+    }
+
+    /// Start background cleanup task
+    pub fn start_cleanup_task(self: Arc<Self>) {
+        let coordinator = self.clone();
+        let interval = self.config.cleanup_interval;
+        let max_age = self.config.session_timeout;
+        
+        tokio::spawn(async move {
+            let mut interval_timer = tokio::time::interval(interval);
+            loop {
+                interval_timer.tick().await;
+                if let Ok(count) = Arc::get_mut(&mut coordinator.clone())
+                    .map(|c| c.cleanup_inactive_sessions(max_age))
+                {
+                    if let Ok(removed) = count.await {
+                        if removed > 0 {
+                            tracing::info!("Cleaned up {} inactive sessions", removed);
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /// Process state changes from background sessions

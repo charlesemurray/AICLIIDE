@@ -259,16 +259,31 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Run { skill_name, params } => {
-                handlers::run_command(
+                use crate::cli::skills::error_recovery::ErrorRecovery;
+                
+                match handlers::run_command(
                     &registry,
                     &skill_name,
                     params.as_deref(),
                     &mut std::io::stdout()
                 )
-                .await
-                .map_err(|e| eyre::eyre!(e))?;
-
-                Ok(ExitCode::SUCCESS)
+                .await {
+                    Ok(_) => Ok(ExitCode::SUCCESS),
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        
+                        // Convert SkillsCliError to SkillError for recovery guide
+                        let skill_error = match &e {
+                            error::SkillsCliError::SkillNotFound(name) => SkillError::NotFound,
+                            error::SkillsCliError::InvalidInput(msg) => SkillError::InvalidInput(msg.clone()),
+                            error::SkillsCliError::ExecutionFailed(msg) => SkillError::ExecutionFailed(msg.clone()),
+                            _ => SkillError::ExecutionFailed(e.to_string()),
+                        };
+                        
+                        eprintln!("\n{}", ErrorRecovery::format_recovery_guide(&skill_error));
+                        Err(eyre::eyre!(e))
+                    }
+                }
             },
             SkillsCommand::Info { skill_name } => {
                 handlers::info_command(&registry, &skill_name, &mut std::io::stdout())
