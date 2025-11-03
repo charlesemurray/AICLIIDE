@@ -1,7 +1,11 @@
-use chat_cli::cli::chat::worktree_strategy::{WorktreeStrategy, resolve_worktree_strategy};
+use std::path::PathBuf;
+
+use chat_cli::cli::chat::worktree_strategy::{
+    WorktreeStrategy,
+    resolve_worktree_strategy,
+};
 use chat_cli::git::GitContext;
 use chat_cli::theme::session::SessionType;
-use std::path::PathBuf;
 
 #[test]
 fn test_worktree_strategy_with_explicit_flag() {
@@ -32,7 +36,7 @@ fn test_session_type_worktree_requirements() {
     assert!(SessionType::Feature.requires_worktree());
     assert!(SessionType::Refactor.requires_worktree());
     assert!(SessionType::Experiment.requires_worktree());
-    
+
     assert!(!SessionType::Debug.requires_worktree());
     assert!(!SessionType::Hotfix.requires_worktree());
 }

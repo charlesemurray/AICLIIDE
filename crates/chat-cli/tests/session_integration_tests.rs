@@ -1,10 +1,13 @@
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 use chat_cli::session::{
-    InMemoryRepository, SessionMetadata, WorktreeInfo, WorktreeSessionRepository,
+    InMemoryRepository,
+    SessionMetadata,
+    WorktreeInfo,
+    WorktreeSessionRepository,
     resolve_session_id,
 };
+use tempfile::TempDir;
 
 #[tokio::test]
 async fn test_worktree_session_full_workflow() {
@@ -19,8 +22,7 @@ async fn test_worktree_session_full_workflow() {
         merge_target: "main".to_string(),
     };
 
-    let metadata = SessionMetadata::new("test-session", "First message")
-        .with_worktree(worktree_info);
+    let metadata = SessionMetadata::new("test-session", "First message").with_worktree(worktree_info);
 
     let inner = Box::new(InMemoryRepository::new());
     let repo = WorktreeSessionRepository::new(inner);
@@ -41,11 +43,11 @@ async fn test_worktree_session_full_workflow() {
 #[test]
 fn test_session_id_resolution() {
     let path = PathBuf::from("/tmp/my-project");
-    
+
     // With override
     let id = resolve_session_id(&path, Some("custom"));
     assert_eq!(id, "custom");
-    
+
     // Without override (fallback to path)
     let id = resolve_session_id(&path, None);
     assert_eq!(id, "my-project");
@@ -57,9 +59,9 @@ async fn test_non_worktree_session_workflow() {
     let repo = WorktreeSessionRepository::new(inner);
 
     let metadata = SessionMetadata::new("regular-session", "Message");
-    
+
     repo.save(&metadata).await.unwrap();
-    
+
     let loaded = repo.get("regular-session").await.unwrap();
     assert_eq!(loaded.id, "regular-session");
     assert!(!loaded.is_worktree_session());

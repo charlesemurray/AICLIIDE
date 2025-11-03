@@ -350,13 +350,10 @@ async fn execute_memory_command(
                                 } else {
                                     item.content.clone()
                                 };
-                                execute!(
-                                    session.stderr,
-                                    style::Print(format!("{}. {}\n", i + 1, preview)),
-                                )?;
+                                execute!(session.stderr, style::Print(format!("{}. {}\n", i + 1, preview)),)?;
                             }
                         }
-                    }
+                    },
                     Err(e) => {
                         execute!(
                             session.stderr,
@@ -364,7 +361,7 @@ async fn execute_memory_command(
                             style::Print(format!("Error: {}\n", e)),
                             StyledText::reset(),
                         )?;
-                    }
+                    },
                 }
             } else {
                 execute!(
@@ -411,13 +408,30 @@ async fn execute_memory_command(
             }
         },
         MemorySubcommand::Stats => {
-            execute!(
-                session.stderr,
-                StyledText::brand_fg(),
-                style::Print("Memory Statistics\n"),
-                StyledText::reset(),
-                style::Print("  Total memories: N/A\n"),
-            )?;
+            if let Some(ref cortex) = session.cortex {
+                let stats = cortex.stats();
+                execute!(
+                    session.stderr,
+                    StyledText::brand_fg(),
+                    style::Print("Memory Statistics\n"),
+                    StyledText::reset(),
+                    style::Print(format!(
+                        "  Status: {}\n",
+                        if stats.enabled { "Enabled" } else { "Disabled" }
+                    )),
+                    style::Print(format!(
+                        "  Short-term: {}/{} memories\n",
+                        stats.stm_count, stats.stm_capacity
+                    )),
+                )?;
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::warning_fg(),
+                    style::Print("Memory is disabled\n"),
+                    StyledText::reset(),
+                )?;
+            }
         },
         MemorySubcommand::Cleanup(_args) => {
             execute!(session.stderr, style::Print("Cleaning up old memories...\n"),)?;

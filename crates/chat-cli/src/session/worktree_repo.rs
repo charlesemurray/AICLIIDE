@@ -61,12 +61,12 @@ impl WorktreeSessionRepository {
 
         // Check if we're in a worktree by detecting git context
         match detect_git_context(&current_dir) {
-            Ok(Some(_)) => match self.load_from_worktree(&current_dir).await {
+            Ok(context) if context.is_worktree => match self.load_from_worktree(&current_dir).await {
                 Ok(metadata) => Ok(Some(metadata)),
                 Err(SessionError::NotFound(_)) => Ok(None),
                 Err(e) => Err(e),
             },
-            Ok(None) => Ok(None),
+            Ok(_) => Ok(None),
             Err(_) => Ok(None), // Not a git repo, that's fine
         }
     }

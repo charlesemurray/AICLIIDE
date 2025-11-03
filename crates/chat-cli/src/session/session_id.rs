@@ -11,11 +11,7 @@ pub fn resolve_session_id(path: &Path, override_id: Option<&str>) -> String {
 
     // Layer 2: Git context (repo/branch)
     if let Ok(context) = detect_git_context(path) {
-        let repo_name = context
-            .repo_root
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("repo");
+        let repo_name = context.repo_root.file_name().and_then(|n| n.to_str()).unwrap_or("repo");
         return format!("{}/{}", repo_name, context.current_branch);
     }
 
@@ -28,8 +24,9 @@ pub fn resolve_session_id(path: &Path, override_id: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::PathBuf;
+
+    use super::*;
 
     #[test]
     fn test_explicit_override() {

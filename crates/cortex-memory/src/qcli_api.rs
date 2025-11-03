@@ -94,7 +94,7 @@ impl CortexMemory {
         // Get a sample query to retrieve recent items
         let query_embedding = vec![0.0; self.embedder.dimensions()];
         let results = self.manager.search(&query_embedding, limit);
-        
+
         let mut items = Vec::new();
         for (id, score) in results {
             if let Some(note) = self.manager.get(&id)? {
@@ -106,7 +106,7 @@ impl CortexMemory {
                 });
             }
         }
-        
+
         Ok(items)
     }
 }

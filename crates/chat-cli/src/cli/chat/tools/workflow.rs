@@ -547,4 +547,179 @@ mod tests {
         assert!(updated.get("steps").is_some());
         assert!(updated["steps"]["step1"]["output"].as_str().unwrap() == "output1");
     }
+
+    #[test]
+    fn test_workflow_creation_from_json() {
+        // Test creating a workflow from JSON definition
+        let json = r#"{
+            "name": "test-workflow",
+            "version": "1.0.0",
+            "description": "A test workflow",
+            "steps": [
+                {
+                    "name": "step1",
+                    "tool": "echo",
+                    "parameters": {"msg": "hello"}
+                }
+            ]
+        }"#;
+
+        let definition: WorkflowDefinition = serde_json::from_str(json).unwrap();
+        let workflow = WorkflowTool::from_definition(&definition);
+
+        assert_eq!(workflow.name, "test-workflow");
+        assert_eq!(workflow.description, "A test workflow");
+        assert!(workflow.validate().is_ok());
+    }
+
+    #[test]
+    fn test_simple_workflow_execution() {
+        // Test executing a simple single-step workflow
+        let definition = WorkflowDefinition {
+            name: "simple-workflow".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Simple workflow".to_string(),
+            steps: vec![WorkflowStep {
+                name: "greet".to_string(),
+                tool: "echo".to_string(),
+                parameters: serde_json::json!({"msg": "Hello World"}),
+            }],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new(definition.name.clone(), definition.description.clone());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("1 steps successfully"));
+        assert!(output.contains("greet"));
+        assert!(output.contains("ms"));
+    }
+
+    #[test]
+    fn test_complex_workflow_execution() {
+        // Test executing a complex multi-step workflow with context
+        let definition = WorkflowDefinition {
+            name: "complex-workflow".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Complex multi-step workflow".to_string(),
+            steps: vec![
+                WorkflowStep {
+                    name: "step1".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "Starting pipeline"}),
+                },
+                WorkflowStep {
+                    name: "step2".to_string(),
+                    tool: "calculator".to_string(),
+                    parameters: serde_json::json!({"operation": "add"}),
+                },
+                WorkflowStep {
+                    name: "step3".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "Pipeline complete"}),
+                },
+            ],
+            context: Some(serde_json::json!({
+                "environment": "test",
+                "version": "1.0"
+            })),
+        };
+
+        let workflow = WorkflowTool::new(definition.name.clone(), definition.description.clone());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        // Verify all steps executed
+        assert!(output.contains("3 steps successfully"));
+        assert!(output.contains("step1"));
+        assert!(output.contains("step2"));
+        assert!(output.contains("step3"));
+
+        // Verify timing information
+        assert!(output.contains("ms"));
+
+        // Verify summary format
+        assert!(output.contains("Workflow completed successfully"));
+    }
+
+    #[test]
+    fn test_workflow_with_context_passing() {
+        // Test that context is passed between steps
+        let executor = StepExecutor::new();
+        let mut context = serde_json::json!({
+            "initial": "value"
+        });
+
+        // Execute first step and add output to context
+        let step1 = WorkflowStep {
+            name: "step1".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({}),
+        };
+
+        let result1 = executor.execute_step_with_context(&step1, &context).unwrap();
+        context = executor.add_step_output_to_context(context, "step1", &result1.output);
+
+        // Verify context was updated
+        assert!(context.get("steps").is_some());
+        assert!(context["steps"]["step1"]["output"].is_string());
+
+        // Execute second step with updated context
+        let step2 = WorkflowStep {
+            name: "step2".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({}),
+        };
+
+        let result2 = executor.execute_step_with_context(&step2, &context);
+        assert!(result2.is_ok());
+    }
+
+    #[test]
+    fn test_workflow_error_recovery() {
+        // Test that workflow stops on error and provides clear message
+        let definition = WorkflowDefinition {
+            name: "error-workflow".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Workflow that will fail".to_string(),
+            steps: vec![
+                WorkflowStep {
+                    name: "step1".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+                WorkflowStep {
+                    name: "failing_step".to_string(),
+                    tool: "nonexistent_tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+                WorkflowStep {
+                    name: "step3".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            ],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new(definition.name.clone(), definition.description.clone());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err().to_string();
+
+        // Verify error message includes step information
+        assert!(error.contains("step 2") || error.contains("failing_step"));
+        assert!(error.contains("nonexistent_tool") || error.contains("Unknown tool"));
+    }
 }

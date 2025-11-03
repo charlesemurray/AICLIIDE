@@ -1,5 +1,7 @@
 use chat_cli::cli::chat::branch_naming::{
-    generate_from_conversation, sanitize_branch_name, generate_branch_name,
+    generate_branch_name,
+    generate_from_conversation,
+    sanitize_branch_name,
 };
 
 #[test]
