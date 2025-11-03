@@ -140,7 +140,7 @@ impl SessionsSubcommand {
                     skip_printing_tools: true,
                 })
             },
-            SessionsSubcommand::Cleanup { completed, older_than } => {
+            SessionsSubcommand::Cleanup { completed, older_than, force } => {
                 use crate::cli::chat::session_scanner::get_current_repo_sessions;
                 use crate::git::remove_worktree;
 
@@ -157,29 +157,61 @@ impl SessionsSubcommand {
                         }
                     }
                     
-                    for session in sessions {
-                        let should_clean = if *completed {
-                            // Clean if status is archived or no recent activity
-                            session.status == crate::session::metadata::SessionStatus::Archived
-                        } else if let Some(days) = older_than {
-                            // Clean if older than specified days
-                            let age = time::OffsetDateTime::now_utc() - session.last_active;
-                            age.whole_days() > *days as i64
-                        } else {
-                            false
-                        };
-
-                        if should_clean {
-                            if let Some(wt) = &session.worktree_info {
-                                match remove_worktree(&wt.path) {
-                                    Ok(_) => {
-                                        println!("  ✓ Removed worktree: {}", wt.branch);
-                                        cleaned += 1;
-                                    },
-                                    Err(e) => {
-                                        eprintln!("  ✗ Failed to remove {}: {}", wt.branch, e);
-                                        failed += 1;
-                                    }
+                    // Collect sessions to clean
+                    let to_clean: Vec<_> = sessions.iter()
+                        .filter(|session| {
+                            if *completed {
+                                session.status == crate::session::metadata::SessionStatus::Archived
+                            } else if let Some(days) = older_than {
+                                let age = time::OffsetDateTime::now_utc() - session.last_active;
+                                age.whole_days() > *days as i64
+                            } else {
+                                false
+                            }
+                        })
+                        .collect();
+                    
+                    if to_clean.is_empty() {
+                        println!("  No sessions to clean up");
+                        return Ok(ChatState::PromptUser {
+                            skip_printing_tools: true,
+                        });
+                    }
+                    
+                    // Show what will be deleted
+                    println!("Will remove {} worktree(s):", to_clean.len());
+                    for session in &to_clean {
+                        if let Some(wt) = &session.worktree_info {
+                            println!("  • {} ({})", wt.branch, wt.path.display());
+                        }
+                    }
+                    
+                    // Require confirmation unless --force
+                    if !*force {
+                        use std::io::{self, Write};
+                        eprint!("\nProceed? [y/N]: ");
+                        io::stderr().flush().ok();
+                        let mut input = String::new();
+                        io::stdin().read_line(&mut input).ok();
+                        if input.trim().to_lowercase() != "y" {
+                            println!("Cancelled");
+                            return Ok(ChatState::PromptUser {
+                                skip_printing_tools: true,
+                            });
+                        }
+                    }
+                    
+                    // Proceed with cleanup
+                    for session in to_clean {
+                        if let Some(wt) = &session.worktree_info {
+                            match remove_worktree(&wt.path) {
+                                Ok(_) => {
+                                    println!("  ✓ Removed worktree: {}", wt.branch);
+                                    cleaned += 1;
+                                },
+                                Err(e) => {
+                                    eprintln!("  ✗ Failed to remove {}: {}", wt.branch, e);
+                                    failed += 1;
                                 }
                             }
                         }
