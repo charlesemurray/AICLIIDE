@@ -48,6 +48,9 @@ pub enum SessionsSubcommand {
         /// Remove sessions older than specified days
         #[arg(long)]
         older_than: Option<u32>,
+        /// Skip confirmation prompt
+        #[arg(long)]
+        force: bool,
     },
     /// Recover a session from backup
     Recover {
