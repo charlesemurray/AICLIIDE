@@ -191,7 +191,17 @@ impl SessionsSubcommand {
 
                 println!("🔍 Scanning for worktree sessions...");
                 match get_current_repo_sessions() {
-                    Ok(sessions) => {
+                    Ok((sessions, errors)) => {
+                        if !errors.is_empty() {
+                            eprintln!("⚠️  Scan warnings:");
+                            for err in errors.iter().take(3) {
+                                eprintln!("  • {}", err);
+                            }
+                            if errors.len() > 3 {
+                                eprintln!("  ... and {} more", errors.len() - 3);
+                            }
+                        }
+                        
                         if sessions.is_empty() {
                             println!("  No worktree sessions found");
                         } else {
