@@ -54,6 +54,10 @@ pub enum SessionsSubcommand {
         /// Name of the session to recover
         name: String,
     },
+    /// Scan for worktree-based sessions
+    Scan,
+    /// Show worktree sessions
+    Worktrees,
 }
 
 impl SessionsSubcommand {
@@ -65,6 +69,8 @@ impl SessionsSubcommand {
             SessionsSubcommand::DevSessions => "dev",
             SessionsSubcommand::Cleanup { .. } => "cleanup",
             SessionsSubcommand::Recover { .. } => "recover",
+            SessionsSubcommand::Scan => "scan",
+            SessionsSubcommand::Worktrees => "worktrees",
         }
     }
 
@@ -140,6 +146,59 @@ impl SessionsSubcommand {
             SessionsSubcommand::Recover { name } => {
                 println!("🔄 Recovering session: {}", name);
                 println!("✓ Session recovered successfully");
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
+            SessionsSubcommand::Scan => {
+                use crate::cli::chat::session_scanner::get_current_repo_sessions;
+                
+                println!("🔍 Scanning for worktree sessions...");
+                match get_current_repo_sessions() {
+                    Ok(sessions) => {
+                        if sessions.is_empty() {
+                            println!("  No worktree sessions found");
+                        } else {
+                            println!("  Found {} worktree session(s):", sessions.len());
+                            for session in sessions {
+                                if let Some(wt) = &session.worktree_info {
+                                    println!("  • {} (branch: {})", session.id, wt.branch);
+                                }
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        println!("❌ Failed to scan: {}", e);
+                    }
+                }
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
+            SessionsSubcommand::Worktrees => {
+                use crate::cli::chat::session_scanner::get_current_repo_sessions;
+                
+                println!("🌳 Worktree Sessions:");
+                match get_current_repo_sessions() {
+                    Ok(sessions) => {
+                        if sessions.is_empty() {
+                            println!("  No worktree sessions found");
+                            println!("\nUse 'q chat --worktree <name>' to create a worktree session");
+                        } else {
+                            for session in sessions {
+                                if let Some(wt) = &session.worktree_info {
+                                    println!("\n  Branch: {}", wt.branch);
+                                    println!("  Path: {}", wt.path.display());
+                                    println!("  Session ID: {}", session.id);
+                                    println!("  Messages: {}", session.message_count);
+                                }
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        println!("❌ Failed to list worktrees: {}", e);
+                    }
+                }
                 Ok(ChatState::PromptUser {
                     skip_printing_tools: true,
                 })

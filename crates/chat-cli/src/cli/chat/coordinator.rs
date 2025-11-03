@@ -1,6 +1,7 @@
 //! Multi-session coordinator for managing concurrent chat sessions
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::{
@@ -18,7 +19,9 @@ use crate::cli::chat::managed_session::{
 };
 use crate::cli::chat::memory_monitor::MemoryMonitor;
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
+use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
+use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
 use crate::theme::session::{
     SessionDisplay,
     SessionStatus,

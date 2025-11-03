@@ -128,6 +128,35 @@ impl ConversationMode {
         }
     }
 
+    /// Get visual style (color, symbol, prefix) for mode distinction
+    pub fn get_visual_style(&self) -> (String, String, String) {
+        match self {
+            ConversationMode::Interactive => ("blue".to_string(), "💬".to_string(), "Q".to_string()),
+            ConversationMode::ExecutePlan => ("green".to_string(), "🚀".to_string(), "Q-EXEC".to_string()),
+            ConversationMode::Review => ("yellow".to_string(), "🔍".to_string(), "Q-REV".to_string()),
+        }
+    }
+    
+    /// Format prompt with visual mode styling
+    pub fn format_prompt(&self, base_prompt: &str) -> String {
+        let (_, symbol, prefix) = self.get_visual_style();
+        format!("{} {} {}", symbol, prefix, base_prompt)
+    }
+    
+    /// Get colored indicator for terminal display
+    pub fn get_colored_indicator(&self) -> String {
+        let (color, symbol, _) = self.get_visual_style();
+        format!("\x1b[{}m{}\x1b[0m", 
+            match color.as_str() {
+                "blue" => "34",
+                "green" => "32", 
+                "yellow" => "33",
+                _ => "0"
+            }, 
+            symbol
+        )
+    }
+
     fn get_mode_name(&self) -> &str {
         match self {
             ConversationMode::Interactive => "Interactive",
@@ -143,8 +172,10 @@ impl ConversationMode {
                 format!("🔄 Automatically switched to {} mode", self.get_mode_name())
             },
             crate::analytics::ModeTransitionTrigger::UserCommand => {
-            crate::analytics::ModeTransitionTrigger::LLMDecision => "llm",
                 format!("✅ Switched to {} mode", self.get_mode_name())
+            },
+            crate::analytics::ModeTransitionTrigger::LLMDecision => {
+                format!("🤖 AI switched to {} mode", self.get_mode_name())
             },
         }
     }
