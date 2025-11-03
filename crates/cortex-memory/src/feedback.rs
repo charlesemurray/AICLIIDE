@@ -137,4 +137,20 @@ mod tests {
         assert_eq!(helpful, 0);
         assert_eq!(not_helpful, 1);
     }
+
+    #[test]
+    fn test_invalid_memory_id_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("feedback.db");
+        let manager = FeedbackManager::new(&db_path).unwrap();
+
+        // Empty ID should fail
+        let result = manager.record_feedback("", true);
+        assert!(result.is_err());
+
+        // Very long ID should fail
+        let long_id = "a".repeat(1000);
+        let result = manager.record_feedback(&long_id, true);
+        assert!(result.is_err());
+    }
 }
