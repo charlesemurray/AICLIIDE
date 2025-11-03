@@ -59,4 +59,48 @@ mod quality_validator_tests {
 
         assert!(specific_score.component_scores["role_clarity"] > generic_score.component_scores["role_clarity"]);
     }
+
+    #[test]
+    fn test_quality_validator_checks_capabilities() {
+        let validator = MultiDimensionalValidator::new();
+        let detailed = "Capabilities:\n- Analyze code for bugs\n- Find security vulnerabilities\n- Suggest performance improvements\n- Review architecture decisions";
+        let minimal = "Capabilities:\n- Help";
+        
+        let detailed_score = validator.validate(detailed);
+        let minimal_score = validator.validate(minimal);
+        
+        assert!(detailed_score.component_scores.contains_key("capability_completeness"),
+            "Should have capability_completeness score");
+        assert!(detailed_score.component_scores["capability_completeness"] > 
+                minimal_score.component_scores["capability_completeness"],
+            "Detailed capabilities {} should score higher than minimal {}",
+            detailed_score.component_scores["capability_completeness"],
+            minimal_score.component_scores["capability_completeness"]);
+    }
+
+    #[test]
+    fn test_capability_completeness_counts_items() {
+        let validator = MultiDimensionalValidator::new();
+        let many = "Capabilities:\n- Item 1\n- Item 2\n- Item 3\n- Item 4\n- Item 5";
+        let few = "Capabilities:\n- Item 1";
+        
+        let many_score = validator.validate(many);
+        let few_score = validator.validate(few);
+        
+        assert!(many_score.component_scores["capability_completeness"] > 0.7);
+        assert!(few_score.component_scores["capability_completeness"] < 0.4);
+    }
+
+    #[test]
+    fn test_capability_completeness_requires_specificity() {
+        let validator = MultiDimensionalValidator::new();
+        let specific = "Capabilities:\n- Analyze code for memory leaks\n- Detect race conditions\n- Validate error handling";
+        let vague = "Capabilities:\n- Do things\n- Help out\n- Be useful";
+        
+        let specific_score = validator.validate(specific);
+        let vague_score = validator.validate(vague);
+        
+        assert!(specific_score.component_scores["capability_completeness"] > 
+                vague_score.component_scores["capability_completeness"]);
+    }
 }

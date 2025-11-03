@@ -64,7 +64,7 @@ struct SessionState {
 /// Coordinates multiple chat sessions
 pub struct MultiSessionCoordinator {
     /// Combined session state (single lock to prevent deadlocks)
-    state: Arc<Mutex<SessionState>>,
+    pub(crate) state: Arc<Mutex<SessionState>>,
     /// Configuration
     config: CoordinatorConfig,
     /// State change receiver

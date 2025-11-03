@@ -61,8 +61,8 @@ impl SessionTransition {
         session_id: &str,
         writer: &mut W,
     ) -> Result<()> {
-        let sessions = coordinator.sessions.lock().await;
-        if let Some(session) = sessions.get(session_id) {
+        let state = coordinator.state.lock().await;
+        if let Some(session) = state.sessions.get(session_id) {
             let buffer = session.output_buffer.lock().await;
             buffer.replay(writer)?;
         }

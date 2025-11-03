@@ -19,6 +19,60 @@ use crate::cli::skills::{
 };
 use crate::os::Os;
 
+/// Error types for skills CLI operations
+mod error {
+    use std::fmt;
+
+    #[derive(Debug)]
+    pub enum SkillsCliError {
+        SkillNotFound(String),
+        InvalidInput(String),
+        InvalidTemplate(String),
+        FileNotFound(String),
+        ValidationFailed(String),
+        ExecutionFailed(String),
+        IoError(std::io::Error),
+        SerializationError(serde_json::Error),
+        HomeDirectoryNotFound,
+    }
+
+    impl fmt::Display for SkillsCliError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Self::SkillNotFound(name) => write!(f, "Skill '{}' not found", name),
+                Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+                Self::InvalidTemplate(name) => write!(f, "Invalid template: {}", name),
+                Self::FileNotFound(path) => write!(f, "File not found: {}", path),
+                Self::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
+                Self::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
+                Self::IoError(e) => write!(f, "IO error: {}", e),
+                Self::SerializationError(e) => write!(f, "Serialization error: {}", e),
+                Self::HomeDirectoryNotFound => write!(f, "Could not find home directory"),
+            }
+        }
+    }
+
+    impl std::error::Error for SkillsCliError {}
+
+    impl From<std::io::Error> for SkillsCliError {
+        fn from(e: std::io::Error) -> Self {
+            Self::IoError(e)
+        }
+    }
+
+    impl From<serde_json::Error> for SkillsCliError {
+        fn from(e: serde_json::Error) -> Self {
+            Self::SerializationError(e)
+        }
+    }
+
+    impl From<SkillsCliError> for eyre::Error {
+        fn from(e: SkillsCliError) -> Self {
+            eyre::eyre!(e)
+        }
+    }
+}
+
 /// Constants for the skills CLI
 mod constants {
     /// Directory name for skills in workspace

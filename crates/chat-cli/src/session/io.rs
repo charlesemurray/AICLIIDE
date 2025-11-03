@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use tracing::{debug, instrument};
+
 use super::error::SessionError;
 use super::metadata::SessionMetadata;
 

@@ -86,20 +86,27 @@ impl<'a> SessionManager<'a> {
     }
 
     /// Archive a session
+    #[instrument(skip(self))]
     pub async fn archive_session(&self, session_id: &str) -> Result<(), SessionError> {
+        info!(session_id, "Archiving session");
         let session_dir = self.session_dir(session_id)?;
         let mut metadata = load_metadata(&session_dir).await?;
         metadata.archive();
         save_metadata(&session_dir, &metadata).await?;
+        info!(session_id, "Session archived successfully");
         Ok(())
     }
 
     /// Name a session
+    #[instrument(skip(self))]
     pub async fn name_session(&self, session_id: &str, name: impl Into<String>) -> Result<(), SessionError> {
+        let name = name.into();
+        info!(session_id, name = %name, "Naming session");
         let session_dir = self.session_dir(session_id)?;
         let mut metadata = load_metadata(&session_dir).await?;
         metadata.set_name(name)?;
         save_metadata(&session_dir, &metadata).await?;
+        info!(session_id, "Session named successfully");
         Ok(())
     }
 
