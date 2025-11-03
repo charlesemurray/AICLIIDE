@@ -88,6 +88,11 @@ impl MultiSessionCoordinator {
         conversation_id: String,
         session_type: SessionType,
         name: Option<String>,
+        os: &crate::os::Os,
+        agents: crate::cli::agent::Agents,
+        tool_config: std::collections::HashMap<String, crate::cli::chat::tools::ToolSpec>,
+        tool_manager: crate::cli::chat::tool_manager::ToolManager,
+        model_id: Option<String>,
     ) -> Result<String> {
         let mut sessions = self.sessions.lock().await;
 
@@ -110,11 +115,21 @@ impl MultiSessionCoordinator {
         // Create output buffer
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(self.config.buffer_size_bytes)));
 
-        // Create managed session (without ConversationState for now)
-        // TODO: Integrate with actual ConversationState in next step
+        // Create real ConversationState
+        let conversation = crate::cli::chat::conversation::ConversationState::new(
+            &conversation_id,
+            agents,
+            tool_config,
+            tool_manager,
+            model_id,
+            os,
+            true, // mcp_enabled
+        ).await;
+
+        // Create managed session with real ConversationState
         let session = ManagedSession {
             display,
-            conversation: unsafe { std::mem::zeroed() }, // Placeholder
+            conversation,
             conversation_id: conversation_id.clone(),
             state: crate::cli::chat::managed_session::SessionState::Active,
             output_buffer: buffer,

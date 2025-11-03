@@ -1,5 +1,5 @@
 use crate::session::metadata::{SessionMetadata, WorktreeInfo};
-use anyhow::Result;
+use eyre::Result;
 use std::path::Path;
 
 /// Persist session metadata to worktree

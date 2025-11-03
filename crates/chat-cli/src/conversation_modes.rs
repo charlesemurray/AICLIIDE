@@ -82,6 +82,24 @@ impl ConversationMode {
         }
     }
 
+    /// Get a user-friendly status display for the current mode
+    pub fn get_status_display(&self) -> String {
+        match self {
+            ConversationMode::Interactive => "💬 Interactive Mode".to_string(),
+            ConversationMode::ExecutePlan => "🚀 ExecutePlan Mode".to_string(),
+            ConversationMode::Review => "🔍 Review Mode".to_string(),
+        }
+    }
+    
+    /// Get a compact prompt indicator for the current mode
+    pub fn get_prompt_indicator(&self) -> String {
+        match self {
+            ConversationMode::Interactive => "[INTERACTIVE]".to_string(),
+            ConversationMode::ExecutePlan => "[EXECUTE]".to_string(),
+            ConversationMode::Review => "[REVIEW]".to_string(),
+        }
+    }
+
     fn get_mode_name(&self) -> &str {
         match self {
             ConversationMode::Interactive => "Interactive",
