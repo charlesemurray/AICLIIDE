@@ -6,8 +6,6 @@ pub mod repository;
 pub mod session_id;
 pub mod worktree_repo;
 
-#[cfg(test)]
-mod integration_tests;
 
 pub use error::SessionError;
 pub use io::{

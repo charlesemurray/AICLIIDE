@@ -8,6 +8,7 @@ use eyre::{Result, bail};
 use tokio::sync::Mutex;
 
 /// Lock guard for a session
+#[derive(Debug)]
 pub struct SessionLockGuard {
     session_id: String,
     locks: Arc<Mutex<HashMap<String, LockInfo>>>,

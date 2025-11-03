@@ -1485,7 +1485,7 @@ mod tests {
 
         // First, build a large conversation history. We need to ensure that the order is always
         // User -> Assistant -> User -> Assistant ...and so on.
-        conversation.set_next_user_message("start".to_string(), &os, &os).await;
+        conversation.set_next_user_message("start".to_string(), &os).await;
         for i in 0..=200 {
             let s = conversation
                 .as_sendable_conversation_state(&os, &mut vec![], true)
@@ -1493,7 +1493,7 @@ mod tests {
                 .unwrap();
             assert_conversation_state_invariants(s, i);
             conversation.push_assistant_message(&mut os, AssistantMessage::new_response(None, i.to_string()), None);
-            conversation.set_next_user_message(i.to_string(), &os, &os).await;
+            conversation.set_next_user_message(i.to_string(), &os).await;
         }
     }
 

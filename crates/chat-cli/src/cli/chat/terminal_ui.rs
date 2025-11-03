@@ -12,7 +12,7 @@ use crate::theme::session::{SessionColors, SessionType};
 
 /// Terminal UI manager for sessions
 pub struct TerminalUI {
-    show_indicator: bool,
+    pub(crate) show_indicator: bool,
 }
 
 impl TerminalUI {

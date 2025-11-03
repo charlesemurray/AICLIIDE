@@ -9,7 +9,7 @@ use crate::cli::chat::coordinator::MultiSessionCoordinator;
 /// Manages smooth transitions between sessions
 pub struct SessionTransition {
     clear_on_switch: bool,
-    replay_buffer: bool,
+    pub(crate) replay_buffer: bool,
 }
 
 impl SessionTransition {
