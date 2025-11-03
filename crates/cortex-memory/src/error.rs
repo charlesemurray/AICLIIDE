@@ -24,6 +24,10 @@ pub enum CortexError {
     /// LLM processing error
     #[error("LLM error: {0}")]
     LlmError(String),
+
+    /// Custom error message
+    #[error("{0}")]
+    Custom(String),
 }
 
 impl From<hnswlib::HnswError> for CortexError {
