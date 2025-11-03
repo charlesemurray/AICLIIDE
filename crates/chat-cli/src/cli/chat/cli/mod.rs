@@ -10,6 +10,7 @@ pub mod hooks;
 pub mod knowledge;
 pub mod logdump;
 pub mod mcp;
+pub mod memory;
 pub mod model;
 pub mod paste;
 pub mod persist;
@@ -127,6 +128,11 @@ pub enum SlashCommand {
     /// Manage skills system
     #[command(subcommand)]
     Skills(SkillsSubcommand),
+    /// Manage memory system
+    #[command(subcommand)]
+    Memory(MemorySubcommand),
+    /// Recall relevant memories
+    Recall(RecallArgs),
     /// Switch between conversations or sessions
     Switch {
         /// Name of conversation or session to switch to
