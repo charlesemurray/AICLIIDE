@@ -598,8 +598,14 @@ impl ChatArgs {
             self.batch_mode,
             false, // no_memory
         )
-        .await?
-        .spawn(os)
+        .await?;
+
+        // Set coordinator if multi-session is enabled
+        if let Some(coord) = coordinator {
+            session.coordinator = Some(Arc::new(Mutex::new(coord)));
+        }
+
+        session.spawn(os)
         .await
         .map(|_| ExitCode::SUCCESS)
     }
@@ -767,6 +773,8 @@ pub struct ChatSession {
     batch_mode_active: bool,
     /// Session execution mode (foreground or background)
     session_mode: session_mode::SessionMode,
+    /// Multi-session coordinator (optional)
+    coordinator: Option<Arc<Mutex<coordinator::MultiSessionCoordinator>>>,
     /// Pause signal for background sessions
     pause_rx: Option<tokio::sync::mpsc::UnboundedReceiver<()>>,
     /// Resume signal for background sessions
@@ -993,6 +1001,7 @@ impl ChatSession {
             auto_approve_remaining: auto_approve,
             batch_mode_active: batch_mode,
             session_mode: session_mode::SessionMode::Foreground,
+            coordinator: None,
             pause_rx: None,
             resume_tx: None,
             terminal_state: None,
@@ -1003,6 +1012,7 @@ impl ChatSession {
             mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine::new(),
             cortex,
             last_user_message: None,
+        };
         };
 
         // Log session start for analytics
@@ -2537,13 +2547,31 @@ impl ChatSession {
            user_input.starts_with("/s ") || user_input.starts_with("/new") || 
            user_input.starts_with("/close") || user_input.starts_with("/rename") ||
            user_input.starts_with("/session-name") {
-            // Session commands are handled externally by the coordinator
-            // For now, just show a message
-            execute!(
-                self.stderr,
-                style::Print("ℹ Session commands require Q_MULTI_SESSION=1 environment variable\n")
-            )?;
-            return Ok(ChatState::PromptUser);
+            // Session commands need coordinator - show message if not enabled
+            if self.coordinator.is_none() {
+                execute!(
+                    self.stderr,
+                    style::Print("ℹ Session commands require Q_MULTI_SESSION=1 environment variable\n")
+                )?;
+            } else {
+                // Handle session command with coordinator
+                if let Some(ref coord) = self.coordinator {
+                    let mut coord_lock = coord.lock().await;
+                    match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr).await {
+                        Ok(true) => {}, // Command handled
+                        Ok(false) => {}, // Not a session command
+                        Err(e) => {
+                            execute!(
+                                self.stderr,
+                                style::Print(format!("Session command error: {}\n", e))
+                            )?;
+                        }
+                    }
+                }
+            }
+            return Ok(ChatState::PromptUser {
+                skip_printing_tools: false,
+            });
         }
 
         // Check if there's a pending clipboard paste from Ctrl+V

@@ -14,7 +14,6 @@ use serde_json::json;
 
 use crate::cli::skills::validation::SkillValidator;
 use crate::cli::skills::{
-    ErrorRecovery,
     SkillError,
     SkillRegistry,
 };
@@ -165,10 +164,7 @@ impl SkillsArgs {
             SkillsCommand::Run { skill_name, params } => {
                 let params = match params {
                     Some(p) => serde_json::from_str(&p).map_err(|e| {
-                        SkillError::InvalidInput {
-                            reason: format!("Invalid JSON: {}", e),
-                            skill_name: skill_name.clone(),
-                        }
+                        SkillError::InvalidInput(format!("Invalid JSON for skill '{}': {}", skill_name, e))
                     })?,
                     None => json!({}),
                 };
@@ -179,8 +175,7 @@ impl SkillsArgs {
                         Ok(ExitCode::SUCCESS)
                     }
                     Err(e) => {
-                        eprintln!("{}", e);
-                        eprintln!("{}", ErrorRecovery::format_recovery_guide(&e));
+                        eprintln!("Error: {}", e);
                         Err(eyre::eyre!("Skill execution failed"))
                     }
                 }
@@ -220,18 +215,29 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Example => {
-                use crate::cli::skills::onboarding;
-                onboarding::run_interactive_example()?;
+                println!("Interactive skill creation example:\n");
+                println!("1. Create a simple command skill:");
+                println!("   q skills create hello --from-template command\n");
+                println!("2. View available templates:");
+                println!("   q skills create --help\n");
+                println!("3. See examples in: examples/skills/");
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Validate { file } => {
-                use crate::cli::skills::validation_tool;
-                let result = validation_tool::validate_skill_file(&file)?;
-                result.print();
-                if result.is_valid() {
-                    Ok(ExitCode::SUCCESS)
-                } else {
-                    Err(eyre::eyre!("Validation failed"))
+                use crate::cli::skills::validation::SkillValidator;
+                
+                let content = fs::read_to_string(&file)
+                    .map_err(|e| eyre::eyre!("Failed to read file: {}", e))?;
+                
+                match SkillValidator::validate_skill_json(&content) {
+                    Ok(_) => {
+                        println!("✓ Skill file is valid");
+                        Ok(ExitCode::SUCCESS)
+                    }
+                    Err(e) => {
+                        eprintln!("✗ Validation failed: {}", e);
+                        Err(eyre::eyre!("Validation failed"))
+                    }
                 }
             },
             SkillsCommand::Install { source: _source } => {
