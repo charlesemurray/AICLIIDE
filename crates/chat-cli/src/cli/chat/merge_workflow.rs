@@ -9,6 +9,22 @@ use eyre::{
 use crate::git::remove_worktree;
 use crate::session::metadata::SessionMetadata;
 
+/// Get the current branch name
+fn get_current_branch(repo_root: &Path) -> Result<String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .arg("branch")
+        .arg("--show-current")
+        .output()?;
+    
+    if !output.status.success() {
+        bail!("Failed to get current branch");
+    }
+    
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 /// Check if worktree has uncommitted changes
 pub fn has_uncommitted_changes(worktree_path: &Path) -> Result<bool> {
     let output = Command::new("git")
