@@ -925,6 +925,18 @@ impl ToolManager {
             // Note that this name is NO LONGER namespaced with server_name{DELIMITER}tool_name
             "delegate" => Tool::Delegate(serde_json::from_value::<Delegate>(value.args).map_err(map_err)?),
             name => {
+                // Check if it's a skill
+                if let Some(definition) = self.skill_registry.get(name) {
+                    let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(definition);
+                    return Ok(Tool::SkillNew(skill_tool));
+                }
+
+                // Check if it's a workflow
+                if let Some(definition) = self.workflow_registry.get(name) {
+                    let workflow_tool = crate::cli::chat::tools::workflow::WorkflowTool::from_definition(definition);
+                    return Ok(Tool::WorkflowNew(workflow_tool));
+                }
+
                 // Note: tn_map also has tools that underwent no transformation. In otherwords, if
                 // it is a valid tool name, we should get a hit.
                 let ToolInfo {
@@ -2585,5 +2597,38 @@ mod tests {
 
         assert!(schema.contains_key("test-workflow"));
         assert_eq!(schema.get("test-workflow").unwrap().name, "test-workflow");
+    }
+
+    #[tokio::test]
+    async fn test_get_skill_from_tool_use() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::bedrock::types::AssistantToolUse;
+
+        let os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        let skill_json = r#"{
+            "name": "test-skill",
+            "description": "Test skill",
+            "skill_type": "command",
+            "implementation": {"type": "command", "command": "echo test"}
+        }"#;
+        fs::write(dir.path().join("test-skill.json"), skill_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "test-skill".to_string(),
+            args: serde_json::json!({}),
+        };
+
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), Tool::SkillNew(_)));
     }
 }
