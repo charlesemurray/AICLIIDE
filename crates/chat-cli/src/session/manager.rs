@@ -16,21 +16,31 @@ use super::metadata::{
     SessionMetadata,
     SessionStatus,
 };
+use super::metrics::SessionMetrics;
 use crate::os::Os;
 
 /// Session manager for high-level session operations
 pub struct SessionManager<'a> {
     os: &'a Os,
+    metrics: SessionMetrics,
 }
 
 impl<'a> SessionManager<'a> {
     pub fn new(os: &'a Os) -> Self {
-        Self { os }
+        Self { 
+            os,
+            metrics: SessionMetrics::new(),
+        }
+    }
+
+    pub fn metrics(&self) -> &SessionMetrics {
+        &self.metrics
     }
 
     /// List all sessions from the filesystem
     #[instrument(skip(self), fields(session_count))]
     pub async fn list_sessions(&self) -> Result<Vec<SessionMetadata>, SessionError> {
+        let start = std::time::Instant::now();
         debug!("Listing sessions from filesystem");
         let sessions_dir = self.os.env.current_dir()?.join(".amazonq/sessions");
 
@@ -59,7 +69,9 @@ impl<'a> SessionManager<'a> {
         // Sort by last_active, most recent first
         sessions.sort_by(|a, b| b.last_active.cmp(&a.last_active));
 
-        info!(count = sessions.len(), "Listed sessions successfully");
+        let duration_ms = start.elapsed().as_millis() as u64;
+        self.metrics.record_list(duration_ms, sessions.len());
+        info!(count = sessions.len(), duration_ms, "Listed sessions successfully");
         tracing::Span::current().record("session_count", sessions.len());
 
         Ok(sessions)
@@ -93,6 +105,7 @@ impl<'a> SessionManager<'a> {
         let mut metadata = load_metadata(&session_dir).await?;
         metadata.archive();
         save_metadata(&session_dir, &metadata).await?;
+        self.metrics.record_archive();
         info!(session_id, "Session archived successfully");
         Ok(())
     }
@@ -106,6 +119,7 @@ impl<'a> SessionManager<'a> {
         let mut metadata = load_metadata(&session_dir).await?;
         metadata.set_name(name)?;
         save_metadata(&session_dir, &metadata).await?;
+        self.metrics.record_name();
         info!(session_id, "Session named successfully");
         Ok(())
     }

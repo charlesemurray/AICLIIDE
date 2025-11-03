@@ -2,6 +2,7 @@ pub mod error;
 pub mod io;
 pub mod manager;
 pub mod metadata;
+pub mod metrics;
 pub mod repository;
 pub mod session_id;
 pub mod worktree_repo;
@@ -18,6 +19,10 @@ pub use metadata::{
     SessionStatus,
     WorktreeInfo,
     validate_session_name,
+};
+pub use metrics::{
+    MetricsSnapshot,
+    SessionMetrics,
 };
 pub use repository::{
     InMemoryRepository,

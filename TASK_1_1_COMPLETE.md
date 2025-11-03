@@ -62,17 +62,28 @@ Fixed 11 methods to use unified `self.state.lock()`:
 
 Updated test to use `coordinator.state.lock().await.sessions`
 
+### Step 5: Fixed external access ✅
+
+- Made `SessionState` struct `pub(crate)` for internal crate access
+- Made `state` field `pub(crate)` in `MultiSessionCoordinator`
+- Made `sessions` and `active_session_id` fields `pub(crate)` in `SessionState`
+- Fixed `session_transition.rs` to use `state.sessions`
+
 ---
 
 ## Changes Made
 
 ### Files Modified
-- `crates/chat-cli/src/cli/chat/coordinator.rs`
+- `crates/chat-cli/src/cli/chat/coordinator.rs` - Main refactoring
+- `crates/chat-cli/src/cli/chat/session_transition.rs` - Fixed external access
 
 ### Lines Changed
 - Removed unused `PathBuf` import
+- Made `SessionState` and fields `pub(crate)`
+- Made `state` field `pub(crate)`
 - Fixed 11 method implementations
 - Fixed 1 test
+- Fixed 1 external access in session_transition.rs
 
 ---
 

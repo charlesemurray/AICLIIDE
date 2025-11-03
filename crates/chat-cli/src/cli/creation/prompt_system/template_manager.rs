@@ -240,6 +240,49 @@ impl MultiDimensionalValidator {
 
         score.min(1.0)
     }
+
+    fn calculate_capability_completeness(&self, prompt: &str) -> f64 {
+        let mut score = 0.0;
+        
+        // Look for capabilities section
+        let prompt_lower = prompt.to_lowercase();
+        if !prompt_lower.contains("capabilit") {
+            return 0.0;
+        }
+        
+        // Count bullet points or numbered items
+        let bullet_count = prompt.matches("\n-").count() + prompt.matches("\n*").count();
+        let numbered_count = (1..=10).filter(|i| prompt.contains(&format!("\n{}.", i))).count();
+        let item_count = bullet_count + numbered_count;
+        
+        // Quantity score (0-0.6): More capabilities is better
+        let quantity_score = match item_count {
+            0 => 0.0,
+            1 => 0.15,
+            2 => 0.25,
+            3 => 0.35,
+            4 => 0.45,
+            5 => 0.6,
+            _ => 0.6,
+        };
+        score += quantity_score;
+        
+        // Specificity score (0-0.4): Check for action verbs and technical terms
+        let action_verbs = [
+            "analyze", "detect", "find", "identify", "review", "validate",
+            "suggest", "recommend", "optimize", "refactor", "implement",
+            "debug", "test", "document", "explain", "evaluate"
+        ];
+        
+        let verb_count = action_verbs.iter()
+            .filter(|verb| prompt_lower.contains(*verb))
+            .count();
+        
+        let specificity_score = (verb_count as f64 * 0.1).min(0.4);
+        score += specificity_score;
+        
+        score.min(1.0)
+    }
 }
 
 impl QualityValidator for MultiDimensionalValidator {
@@ -250,8 +293,12 @@ impl QualityValidator for MultiDimensionalValidator {
         let role_clarity = self.calculate_role_clarity(prompt);
         component_scores.insert("role_clarity".to_string(), role_clarity);
 
-        // Overall score is just role_clarity for now (will add more components)
-        let overall_score = role_clarity;
+        // Calculate capability completeness
+        let capability_completeness = self.calculate_capability_completeness(prompt);
+        component_scores.insert("capability_completeness".to_string(), capability_completeness);
+
+        // Overall score is weighted average
+        let overall_score = (role_clarity * 0.5) + (capability_completeness * 0.5);
 
         QualityScore {
             overall_score,

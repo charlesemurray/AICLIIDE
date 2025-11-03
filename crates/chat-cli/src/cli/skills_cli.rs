@@ -65,12 +65,6 @@ mod error {
             Self::SerializationError(e)
         }
     }
-
-    impl From<SkillsCliError> for eyre::Error {
-        fn from(e: SkillsCliError) -> Self {
-            eyre::eyre!(e)
-        }
-    }
 }
 
 /// Constants for the skills CLI
@@ -1233,4 +1227,72 @@ fn save_and_validate_json_skill(name: &str, template: &serde_json::Value) -> Res
     println!("Created skill: {}", filename);
     println!("✅ JSON validation passed");
     Ok(())
+}
+
+
+/// Command handlers - extracted for testability
+mod handlers {
+    use super::*;
+    use std::io::Write;
+
+    /// Handle the list command
+    pub async fn list_command(
+        registry: &SkillRegistry,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError> {
+        let skills = registry.list();
+
+        if skills.is_empty() {
+            writeln!(output, "{}\n", constants::messages::NO_SKILLS_FOUND)?;
+            writeln!(output, "{}", constants::messages::TIP_TRY_EXAMPLE)?;
+            return Ok(());
+        }
+
+        writeln!(output, "{}\n", constants::messages::AVAILABLE_SKILLS_HEADER)?;
+        for skill in skills {
+            writeln!(output, "  📦 {}", skill.name())?;
+            writeln!(output, "     {}", skill.description())?;
+            let aliases = skill.aliases();
+            if !aliases.is_empty() {
+                writeln!(output, "     Aliases: {}", aliases.join(", "))?;
+            }
+            writeln!(output)?;
+        }
+
+        writeln!(output, "{}", constants::messages::TIP_GET_DETAILS)?;
+        writeln!(output, "{}", constants::messages::TIP_TRY_EXAMPLE)?;
+
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_list_empty_registry() {
+            let registry = SkillRegistry::new();
+            let mut output = Vec::new();
+            
+            let result = list_command(&registry, &mut output).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("No skills found"));
+            assert!(output_str.contains("💡 Try: q skills example"));
+        }
+
+        #[tokio::test]
+        async fn test_list_with_skills() {
+            let registry = SkillRegistry::with_builtins();
+            let mut output = Vec::new();
+            
+            let result = list_command(&registry, &mut output).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("Available Skills:"));
+            assert!(output_str.contains("📦"));
+        }
+    }
 }
