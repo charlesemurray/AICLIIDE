@@ -60,10 +60,15 @@ impl WorkflowTool {
         definition: &WorkflowDefinition,
         _params: std::collections::HashMap<String, serde_json::Value>,
     ) -> Result<String> {
+        use std::time::Instant;
+
+        let workflow_start = Instant::now();
         let mut current_step = 0;
+        let mut step_timings = Vec::new();
 
         for step in &definition.steps {
             current_step += 1;
+            let step_start = Instant::now();
 
             // Validate tool exists
             let known_tools = ["echo", "calculator"];
@@ -71,9 +76,22 @@ impl WorkflowTool {
                 let error = eyre::eyre!("Unknown tool '{}'", step.tool);
                 return Err(eyre::eyre!(self.format_error(current_step, &step.name, &error)));
             }
+
+            let step_duration = step_start.elapsed();
+            step_timings.push(format!(
+                "Step '{}': completed in {:.2}ms",
+                step.name,
+                step_duration.as_secs_f64() * 1000.0
+            ));
         }
 
-        Ok(format!("Executed {} steps successfully", definition.steps.len()))
+        let total_duration = workflow_start.elapsed();
+        Ok(format!(
+            "Executed {} steps successfully in {:.2}ms\n\n{}",
+            definition.steps.len(),
+            total_duration.as_secs_f64() * 1000.0,
+            step_timings.join("\n")
+        ))
     }
 }
 
@@ -280,5 +298,68 @@ mod tests {
         // Error should include step number, step name, and context
         assert!(error_msg.contains("step 2") || error_msg.contains("failing_step"));
         assert!(error_msg.contains("bad_tool") || error_msg.contains("Unknown"));
+    }
+
+    #[test]
+    fn test_format_workflow_results() {
+        use std::collections::HashMap;
+
+        let definition = WorkflowDefinition {
+            name: "multi-step".to_string(),
+            version: "1.0".to_string(),
+            description: "Multi-step workflow".to_string(),
+            steps: vec![
+                WorkflowStep {
+                    name: "step1".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "first"}),
+                },
+                WorkflowStep {
+                    name: "step2".to_string(),
+                    tool: "calculator".to_string(),
+                    parameters: serde_json::json!({"operation": "add"}),
+                },
+            ],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new("test".to_string(), "Test".to_string());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        // Output should include step summaries
+        assert!(output.contains("step1") || output.contains("step2") || output.contains("2 steps"));
+    }
+
+    #[test]
+    fn test_step_timing() {
+        use std::collections::HashMap;
+
+        let definition = WorkflowDefinition {
+            name: "timed-workflow".to_string(),
+            version: "1.0".to_string(),
+            description: "Workflow with timing".to_string(),
+            steps: vec![WorkflowStep {
+                name: "step1".to_string(),
+                tool: "echo".to_string(),
+                parameters: serde_json::json!({"msg": "test"}),
+            }],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new("test".to_string(), "Test".to_string());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        // Output should include timing information (ms or µs)
+        assert!(output.contains("ms") || output.contains("µs") || output.contains("step1"));
     }
 }

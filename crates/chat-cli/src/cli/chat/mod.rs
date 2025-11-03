@@ -2777,7 +2777,35 @@ impl ChatSession {
                     }
                 }
 
-                let enhanced_input = self.apply_conversation_mode(user_input);
+                let enhanced_input = self.apply_conversation_mode(user_input.clone());
+
+                // Recall relevant context from memory
+                if let Some(ref mut cortex) = self.cortex {
+                    if self.interactive {
+                        self.spinner = Some(Spinner::new(Spinners::Dots, "Recalling context...".to_owned()));
+                    }
+
+                    match cortex.recall_context(&user_input, 3) {
+                        Ok(items) if !items.is_empty() => {
+                            if self.interactive {
+                                self.spinner = None;
+                            }
+                            tracing::debug!("Recalled {} relevant memories", items.len());
+                        },
+                        Ok(_) => {
+                            if self.interactive {
+                                self.spinner = None;
+                            }
+                        },
+                        Err(e) => {
+                            if self.interactive {
+                                self.spinner = None;
+                            }
+                            tracing::warn!("Failed to recall memories: {}", e);
+                        },
+                    }
+                }
+
                 self.conversation.set_next_user_message(enhanced_input).await;
             }
 

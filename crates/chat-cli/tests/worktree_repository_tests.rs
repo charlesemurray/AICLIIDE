@@ -1,9 +1,12 @@
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 use chat_cli::session::{
-    InMemoryRepository, SessionMetadata, WorktreeInfo, WorktreeSessionRepository,
+    InMemoryRepository,
+    SessionMetadata,
+    WorktreeInfo,
+    WorktreeSessionRepository,
 };
+use tempfile::TempDir;
 
 #[tokio::test]
 async fn test_worktree_repository_creation() {
@@ -43,8 +46,7 @@ async fn test_worktree_session_with_temp_dir() {
         merge_target: "main".to_string(),
     };
 
-    let metadata = SessionMetadata::new("worktree-session", "First message")
-        .with_worktree(worktree_info);
+    let metadata = SessionMetadata::new("worktree-session", "First message").with_worktree(worktree_info);
 
     repo.save(&metadata).await.unwrap();
 
@@ -59,9 +61,7 @@ async fn test_load_from_nonexistent_worktree() {
     let inner = Box::new(InMemoryRepository::new());
     let repo = WorktreeSessionRepository::new(inner);
 
-    let result = repo
-        .load_from_worktree(&PathBuf::from("/nonexistent/path"))
-        .await;
+    let result = repo.load_from_worktree(&PathBuf::from("/nonexistent/path")).await;
 
     assert!(result.is_err());
 }
