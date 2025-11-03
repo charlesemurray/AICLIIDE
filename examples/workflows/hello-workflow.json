@@ -1,0 +1,28 @@
+{
+  "name": "hello-workflow",
+  "version": "1.0.0",
+  "description": "A simple workflow that greets multiple people",
+  "steps": [
+    {
+      "name": "greet-alice",
+      "tool": "echo",
+      "parameters": {
+        "msg": "Hello, Alice!"
+      }
+    },
+    {
+      "name": "greet-bob",
+      "tool": "echo",
+      "parameters": {
+        "msg": "Hello, Bob!"
+      }
+    },
+    {
+      "name": "summary",
+      "tool": "echo",
+      "parameters": {
+        "msg": "Greeted 2 people"
+      }
+    }
+  ]
+}

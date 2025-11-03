@@ -1,0 +1,32 @@
+{
+  "name": "data-pipeline",
+  "version": "1.0.0",
+  "description": "Process data through multiple steps",
+  "context": {
+    "source": "data.json",
+    "destination": "output.json"
+  },
+  "steps": [
+    {
+      "name": "validate",
+      "tool": "echo",
+      "parameters": {
+        "msg": "Validating input data..."
+      }
+    },
+    {
+      "name": "process",
+      "tool": "calculator",
+      "parameters": {
+        "operation": "add"
+      }
+    },
+    {
+      "name": "save",
+      "tool": "echo",
+      "parameters": {
+        "msg": "Saving results to {{context.destination}}"
+      }
+    }
+  ]
+}

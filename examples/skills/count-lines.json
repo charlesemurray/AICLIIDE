@@ -1,0 +1,17 @@
+{
+  "name": "count-lines",
+  "description": "Count the number of lines in a file",
+  "skill_type": "code_inline",
+  "parameters": [
+    {
+      "name": "file",
+      "type": "string",
+      "required": true,
+      "description": "Path to the file to count"
+    }
+  ],
+  "implementation": {
+    "type": "command",
+    "command": "wc -l {{file}} | awk '{print $1}'"
+  }
+}

@@ -1,16 +1,17 @@
 {
   "name": "hello",
   "description": "Greet a person by name",
+  "skill_type": "code_inline",
   "parameters": [
     {
       "name": "name",
       "type": "string",
-      "description": "The name of the person to greet",
-      "required": true
+      "required": true,
+      "description": "Name of the person to greet"
     }
   ],
   "implementation": {
     "type": "command",
-    "command": "echo 'Hello, {{name}}!'"
+    "command": "echo 'Hello, {{name}}! Welcome to Amazon Q CLI.'"
   }
 }
