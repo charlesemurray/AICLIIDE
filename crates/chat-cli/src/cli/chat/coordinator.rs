@@ -470,4 +470,53 @@ mod tests {
         assert_eq!(waiting.len(), 1);
         assert_eq!(waiting[0], "session-1");
     }
+
+    #[tokio::test]
+    async fn test_lock_session() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let guard = coordinator.lock_session("test-1", "user-1").await;
+        assert!(guard.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_lock_fails() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        let result = coordinator.lock_session("test-1", "user-2").await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("locked"));
+    }
+
+    #[tokio::test]
+    async fn test_is_session_locked() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        assert!(!coordinator.is_session_locked("test-1").await);
+        
+        let _guard = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        assert!(coordinator.is_session_locked("test-1").await);
+    }
+
+    #[tokio::test]
+    async fn test_get_locked_sessions() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        let _guard2 = coordinator.lock_session("test-2", "user-2").await.unwrap();
+        
+        let locked = coordinator.get_locked_sessions().await;
+        assert_eq!(locked.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_stale_locks() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        // This test just verifies the method exists and runs
+        let count = coordinator.cleanup_stale_locks().await;
+        assert_eq!(count, 0);
+    }
 }
