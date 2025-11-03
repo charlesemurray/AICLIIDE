@@ -22,11 +22,17 @@ impl ConversationMode {
     }
 
     pub fn from_user_input(input: &str) -> Option<Self> {
-        let input = input.trim().to_lowercase();
-        match input.as_str() {
-            "/execute" | "/plan" | "/auto" => Some(ConversationMode::ExecutePlan),
-            "/review" | "/analyze" => Some(ConversationMode::Review),
-            "/interactive" | "/step" => Some(ConversationMode::Interactive),
+        // Handle empty or whitespace-only input
+        let trimmed = input.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        
+        let input_lower = trimmed.to_lowercase();
+        match input_lower.as_str() {
+            "/execute" | "/plan" | "/auto" | "/exec" | "/e" => Some(ConversationMode::ExecutePlan),
+            "/review" | "/analyze" | "/rev" | "/r" => Some(ConversationMode::Review),
+            "/interactive" | "/step" | "/int" | "/i" => Some(ConversationMode::Interactive),
             _ => None,
         }
     }

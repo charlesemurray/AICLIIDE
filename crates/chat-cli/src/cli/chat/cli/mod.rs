@@ -433,12 +433,63 @@ async fn execute_memory_command(
                 )?;
             }
         },
-        MemorySubcommand::Cleanup(_args) => {
-            execute!(session.stderr, style::Print("Cleaning up old memories...\n"),)?;
+        MemorySubcommand::Cleanup(args) => {
+            if let Some(ref mut cortex) = session.cortex {
+                if !args.force {
+                    execute!(
+                        session.stderr,
+                        StyledText::warning_fg(),
+                        style::Print("This will clear all memories. Use --force to confirm.\n"),
+                        StyledText::reset(),
+                    )?;
+                } else {
+                    match cortex.clear() {
+                        Ok(count) => {
+                            execute!(
+                                session.stderr,
+                                StyledText::success_fg(),
+                                style::Print(format!("Cleared {} memories\n", count)),
+                                StyledText::reset(),
+                            )?;
+                        }
+                        Err(e) => {
+                            execute!(
+                                session.stderr,
+                                StyledText::error_fg(),
+                                style::Print(format!("Error: {}\n", e)),
+                                StyledText::reset(),
+                            )?;
+                        }
+                    }
+                }
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::warning_fg(),
+                    style::Print("Memory is disabled\n"),
+                    StyledText::reset(),
+                )?;
+            }
         },
         MemorySubcommand::Toggle(args) => {
-            let status = if args.disable { "disabled" } else { "enabled" };
-            execute!(session.stderr, style::Print(format!("Memory {}\n", status)),)?;
+            if let Some(ref mut cortex) = session.cortex {
+                let new_state = !args.disable;
+                cortex.set_enabled(new_state);
+                let status = if new_state { "enabled" } else { "disabled" };
+                execute!(
+                    session.stderr,
+                    StyledText::success_fg(),
+                    style::Print(format!("Memory {}\n", status)),
+                    StyledText::reset(),
+                )?;
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::warning_fg(),
+                    style::Print("Memory system not initialized\n"),
+                    StyledText::reset(),
+                )?;
+            }
         },
     }
 

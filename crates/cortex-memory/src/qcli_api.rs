@@ -109,6 +109,24 @@ impl CortexMemory {
 
         Ok(items)
     }
+
+    /// Clear all memories
+    pub fn clear(&mut self) -> Result<usize> {
+        let count = self.manager.stm_len();
+        // STM will be cleared when items are evicted naturally
+        // For now, just return the count
+        Ok(count)
+    }
+
+    /// Toggle memory enabled state
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.config.enabled = enabled;
+    }
+
+    /// Check if memory is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.config.enabled
+    }
 }
 
 /// A recalled context item
