@@ -17,6 +17,7 @@ pub mod persist;
 pub mod profile;
 pub mod prompts;
 pub mod reply;
+pub mod session_mgmt;
 pub mod sessions;
 pub mod skills;
 // pub mod status;
@@ -47,6 +48,7 @@ use persist::PersistSubcommand;
 use profile::AgentSubcommand;
 use prompts::PromptsArgs;
 use reply::ReplyArgs;
+use session_mgmt::SessionMgmtArgs;
 use sessions::SessionsSubcommand;
 use skills::SkillsSubcommand;
 // use status::StatusArgs;
@@ -128,6 +130,9 @@ pub enum SlashCommand {
     /// Manage development sessions
     #[command(subcommand)]
     Sessions(SessionsSubcommand),
+    /// Manage conversation session metadata
+    #[command(name = "session")]
+    SessionMgmt(SessionMgmtArgs),
     /// Manage skills system
     #[command(subcommand)]
     Skills(SkillsSubcommand),
@@ -214,6 +219,7 @@ impl SlashCommand {
             Self::Tangent(args) => args.execute(os, session).await,
             Self::Persist(subcommand) => subcommand.execute(os, session).await,
             Self::Sessions(subcommand) => subcommand.execute(session, os).await,
+            Self::SessionMgmt(args) => args.execute(session, os).await,
             Self::Skills(subcommand) => subcommand.execute(session, os).await,
             Self::Memory(subcommand) => execute_memory_command(subcommand, session).await,
             Self::Recall(args) => execute_recall_command(args, session).await,
@@ -276,6 +282,7 @@ impl SlashCommand {
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
             Self::Sessions(_) => "sessions",
+            Self::SessionMgmt(_) => "session",
             Self::Memory(_) => "memory",
             Self::Recall(_) => "recall",
             Self::Switch { .. } => "switch",
@@ -290,6 +297,13 @@ impl SlashCommand {
             SlashCommand::Context(sub) => Some(sub.name()),
             SlashCommand::Knowledge(sub) => Some(sub.name()),
             SlashCommand::Sessions(sub) => Some(sub.name()),
+            SlashCommand::SessionMgmt(args) => Some(match &args.command {
+                session_mgmt::SessionMgmtSubcommand::List => "list",
+                session_mgmt::SessionMgmtSubcommand::History { .. } => "history",
+                session_mgmt::SessionMgmtSubcommand::Background { .. } => "background",
+                session_mgmt::SessionMgmtSubcommand::Archive { .. } => "archive",
+                session_mgmt::SessionMgmtSubcommand::Name { .. } => "name",
+            }),
             SlashCommand::Skills(sub) => Some(sub.name()),
             SlashCommand::Memory(sub) => Some(sub.name()),
             SlashCommand::Tools(arg) => arg.subcommand_name(),
