@@ -17,6 +17,7 @@ pub use metadata::{
     METADATA_VERSION,
     SessionMetadata,
     SessionStatus,
+    WorktreeInfo,
     validate_session_name,
 };
 pub use repository::{

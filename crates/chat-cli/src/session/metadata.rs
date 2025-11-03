@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::{
     Deserialize,
@@ -17,6 +18,16 @@ pub enum SessionStatus {
     Active,
     Background,
     Archived,
+}
+
+/// Worktree information for sessions running in git worktrees
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorktreeInfo {
+    pub path: PathBuf,
+    pub branch: String,
+    pub repo_root: PathBuf,
+    pub is_temporary: bool,
+    pub merge_target: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +62,10 @@ pub struct SessionMetadata {
     /// Number of messages exchanged
     pub message_count: usize,
 
+    /// Worktree information if session is in a worktree
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worktree_info: Option<WorktreeInfo>,
+
     /// Extensibility - custom fields for future use
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub custom_fields: HashMap<String, serde_json::Value>,
@@ -74,8 +89,25 @@ impl SessionMetadata {
             name: None,
             file_count: 0,
             message_count: 0,
+            worktree_info: None,
             custom_fields: HashMap::new(),
         }
+    }
+
+    /// Add worktree information to this session
+    pub fn with_worktree(mut self, worktree_info: WorktreeInfo) -> Self {
+        self.worktree_info = Some(worktree_info);
+        self
+    }
+
+    /// Check if this session is running in a worktree
+    pub fn is_worktree_session(&self) -> bool {
+        self.worktree_info.is_some()
+    }
+
+    /// Get worktree path if this is a worktree session
+    pub fn worktree_path(&self) -> Option<&PathBuf> {
+        self.worktree_info.as_ref().map(|info| &info.path)
     }
 
     /// Archive this session
