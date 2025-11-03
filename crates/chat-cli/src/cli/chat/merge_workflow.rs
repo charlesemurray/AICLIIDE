@@ -1,4 +1,4 @@
-use crate::git::{detect_git_context, remove_worktree};
+use crate::git::remove_worktree;
 use crate::session::metadata::SessionMetadata;
 use eyre::{Result, bail};
 use std::path::Path;
