@@ -2630,6 +2630,13 @@ impl ChatSession {
             let old_mode = self.conversation_mode.clone();
             self.conversation_mode = new_mode.clone();
 
+            // Track transition in TransitionManager (Epic 3)
+            let _ = self.transition_manager.transition_with_confirmation(
+                old_mode.clone(),
+                new_mode.clone(),
+                crate::analytics::ModeTransitionTrigger::UserCommand
+            );
+
             // Log mode transition for analytics
             if let Some(session_id) = self.analytics_session_id() {
                 let event = crate::analytics::ConversationAnalyticsEvent::mode_transition(
