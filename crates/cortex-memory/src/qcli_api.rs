@@ -86,8 +86,7 @@ impl CortexMemory {
                 item.metadata
                     .get("session_id")
                     .and_then(|v| v.as_str())
-                    .map(|s| s == session_id)
-                    .unwrap_or(false)
+                    .is_some_and(|s| s == session_id)
             })
             .take(limit)
             .collect();
@@ -139,8 +138,7 @@ impl CortexMemory {
                 item.metadata
                     .get("session_id")
                     .and_then(|v| v.as_str())
-                    .map(|s| s == session_id)
-                    .unwrap_or(false)
+                    .is_some_and(|s| s == session_id)
             })
             .take(limit)
             .collect();

@@ -24,6 +24,7 @@ pub mod session_autocomplete;
 pub mod session_commands;
 pub mod session_mode;
 pub mod terminal_state;
+pub mod worktree_session;
 pub mod worktree_strategy;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
@@ -536,6 +537,7 @@ impl ChatArgs {
             self.wrap,
             self.auto_approve,
             self.batch_mode,
+            false, // no_memory
         )
         .await?
         .spawn(os)
