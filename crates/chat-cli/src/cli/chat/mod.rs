@@ -27,6 +27,7 @@ pub mod session_lock;
 pub mod session_mode;
 pub mod session_persistence;
 pub mod session_scanner;
+pub mod merge_workflow;
 pub mod terminal_state;
 pub mod worktree_session;
 pub mod worktree_strategy;

@@ -79,8 +79,7 @@ impl SessionsSubcommand {
             SessionsSubcommand::Recover { .. } => "recover",
             SessionsSubcommand::Scan => "scan",
             SessionsSubcommand::Worktrees => "worktrees",
-            SessionsSubcommand::Scan => "scan",
-            SessionsSubcommand::Worktrees => "worktrees",
+            SessionsSubcommand::Merge { .. } => "merge",
         }
     }
 
@@ -238,6 +237,108 @@ impl SessionsSubcommand {
                 }
                 Ok(ChatState::PromptUser {
                     skip_printing_tools: true,
+                })
+            },
+            SessionsSubcommand::Merge { branch, force } => {
+                use crate::cli::chat::session_scanner::get_current_repo_sessions;
+                use crate::cli::chat::merge_workflow::{
+                    prepare_merge, detect_conflicts, merge_branch, cleanup_after_merge
+                };
+                use crate::git::detect_git_context;
+                
+                println!("🔀 Preparing to merge worktree session...");
+                
+                // Find session to merge
+                let sessions = match get_current_repo_sessions() {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("❌ Failed to find sessions: {}", e);
+                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                    }
+                };
+                
+                let session = if let Some(ref branch_name) = branch {
+                    sessions.iter().find(|s| {
+                        s.worktree_info.as_ref().map(|w| &w.branch == branch_name).unwrap_or(false)
+                    })
+                } else {
+                    // Use current worktree
+                    let current_dir = std::env::current_dir().ok();
+                    if let Some(dir) = current_dir {
+                        if let Ok(ctx) = detect_git_context(&dir) {
+                            if ctx.is_worktree {
+                                sessions.iter().find(|s| {
+                                    s.worktree_info.as_ref().map(|w| &w.branch == &ctx.branch_name).unwrap_or(false)
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                };
+                
+                let session = match session {
+                    Some(s) => s,
+                    None => {
+                        println!("❌ No worktree session found to merge");
+                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                    }
+                };
+                
+                let wt = session.worktree_info.as_ref().unwrap();
+                
+                // Prepare merge
+                if let Err(e) = prepare_merge(session) {
+                    println!("❌ Cannot merge: {}", e);
+                    return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                }
+                
+                // Detect conflicts
+                if !force {
+                    match detect_conflicts(&wt.repo_root, &wt.branch, &wt.merge_target) {
+                        Ok(conflicts) if !conflicts.is_empty() => {
+                            println!("⚠️  Conflicts detected in {} file(s):", conflicts.len());
+                            for file in conflicts.iter().take(5) {
+                                println!("  • {}", file);
+                            }
+                            println!("\nUse --force to merge anyway (manual resolution required)");
+                            return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                        },
+                        Err(e) => {
+                            println!("⚠️  Could not detect conflicts: {}", e);
+                        },
+                        _ => {}
+                    }
+                }
+                
+                // Perform merge
+                println!("Merging {} into {}...", wt.branch, wt.merge_target);
+                match merge_branch(&wt.repo_root, &wt.branch, &wt.merge_target) {
+                    Ok(_) => {
+                        println!("✓ Merge successful!");
+                        
+                        // Cleanup
+                        if let Err(e) = cleanup_after_merge(session) {
+                            println!("⚠️  Cleanup failed: {}", e);
+                            println!("   Worktree may need manual removal");
+                        } else {
+                            println!("✓ Cleaned up worktree and branch");
+                        }
+                    },
+                    Err(e) => {
+                        println!("❌ Merge failed: {}", e);
+                        println!("   Resolve conflicts manually and run 'git merge --continue'");
+                    }
+                }
+                
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
                 })
             },
         }
