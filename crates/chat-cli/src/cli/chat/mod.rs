@@ -755,6 +755,8 @@ pub struct ChatSession {
     transition_manager: crate::conversation_modes::TransitionManager,
     /// User preferences for modes (Epic 3)
     user_preferences: crate::conversation_modes::UserPreferences,
+    /// Smart mode suggestion engine (Epic 4)
+    mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine,
     /// Cortex memory system
     cortex: Option<cortex_memory::CortexMemory>,
     /// Last user message for memory storage
@@ -972,6 +974,7 @@ impl ChatSession {
             conversation_mode: crate::conversation_modes::ConversationMode::Interactive,
             transition_manager: crate::conversation_modes::TransitionManager::new(),
             user_preferences: crate::conversation_modes::UserPreferences::new(),
+            mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine::new(),
             cortex,
             last_user_message: None,
         };
