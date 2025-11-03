@@ -57,6 +57,8 @@ impl FeedbackManager {
 
     /// Record feedback for a memory
     pub fn record_feedback(&self, memory_id: &str, helpful: bool) -> Result<()> {
+        Self::validate_memory_id(memory_id)?;
+
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
