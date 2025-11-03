@@ -8,6 +8,34 @@ pub enum ConversationMode {
     Review,
 }
 
+/// User preferences for conversation modes
+#[derive(Debug, Clone)]
+pub struct ModePreferences {
+    pub auto_detection_enabled: bool,
+}
+
+impl ModePreferences {
+    pub fn new() -> Self {
+        Self { auto_detection_enabled: true }
+    }
+    
+    pub fn toggle_auto_detection(&mut self) -> String {
+        self.auto_detection_enabled = !self.auto_detection_enabled;
+        if self.auto_detection_enabled { "Auto-detection enabled.".to_string() } 
+        else { "Auto-detection disabled.".to_string() }
+    }
+    
+    pub fn set_auto_detection(&mut self, enabled: bool) -> String {
+        self.auto_detection_enabled = enabled;
+        if enabled { "Auto-detection enabled.".to_string() } 
+        else { "Auto-detection disabled.".to_string() }
+    }
+    
+    pub fn get_preferences_status(&self) -> String {
+        format!("Auto-detection: {}", if self.auto_detection_enabled { "enabled" } else { "disabled" })
+    }
+}
+
 impl ConversationMode {
     pub fn system_prompt_suffix(&self) -> &'static str {
         match self {
