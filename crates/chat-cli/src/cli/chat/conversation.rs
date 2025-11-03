@@ -194,7 +194,7 @@ impl ConversationState {
             None
         };
 
-        Self {
+        let state = Self {
             conversation_id: conversation_id.to_string(),
             next_message: None,
             history: VecDeque::new(),
@@ -212,7 +212,14 @@ impl ConversationState {
             checkpoint_manager: None,
             mcp_enabled,
             tangent_state: None,
+        };
+
+        // Create session metadata for new conversations
+        if let Err(e) = state.create_session_metadata("New conversation", os).await {
+            tracing::warn!("Failed to create session metadata: {}", e);
         }
+
+        state
     }
 
     pub fn latest_summary(&self) -> Option<&str> {
