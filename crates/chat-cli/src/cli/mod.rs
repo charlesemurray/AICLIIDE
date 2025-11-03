@@ -412,8 +412,6 @@ mod test {
                 wrap: None,
                 worktree: None,
                 no_worktree: false,
-                worktree: None,
-                no_worktree: false,
             })),
             verbose: 2,
             help_all: false,
