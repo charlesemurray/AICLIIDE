@@ -218,6 +218,16 @@ impl SkillsArgs {
                 onboarding::run_interactive_example()?;
                 Ok(ExitCode::SUCCESS)
             },
+            SkillsCommand::Validate { file } => {
+                use crate::cli::skills::validation_tool;
+                let result = validation_tool::validate_skill_file(&file)?;
+                result.print();
+                if result.is_valid() {
+                    Ok(ExitCode::SUCCESS)
+                } else {
+                    Err(eyre::eyre!("Validation failed"))
+                }
+            },
             SkillsCommand::Install { source: _source } => {
                 // TODO: Implement skill installation
                 println!("Skill installation not yet implemented");
