@@ -720,6 +720,8 @@ pub struct ChatSession {
     conversation_mode: crate::conversation_modes::ConversationMode,
     /// Cortex memory system
     cortex: Option<cortex_memory::CortexMemory>,
+    /// Last user message for memory storage
+    last_user_message: Option<String>,
 }
 
 impl ChatSession {
@@ -932,6 +934,7 @@ impl ChatSession {
             analytics,
             conversation_mode: crate::conversation_modes::ConversationMode::Interactive,
             cortex,
+            last_user_message: None,
         };
 
         // Log session start for analytics
@@ -2925,6 +2928,9 @@ impl ChatSession {
 
                 let enhanced_input = self.apply_conversation_mode(user_input.clone());
 
+                // Store user message for memory storage later
+                self.last_user_message = Some(user_input.clone());
+
                 // Recall relevant context from memory
                 if let Some(ref mut cortex) = self.cortex {
                     let verbose = os.database.settings.get_bool(Setting::MemoryVerbose).unwrap_or(false);
@@ -3882,18 +3888,16 @@ impl ChatSession {
 
             // Store interaction in memory
             if let Some(ref mut cortex) = self.cortex {
-                let verbose = os
-                    .database
-                    .settings
-                    .get_bool(Setting::MemoryVerbose)
-                    .unwrap_or(false);
+                if let Some(ref user_msg) = self.last_user_message {
+                    let verbose = os
+                        .database
+                        .settings
+                        .get_bool(Setting::MemoryVerbose)
+                        .unwrap_or(false);
 
-                // Get last interaction from history
-                let history = self.conversation.history();
-                if let Some(last_entry) = history.back() {
-                    let user_msg = &last_entry.user.content;
-                    if let Some(assistant_content) = last_entry.assistant.content() {
-                        match cortex.store_interaction(user_msg, assistant_content, self.conversation.conversation_id()) {
+                    // Use the accumulated buffer as the assistant response
+                    if !buf.is_empty() {
+                        match cortex.store_interaction(user_msg, &buf, self.conversation.conversation_id()) {
                             Ok(_) => {
                                 if verbose && self.interactive {
                                     let _ = execute!(
@@ -3908,6 +3912,8 @@ impl ChatSession {
                             }
                         }
                     }
+                    // Clear the stored message
+                    self.last_user_message = None;
                 }
             }
 
