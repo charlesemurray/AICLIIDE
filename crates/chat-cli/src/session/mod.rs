@@ -1,5 +1,6 @@
 pub mod error;
 pub mod io;
+pub mod lock;
 pub mod manager;
 pub mod metadata;
 pub mod metrics;

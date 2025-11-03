@@ -629,4 +629,82 @@ mod tests {
         let result = coordinator.perform_cleanup().await;
         assert!(result.is_ok());
     }
+
+    // Concurrent access tests for Task 1.1
+    #[tokio::test]
+    async fn test_concurrent_list_sessions() {
+        let coordinator = Arc::new(MultiSessionCoordinator::new(CoordinatorConfig::default()));
+        
+        let mut handles = vec![];
+        for _ in 0..100 {
+            let coord = coordinator.clone();
+            handles.push(tokio::spawn(async move {
+                coord.list_sessions().await
+            }));
+        }
+        
+        for handle in handles {
+            assert!(handle.await.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_active_session_id() {
+        let coordinator = Arc::new(MultiSessionCoordinator::new(CoordinatorConfig::default()));
+        
+        let mut handles = vec![];
+        for _ in 0..100 {
+            let coord = coordinator.clone();
+            handles.push(tokio::spawn(async move {
+                coord.active_session_id().await
+            }));
+        }
+        
+        for handle in handles {
+            assert!(handle.await.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_mixed_operations() {
+        let coordinator = Arc::new(MultiSessionCoordinator::new(CoordinatorConfig::default()));
+        
+        let mut handles = vec![];
+        for i in 0..100 {
+            let coord = coordinator.clone();
+            let op = i % 4;
+            handles.push(tokio::spawn(async move {
+                match op {
+                    0 => { coord.list_sessions().await; },
+                    1 => { coord.active_session_id().await; },
+                    2 => { coord.get_session("test").await; },
+                    _ => { coord.get_waiting_sessions().await; },
+                }
+            }));
+        }
+        
+        for handle in handles {
+            assert!(handle.await.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_state_consistency_under_concurrent_reads() {
+        let coordinator = Arc::new(MultiSessionCoordinator::new(CoordinatorConfig::default()));
+        
+        let mut handles = vec![];
+        for _ in 0..50 {
+            let coord = coordinator.clone();
+            handles.push(tokio::spawn(async move {
+                let sessions = coord.list_sessions().await;
+                let active = coord.active_session_id().await;
+                (sessions, active)
+            }));
+        }
+        
+        for handle in handles {
+            let result = handle.await;
+            assert!(result.is_ok());
+        }
+    }
 }

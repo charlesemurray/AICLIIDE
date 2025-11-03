@@ -3,6 +3,7 @@ use std::path::Path;
 use tracing::{debug, instrument};
 
 use super::error::SessionError;
+use super::lock::FileLock;
 use super::metadata::SessionMetadata;
 
 /// Save metadata to a session directory
@@ -12,9 +13,18 @@ use super::metadata::SessionMetadata;
 pub async fn save_metadata(session_dir: &Path, metadata: &SessionMetadata) -> Result<(), SessionError> {
     debug!(session_dir = ?session_dir, session_id = %metadata.id, "Saving metadata");
     tokio::fs::create_dir_all(session_dir).await?;
+    
+    // Acquire lock to prevent concurrent writes
+    let _lock = FileLock::acquire(session_dir).await?;
+    
+    // Write atomically using temp file
     let metadata_path = session_dir.join("metadata.json");
+    let temp_path = session_dir.join(".metadata.json.tmp");
+    
     let json = serde_json::to_string_pretty(metadata)?;
-    tokio::fs::write(metadata_path, json).await?;
+    tokio::fs::write(&temp_path, json).await?;
+    tokio::fs::rename(&temp_path, &metadata_path).await?;
+    
     debug!(session_id = %metadata.id, "Metadata saved successfully");
     Ok(())
 }
