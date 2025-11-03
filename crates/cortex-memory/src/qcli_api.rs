@@ -75,6 +75,40 @@ impl CortexMemory {
 
         Ok(items)
     }
+
+    /// Get memory statistics
+    pub fn stats(&self) -> MemoryStats {
+        MemoryStats {
+            stm_count: self.manager.stm_len(),
+            stm_capacity: self.manager.stm_capacity(),
+            enabled: self.config.enabled,
+        }
+    }
+
+    /// List recent memories
+    pub fn list_recent(&mut self, limit: usize) -> Result<Vec<ContextItem>> {
+        if !self.config.enabled {
+            return Ok(Vec::new());
+        }
+
+        // Get a sample query to retrieve recent items
+        let query_embedding = vec![0.0; self.embedder.dimensions()];
+        let results = self.manager.search(&query_embedding, limit);
+        
+        let mut items = Vec::new();
+        for (id, score) in results {
+            if let Some(note) = self.manager.get(&id)? {
+                items.push(ContextItem {
+                    id: note.id,
+                    content: note.content,
+                    score,
+                    metadata: note.metadata,
+                });
+            }
+        }
+        
+        Ok(items)
+    }
 }
 
 /// A recalled context item
