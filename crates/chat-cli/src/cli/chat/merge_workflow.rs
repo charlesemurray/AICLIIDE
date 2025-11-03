@@ -25,6 +25,22 @@ fn get_current_branch(repo_root: &Path) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+/// Checkout a branch
+fn checkout_branch(repo_root: &Path, branch: &str) -> Result<()> {
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .arg("checkout")
+        .arg(branch)
+        .status()?;
+    
+    if !status.success() {
+        bail!("Failed to checkout {}", branch);
+    }
+    
+    Ok(())
+}
+
 /// Check if worktree has uncommitted changes
 pub fn has_uncommitted_changes(worktree_path: &Path) -> Result<bool> {
     let output = Command::new("git")
