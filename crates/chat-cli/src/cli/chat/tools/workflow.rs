@@ -199,6 +199,26 @@ impl WorkflowTool {
             description: definition.description.clone(),
         }
     }
+
+    pub fn definition_to_toolspec(&self, definition: &WorkflowDefinition) -> super::ToolSpec {
+        use super::{
+            InputSchema,
+            ToolOrigin,
+        };
+
+        let input_schema = serde_json::json!({
+            "type": "object",
+            "properties": {},
+            "required": []
+        });
+
+        super::ToolSpec {
+            name: definition.name.clone(),
+            description: definition.description.clone(),
+            input_schema: InputSchema(input_schema),
+            tool_origin: ToolOrigin::Workflow(definition.name.clone()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -553,6 +573,24 @@ mod tests {
 
         assert!(updated.get("steps").is_some());
         assert!(updated["steps"]["step1"]["output"].as_str().unwrap() == "output1");
+    }
+
+    #[test]
+    fn test_workflow_definition_to_toolspec() {
+        let definition = WorkflowDefinition {
+            name: "test-workflow".to_string(),
+            version: "1.0.0".to_string(),
+            description: "Test workflow".to_string(),
+            steps: vec![],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::from_definition(&definition);
+        let toolspec = workflow.definition_to_toolspec(&definition);
+
+        assert_eq!(toolspec.name, "test-workflow");
+        assert_eq!(toolspec.description, "Test workflow");
+        assert!(matches!(toolspec.tool_origin, super::super::ToolOrigin::Workflow(_)));
     }
 
     #[test]
