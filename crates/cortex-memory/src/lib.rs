@@ -10,7 +10,9 @@ pub mod memory_manager;
 pub mod memory_note;
 pub mod qcli_api;
 pub mod stm;
+pub mod circuit_breaker;
 
+pub use circuit_breaker::{CircuitBreaker, CircuitState};
 pub use config::MemoryConfig;
 pub use embedder::CortexEmbedder;
 pub use error::{
