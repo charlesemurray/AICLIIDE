@@ -7,6 +7,7 @@ use eyre::Result;
 use crate::cli::chat::coordinator::MultiSessionCoordinator;
 use crate::cli::chat::session_transition::SessionTransition;
 use crate::cli::chat::terminal_ui::TerminalUI;
+use crate::cli::chat::visual_feedback::VisualFeedback;
 
 /// Handles session switching with UX
 pub struct SessionSwitcher {
@@ -34,6 +35,9 @@ impl SessionSwitcher {
         target_name: &str,
         writer: &mut W,
     ) -> Result<()> {
+        // Show progress
+        VisualFeedback::progress(writer, &format!("Switching to '{}'", target_name))?;
+
         // Get current session name
         let current_id = coordinator.active_session_id().await;
         let current_name = if let Some(id) = current_id {
@@ -43,7 +47,17 @@ impl SessionSwitcher {
         };
 
         // Perform switch
-        coordinator.switch_session(target_name).await?;
+        match coordinator.switch_session(target_name).await {
+            Ok(_) => {
+                VisualFeedback::clear_progress(writer)?;
+                VisualFeedback::success(writer, &format!("Switched to '{}'", target_name))?;
+            }
+            Err(e) => {
+                VisualFeedback::clear_progress(writer)?;
+                VisualFeedback::error(writer, &format!("Failed to switch: {}", e))?;
+                return Err(e);
+            }
+        }
 
         // Get new session ID
         let new_id = coordinator.active_session_id().await

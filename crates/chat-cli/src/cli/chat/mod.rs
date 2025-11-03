@@ -50,6 +50,7 @@ mod token_counter;
 pub mod tool_manager;
 pub mod tools;
 pub mod util;
+pub mod visual_feedback;
 use std::borrow::Cow;
 use std::collections::{
     HashMap,

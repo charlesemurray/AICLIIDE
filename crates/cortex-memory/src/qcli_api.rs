@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::{
+    CircuitBreaker,
     CortexEmbedder,
     MemoryConfig,
     MemoryManager,
@@ -13,6 +14,7 @@ pub struct CortexMemory {
     manager: MemoryManager,
     embedder: CortexEmbedder,
     config: MemoryConfig,
+    circuit_breaker: CircuitBreaker,
 }
 
 impl CortexMemory {
@@ -25,6 +27,7 @@ impl CortexMemory {
             manager,
             embedder,
             config,
+            circuit_breaker: CircuitBreaker::default(),
         })
     }
 
@@ -39,17 +42,39 @@ impl CortexMemory {
             return Ok(String::new());
         }
 
+        // Check circuit breaker
+        if !self.circuit_breaker.should_allow() {
+            return Err(crate::error::CortexError::Custom(
+                "Circuit breaker open - memory operations temporarily disabled".to_string(),
+            ));
+        }
+
         let content = format!("User: {}\nAssistant: {}", user_message, assistant_response);
-        let embedding = self.embedder.embed(&content)?;
+        
+        match self.embedder.embed(&content) {
+            Ok(embedding) => {
+                let mut metadata = std::collections::HashMap::new();
+                metadata.insert("session_id".to_string(), serde_json::json!(session_id));
 
-        let mut metadata = std::collections::HashMap::new();
-        metadata.insert("session_id".to_string(), serde_json::json!(session_id));
+                let id = uuid::Uuid::new_v4().to_string();
+                let note = MemoryNote::new(id.clone(), content, metadata);
 
-        let id = uuid::Uuid::new_v4().to_string();
-        let note = MemoryNote::new(id.clone(), content, metadata);
-
-        self.manager.add(note, embedding)?;
-        Ok(id)
+                match self.manager.add(note, embedding) {
+                    Ok(_) => {
+                        self.circuit_breaker.record_success();
+                        Ok(id)
+                    }
+                    Err(e) => {
+                        self.circuit_breaker.record_failure();
+                        Err(e)
+                    }
+                }
+            }
+            Err(e) => {
+                self.circuit_breaker.record_failure();
+                Err(e)
+            }
+        }
     }
 
     /// Recall relevant context for a query
@@ -58,22 +83,37 @@ impl CortexMemory {
             return Ok(Vec::new());
         }
 
-        let query_embedding = self.embedder.embed(query)?;
-        let results = self.manager.search(&query_embedding, limit);
-
-        let mut items = Vec::new();
-        for (id, score) in results {
-            if let Some(note) = self.manager.get(&id)? {
-                items.push(ContextItem {
-                    id: note.id,
-                    content: note.content,
-                    score,
-                    metadata: note.metadata,
-                });
-            }
+        // Check circuit breaker
+        if !self.circuit_breaker.should_allow() {
+            return Err(crate::error::CortexError::Custom(
+                "Circuit breaker open - memory operations temporarily disabled".to_string(),
+            ));
         }
 
-        Ok(items)
+        match self.embedder.embed(query) {
+            Ok(query_embedding) => {
+                let results = self.manager.search(&query_embedding, limit);
+
+                let mut items = Vec::new();
+                for (id, score) in results {
+                    if let Some(note) = self.manager.get(&id)? {
+                        items.push(ContextItem {
+                            id: note.id,
+                            content: note.content,
+                            score,
+                            metadata: note.metadata,
+                        });
+                    }
+                }
+
+                self.circuit_breaker.record_success();
+                Ok(items)
+            }
+            Err(e) => {
+                self.circuit_breaker.record_failure();
+                Err(e)
+            }
+        }
     }
 
     /// Recall context filtered by session
