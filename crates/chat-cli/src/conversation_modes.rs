@@ -81,4 +81,59 @@ impl ConversationMode {
             ConversationMode::Review => crate::analytics::ConversationMode::Review,
         }
     }
+
+    /// Get a user-friendly status display for the current mode
+    pub fn get_status_display(&self) -> String {
+        match self {
+            ConversationMode::Interactive => "💬 Interactive Mode".to_string(),
+            ConversationMode::ExecutePlan => "🚀 ExecutePlan Mode".to_string(),
+            ConversationMode::Review => "🔍 Review Mode".to_string(),
+        }
+    }
+    
+    /// Get a compact prompt indicator for the current mode
+    pub fn get_prompt_indicator(&self) -> String {
+        match self {
+            ConversationMode::Interactive => "[INTERACTIVE]".to_string(),
+            ConversationMode::ExecutePlan => "[EXECUTE]".to_string(),
+            ConversationMode::Review => "[REVIEW]".to_string(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mode_status_display() {
+        let mode = ConversationMode::ExecutePlan;
+        let status = mode.get_status_display();
+        assert!(status.contains("ExecutePlan"));
+        assert!(status.contains("🚀")); // Visual indicator
+    }
+
+    #[test]
+    fn test_mode_prompt_indicator() {
+        let mode = ConversationMode::Review;
+        let prompt = mode.get_prompt_indicator();
+        assert!(prompt.contains("REVIEW"));
+        assert!(!prompt.is_empty());
+    }
+
+    #[test]
+    fn test_all_modes_have_indicators() {
+        let modes = vec![
+            ConversationMode::Interactive,
+            ConversationMode::ExecutePlan,
+            ConversationMode::Review,
+        ];
+        
+        for mode in modes {
+            let status = mode.get_status_display();
+            let prompt = mode.get_prompt_indicator();
+            assert!(!status.is_empty(), "Mode {:?} should have status display", mode);
+            assert!(!prompt.is_empty(), "Mode {:?} should have prompt indicator", mode);
+        }
+    }
 }
