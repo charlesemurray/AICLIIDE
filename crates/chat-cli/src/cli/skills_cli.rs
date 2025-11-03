@@ -316,54 +316,19 @@ impl SkillsArgs {
                 description,
                 ..
             } => {
-                use crate::cli::skills::templates::SkillTemplate;
+                let skills_dir = dirs::home_dir()
+                    .ok_or_else(|| eyre::eyre!(constants::messages::COULD_NOT_FIND_HOME))?
+                    .join(constants::HOME_SKILLS_DIR_NAME);
 
-                if let Some(template_name) = from_template {
-                    // Create from template
-                    let template = match template_name.as_str() {
-                        constants::templates::COMMAND => SkillTemplate::Command,
-                        constants::templates::SCRIPT => SkillTemplate::Script,
-                        constants::templates::HTTP_API => SkillTemplate::HttpApi,
-                        constants::templates::FILE_PROCESSOR => SkillTemplate::FileProcessor,
-                        _ => {
-                            eprintln!("{} {}\n", constants::messages::UNKNOWN_TEMPLATE, template_name);
-                            eprintln!("{}", constants::messages::AVAILABLE_TEMPLATES);
-                            for t in SkillTemplate::all() {
-                                eprintln!("  {} - {}", t.name(), t.description());
-                            }
-                            return Err(eyre::eyre!(constants::messages::INVALID_TEMPLATE_ERROR));
-                        },
-                    };
-
-                    let desc = description.unwrap_or_else(|| format!("{} skill", name));
-                    let skill_json = template.generate(&name, &desc);
-
-                    // Save to ~/.q-skills/
-                    let skills_dir = dirs::home_dir()
-                        .ok_or_else(|| eyre::eyre!(constants::messages::COULD_NOT_FIND_HOME))?
-                        .join(constants::HOME_SKILLS_DIR_NAME);
-
-                    std::fs::create_dir_all(&skills_dir)?;
-                    let skill_file = skills_dir.join(format!("{}.{}", name, constants::SKILL_FILE_EXTENSION));
-                    std::fs::write(&skill_file, serde_json::to_string_pretty(&skill_json)?)?;
-
-                    println!("{} {}", constants::messages::SKILL_CREATED, skill_file.display());
-                    println!("\nUsage:");
-                    println!("  {}", template.example(&name));
-
-                    return Ok(ExitCode::SUCCESS);
-                }
-
-                // Fallback message
-                println!("⚠️  Use templates for quick creation:");
-                println!(
-                    "  q skills create {} --from-template command --description 'My skill'\n",
-                    name
-                );
-                println!("{}", constants::messages::AVAILABLE_TEMPLATES);
-                for t in SkillTemplate::all() {
-                    println!("  {} - {}", t.name(), t.description());
-                }
+                handlers::create_command(
+                    &name,
+                    from_template.as_deref(),
+                    description.as_deref(),
+                    &skills_dir,
+                    &mut std::io::stdout()
+                )
+                .await
+                .map_err(|e| eyre::eyre!(e))?;
 
                 Ok(ExitCode::SUCCESS)
             },
