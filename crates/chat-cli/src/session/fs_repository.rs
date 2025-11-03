@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use super::error::SessionError;
 use super::io::{load_metadata, save_metadata};
-use super::metadata::{SessionMetadata, SessionStatus};
+use super::metadata::SessionMetadata;
 use super::repository::{SessionFilter, SessionRepository};
 use crate::os::Os;
 

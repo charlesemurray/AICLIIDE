@@ -45,7 +45,7 @@ impl<R: SessionRepository> SessionManager<R> {
     pub async fn list_by_status(&self, status: SessionStatus) -> Result<Vec<SessionMetadata>, SessionError> {
         debug!(?status, "Listing sessions by status");
         let filter = SessionFilter {
-            status: Some(status),
+            status: Some(status.clone()),
             ..Default::default()
         };
         let filtered = self.repository.list(filter).await?;

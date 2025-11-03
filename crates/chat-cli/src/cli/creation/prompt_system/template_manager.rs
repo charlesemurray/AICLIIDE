@@ -283,22 +283,76 @@ impl MultiDimensionalValidator {
         
         score.min(1.0)
     }
+
+    fn calculate_constraint_clarity(&self, prompt: &str) -> f64 {
+        let mut score = 0.0;
+        let prompt_lower = prompt.to_lowercase();
+        if !prompt_lower.contains("constraint") { return 0.0; }
+        
+        let bullet_count = prompt.matches("\n-").count() + prompt.matches("\n*").count();
+        let numbered_count = (1..=10).filter(|i| prompt.contains(&format!("\n{}.", i))).count();
+        let item_count = bullet_count + numbered_count;
+        
+        let quantity_score = match item_count {
+            0 => 0.0, 1 => 0.2, 2 => 0.35, 3 => 0.5, 4 => 0.65, _ => 0.65,
+        };
+        score += quantity_score;
+        
+        let specificity_terms = [
+            "always", "never", "must", "should", "limit", "maximum", "minimum",
+            "avoid", "ensure", "require", "only", "exactly", "within", "cite",
+            "specific", "concise", "clear", "accurate", "precise"
+        ];
+        
+        let term_count = specificity_terms.iter().filter(|t| prompt_lower.contains(*t)).count();
+        score += (term_count as f64 * 0.1).min(0.35);
+        score.min(1.0)
+    }
+
+    fn calculate_example_quality(&self, prompt: &str) -> f64 {
+        let mut score = 0.0;
+        let prompt_lower = prompt.to_lowercase();
+        if !prompt_lower.contains("example") { return 0.0; }
+        
+        let input_count = prompt_lower.matches("input:").count();
+        let output_count = prompt_lower.matches("output:").count();
+        let pair_count = input_count.min(output_count);
+        
+        let pair_score = match pair_count {
+            0 => 0.0, 1 => 0.4, 2 => 0.5, 3 => 0.6, _ => 0.6,
+        };
+        score += pair_score;
+        
+        if input_count > 0 && output_count > 0 {
+            score += 0.2;
+            if input_count == output_count {
+                score += 0.2;
+            }
+        }
+        
+        score.min(1.0)
+    }
 }
 
 impl QualityValidator for MultiDimensionalValidator {
     fn validate(&self, prompt: &str) -> QualityScore {
         let mut component_scores = HashMap::new();
 
-        // Calculate role clarity
         let role_clarity = self.calculate_role_clarity(prompt);
         component_scores.insert("role_clarity".to_string(), role_clarity);
 
-        // Calculate capability completeness
         let capability_completeness = self.calculate_capability_completeness(prompt);
         component_scores.insert("capability_completeness".to_string(), capability_completeness);
 
-        // Overall score is weighted average
-        let overall_score = (role_clarity * 0.5) + (capability_completeness * 0.5);
+        let constraint_clarity = self.calculate_constraint_clarity(prompt);
+        component_scores.insert("constraint_clarity".to_string(), constraint_clarity);
+
+        let example_quality = self.calculate_example_quality(prompt);
+        component_scores.insert("example_quality".to_string(), example_quality);
+
+        // Weighted average: role 30%, capability 25%, constraint 25%, examples 20%
+        let overall_score = (role_clarity * 0.3) + (capability_completeness * 0.25) + 
+                           (constraint_clarity * 0.25) + (example_quality * 0.2);
 
         QualityScore {
             overall_score,
