@@ -8,21 +8,27 @@ use super::metadata::SessionMetadata;
 /// Save metadata to a session directory
 ///
 /// Creates the directory if it doesn't exist and writes metadata.json atomically.
+#[instrument(skip(metadata))]
 pub async fn save_metadata(session_dir: &Path, metadata: &SessionMetadata) -> Result<(), SessionError> {
+    debug!(session_dir = ?session_dir, session_id = %metadata.id, "Saving metadata");
     tokio::fs::create_dir_all(session_dir).await?;
     let metadata_path = session_dir.join("metadata.json");
     let json = serde_json::to_string_pretty(metadata)?;
     tokio::fs::write(metadata_path, json).await?;
+    debug!(session_id = %metadata.id, "Metadata saved successfully");
     Ok(())
 }
 
 /// Load metadata from a session directory
 ///
 /// Reads and deserializes metadata.json from the session directory.
+#[instrument]
 pub async fn load_metadata(session_dir: &Path) -> Result<SessionMetadata, SessionError> {
+    debug!(session_dir = ?session_dir, "Loading metadata");
     let metadata_path = session_dir.join("metadata.json");
     let json = tokio::fs::read_to_string(metadata_path).await?;
-    let metadata = serde_json::from_str(&json)?;
+    let metadata: SessionMetadata = serde_json::from_str(&json)?;
+    debug!(session_id = %metadata.id, "Metadata loaded successfully");
     Ok(metadata)
 }
 

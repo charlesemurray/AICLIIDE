@@ -54,11 +54,11 @@ impl Default for CoordinatorConfig {
 
 /// Combined session state to prevent race conditions
 /// All session-related data is protected by a single lock
-struct SessionState {
+pub(crate) struct SessionState {
     /// All managed sessions by conversation_id
-    sessions: HashMap<String, ManagedSession>,
+    pub(crate) sessions: HashMap<String, ManagedSession>,
     /// Currently active session ID
-    active_session_id: Option<String>,
+    pub(crate) active_session_id: Option<String>,
 }
 
 /// Coordinates multiple chat sessions
