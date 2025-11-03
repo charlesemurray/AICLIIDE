@@ -562,6 +562,8 @@ impl ChatArgs {
                     if let Some(ref ctx) = git_context {
                         use crate::cli::chat::branch_naming::sanitize_branch_name;
                         use crate::git::create_worktree;
+                        use crate::cli::chat::worktree_session::persist_to_worktree;
+                        use crate::session::metadata::WorktreeInfo;
 
                         let branch_name = sanitize_branch_name(&name);
                         let unique_branch =
@@ -571,6 +573,22 @@ impl ChatArgs {
                             Ok(path) => {
                                 eprintln!("✓ Created worktree at: {}", path.display());
                                 eprintln!("✓ Branch: {}", unique_branch);
+                                
+                                // Persist session metadata
+                                let wt_info = WorktreeInfo {
+                                    path: path.clone(),
+                                    branch: unique_branch.clone(),
+                                    repo_root: ctx.repo_root.clone(),
+                                    is_temporary: false,
+                                    merge_target: ctx.branch_name.clone(),
+                                };
+                                let _ = persist_to_worktree(&path, &conversation_id, &wt_info);
+                                
+                                // Change to worktree directory
+                                if std::env::set_current_dir(&path).is_ok() {
+                                    eprintln!("✓ Changed to worktree directory");
+                                }
+                                
                                 Some(path)
                             },
                             Err(e) => {
@@ -588,6 +606,66 @@ impl ChatArgs {
                         if ctx.is_worktree {
                             eprintln!("✓ Using existing worktree");
                             ctx.worktree_path.clone()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                },
+                WorktreeStrategy::Ask => {
+                    if let Some(ref ctx) = git_context {
+                        use std::io::{self, Write};
+                        use crate::cli::chat::branch_naming::sanitize_branch_name;
+                        use crate::git::create_worktree;
+                        use crate::cli::chat::worktree_session::persist_to_worktree;
+                        use crate::session::metadata::WorktreeInfo;
+                        
+                        eprint!("Create a worktree for this session? [branch name/auto/N]: ");
+                        io::stderr().flush().ok();
+                        
+                        let mut input = String::new();
+                        if io::stdin().read_line(&mut input).is_ok() {
+                            let input = input.trim();
+                            if !input.is_empty() && input.to_lowercase() != "n" {
+                                let branch_name = if input.to_lowercase() == "auto" {
+                                    // Will be auto-generated from first message
+                                    format!("session-{}", &conversation_id[..8])
+                                } else {
+                                    sanitize_branch_name(input)
+                                };
+                                
+                                let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
+                                    .unwrap_or(branch_name);
+                                
+                                match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
+                                    Ok(path) => {
+                                        eprintln!("✓ Created worktree at: {}", path.display());
+                                        eprintln!("✓ Branch: {}", unique_branch);
+                                        
+                                        let wt_info = WorktreeInfo {
+                                            path: path.clone(),
+                                            branch: unique_branch.clone(),
+                                            repo_root: ctx.repo_root.clone(),
+                                            is_temporary: false,
+                                            merge_target: ctx.branch_name.clone(),
+                                        };
+                                        let _ = persist_to_worktree(&path, &conversation_id, &wt_info);
+                                        
+                                        if std::env::set_current_dir(&path).is_ok() {
+                                            eprintln!("✓ Changed to worktree directory");
+                                        }
+                                        
+                                        Some(path)
+                                    },
+                                    Err(e) => {
+                                        eprintln!("✗ Failed to create worktree: {}", e);
+                                        None
+                                    }
+                                }
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
