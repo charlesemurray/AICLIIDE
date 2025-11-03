@@ -103,4 +103,48 @@ mod quality_validator_tests {
         assert!(specific_score.component_scores["capability_completeness"] > 
                 vague_score.component_scores["capability_completeness"]);
     }
+
+    #[test]
+    fn test_quality_validator_checks_constraints() {
+        let validator = MultiDimensionalValidator::new();
+        let with_constraints = "Constraints:\n- Be concise\n- Cite sources\n- Avoid speculation";
+        let without = "Do your best.";
+        
+        let with_score = validator.validate(with_constraints);
+        let without_score = validator.validate(without);
+        
+        assert!(with_score.component_scores.contains_key("constraint_clarity"),
+            "Should have constraint_clarity score");
+        assert!(with_score.component_scores["constraint_clarity"] > 
+                without_score.component_scores["constraint_clarity"],
+            "With constraints {} should score higher than without {}",
+            with_score.component_scores["constraint_clarity"],
+            without_score.component_scores["constraint_clarity"]);
+    }
+
+    #[test]
+    fn test_constraint_clarity_counts_items() {
+        let validator = MultiDimensionalValidator::new();
+        let many = "Constraints:\n- Rule 1\n- Rule 2\n- Rule 3\n- Rule 4";
+        let few = "Constraints:\n- Rule 1";
+        
+        let many_score = validator.validate(many);
+        let few_score = validator.validate(few);
+        
+        assert!(many_score.component_scores["constraint_clarity"] > 0.6);
+        assert!(few_score.component_scores["constraint_clarity"] < 0.4);
+    }
+
+    #[test]
+    fn test_constraint_clarity_requires_specificity() {
+        let validator = MultiDimensionalValidator::new();
+        let specific = "Constraints:\n- Limit responses to 500 words\n- Always cite sources\n- Never speculate";
+        let vague = "Constraints:\n- Be good\n- Try hard";
+        
+        let specific_score = validator.validate(specific);
+        let vague_score = validator.validate(vague);
+        
+        assert!(specific_score.component_scores["constraint_clarity"] > 
+                vague_score.component_scores["constraint_clarity"]);
+    }
 }

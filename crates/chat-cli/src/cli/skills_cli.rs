@@ -299,21 +299,11 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Validate { file } => {
-                use crate::cli::skills::validation::SkillValidator;
+                handlers::validate_command(&file, &mut std::io::stdout())
+                    .await
+                    .map_err(|e| eyre::eyre!(e))?;
 
-                let content = fs::read_to_string(&file)
-                    .map_err(|e| eyre::eyre!("{} {}", constants::messages::FAILED_TO_READ_FILE, e))?;
-
-                match SkillValidator::validate_skill_json(&content) {
-                    Ok(_) => {
-                        println!("{}", constants::messages::SKILL_VALID);
-                        Ok(ExitCode::SUCCESS)
-                    },
-                    Err(e) => {
-                        eprintln!("{} {}", constants::messages::VALIDATION_FAILED, e);
-                        Err(eyre::eyre!(constants::messages::VALIDATION_FAILED_ERROR))
-                    },
-                }
+                Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Install { source: _source } => {
                 // TODO: Implement skill installation
@@ -1274,6 +1264,22 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the validate command
+    pub async fn validate_command(
+        file_path: &str,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError> {
+        let content = std::fs::read_to_string(file_path)
+            .map_err(|e| error::SkillsCliError::FileNotFound(format!("{}: {}", file_path, e)))?;
+
+        SkillValidator::validate_skill_json(&content)
+            .map_err(|e| error::SkillsCliError::ValidationFailed(e.to_string()))?;
+
+        writeln!(output, "{}", constants::messages::SKILL_VALID)?;
+
+        Ok(())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1378,6 +1384,64 @@ mod handlers {
             
             // Should execute with empty params
             assert!(result.is_ok() || matches!(result.unwrap_err(), error::SkillsCliError::ExecutionFailed(_)));
+        }
+
+        #[tokio::test]
+        async fn test_validate_file_not_found() {
+            let mut output = Vec::new();
+            
+            let result = validate_command("/nonexistent/file.json", &mut output).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::FileNotFound(msg) => {
+                    assert!(msg.contains("nonexistent"));
+                }
+                _ => panic!("Expected FileNotFound error"),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_validate_invalid_json() {
+            use std::io::Write;
+            let temp_dir = tempfile::tempdir().unwrap();
+            let file_path = temp_dir.path().join("invalid.json");
+            let mut file = std::fs::File::create(&file_path).unwrap();
+            file.write_all(b"{not valid json}").unwrap();
+            drop(file);
+
+            let mut output = Vec::new();
+            let result = validate_command(file_path.to_str().unwrap(), &mut output).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::ValidationFailed(_) => {}
+                _ => panic!("Expected ValidationFailed error"),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_validate_valid_skill() {
+            use std::io::Write;
+            let temp_dir = tempfile::tempdir().unwrap();
+            let file_path = temp_dir.path().join("valid.json");
+            let mut file = std::fs::File::create(&file_path).unwrap();
+            let valid_skill = r#"{
+                "name": "test",
+                "description": "Test skill",
+                "version": "1.0.0",
+                "type": "code_inline",
+                "command": "echo test"
+            }"#;
+            file.write_all(valid_skill.as_bytes()).unwrap();
+            drop(file);
+
+            let mut output = Vec::new();
+            let result = validate_command(file_path.to_str().unwrap(), &mut output).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("✓ Skill file is valid"));
         }
     }
 }

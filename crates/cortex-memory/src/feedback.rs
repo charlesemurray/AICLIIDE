@@ -115,4 +115,26 @@ mod tests {
         assert_eq!(helpful, 1);
         assert_eq!(not_helpful, 1);
     }
+
+    #[test]
+    fn test_duplicate_feedback_updates() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("feedback.db");
+        let manager = FeedbackManager::new(&db_path).unwrap();
+
+        // First feedback
+        manager.record_feedback("mem1", true).unwrap();
+        let feedback1 = manager.get_feedback("mem1").unwrap().unwrap();
+        assert!(feedback1.helpful);
+
+        // Second feedback for same ID should update
+        manager.record_feedback("mem1", false).unwrap();
+        let feedback2 = manager.get_feedback("mem1").unwrap().unwrap();
+        assert!(!feedback2.helpful);
+
+        // Should only have one entry
+        let (helpful, not_helpful) = manager.get_stats().unwrap();
+        assert_eq!(helpful, 0);
+        assert_eq!(not_helpful, 1);
+    }
 }
