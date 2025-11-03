@@ -9,15 +9,23 @@ use super::error::{
     Result,
 };
 
+/// Information about a git worktree from `git worktree list`
 #[derive(Debug, Clone)]
 pub struct GitWorktreeInfo {
+    /// Absolute path to the worktree directory
     pub path: PathBuf,
+    /// Branch name checked out in this worktree
     pub branch: String,
+    /// Current commit SHA in this worktree
     pub commit: String,
 }
 
 impl GitWorktreeInfo {
     /// Convert to session WorktreeInfo with additional context
+    /// 
+    /// # Arguments
+    /// * `repo_root` - Root path of the main repository
+    /// * `merge_target` - Target branch for eventual merge (usually "main")
     pub fn to_session_info(&self, repo_root: PathBuf, merge_target: String) -> crate::session::metadata::WorktreeInfo {
         crate::session::metadata::WorktreeInfo {
             path: self.path.clone(),
@@ -29,6 +37,16 @@ impl GitWorktreeInfo {
     }
 }
 
+/// List all worktrees in a git repository
+/// 
+/// # Arguments
+/// * `repo_root` - Path to the git repository root
+/// 
+/// # Returns
+/// Vector of worktree information for all worktrees in the repository
+/// 
+/// # Errors
+/// * `GitError::CommandFailed` - If git command fails or repo is invalid
 pub fn list_worktrees(repo_root: &Path) -> Result<Vec<GitWorktreeInfo>> {
     let output = Command::new("git")
         .current_dir(repo_root)
@@ -44,6 +62,7 @@ pub fn list_worktrees(repo_root: &Path) -> Result<Vec<GitWorktreeInfo>> {
     parse_worktree_list(&String::from_utf8_lossy(&output.stdout))
 }
 
+/// Parse output from `git worktree list --porcelain`
 fn parse_worktree_list(output: &str) -> Result<Vec<GitWorktreeInfo>> {
     let mut worktrees = Vec::new();
     let mut current_path = None;
@@ -91,6 +110,21 @@ fn parse_worktree_list(output: &str) -> Result<Vec<GitWorktreeInfo>> {
     Ok(worktrees)
 }
 
+/// Create a new git worktree with a new branch
+/// 
+/// # Arguments
+/// * `repo_root` - Path to the main repository
+/// * `name` - Name for the new branch
+/// * `base_branch` - Branch to base the new worktree on
+/// * `path` - Optional custom path (defaults to `{repo_root}-{name}`)
+/// 
+/// # Returns
+/// Path to the created worktree directory
+/// 
+/// # Errors
+/// * `GitError::BranchExists` - If branch already exists
+/// * `GitError::WorktreeExists` - If worktree path already exists
+/// * `GitError::CommandFailed` - If git command fails or path is invalid
 pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Option<PathBuf>) -> Result<PathBuf> {
     // Check if branch already exists
     if branch_exists(repo_root, name)? {
@@ -140,6 +174,13 @@ pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Op
     Ok(worktree_path)
 }
 
+/// Remove a git worktree
+/// 
+/// # Arguments
+/// * `path` - Path to the worktree directory to remove
+/// 
+/// # Errors
+/// * `GitError::CommandFailed` - If git command fails or path is invalid
 pub fn remove_worktree(path: &Path) -> Result<()> {
     let path_str = path
         .to_str()
