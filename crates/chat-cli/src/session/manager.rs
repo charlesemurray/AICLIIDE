@@ -23,9 +23,9 @@ impl<R: SessionRepository> SessionManager<R> {
         &self.metrics
     }
 
-    /// List all sessions
+    /// List archived sessions
     #[instrument(skip(self), fields(session_count))]
-    pub async fn list_sessions(&self) -> Result<Vec<SessionMetadata>, SessionError> {
+    pub async fn list_archived_sessions(&self) -> Result<Vec<SessionMetadata>, SessionError> {
         let start = std::time::Instant::now();
         debug!("Listing sessions");
 
