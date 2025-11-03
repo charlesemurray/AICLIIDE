@@ -115,6 +115,7 @@ impl ConversationMode {
                 format!("🔄 Automatically switched to {} mode", self.get_mode_name())
             },
             crate::analytics::ModeTransitionTrigger::UserCommand => {
+            crate::analytics::ModeTransitionTrigger::LLMDecision => "llm",
                 format!("✅ Switched to {} mode", self.get_mode_name())
             },
         }
@@ -140,6 +141,7 @@ impl ConversationMode {
                 let trigger_text = match trigger {
                     crate::analytics::ModeTransitionTrigger::Auto => "auto",
                     crate::analytics::ModeTransitionTrigger::UserCommand => "manual",
+            crate::analytics::ModeTransitionTrigger::LLMDecision => "llm",
                 };
                 status.push_str(&format!("  {} - {} ({})\n", timestamp, mode.get_mode_name(), trigger_text));
             }

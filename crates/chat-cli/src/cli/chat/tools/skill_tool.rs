@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::time::Instant;
 
 use eyre::Result;
 
@@ -20,20 +21,46 @@ impl SkillTool {
     }
 
     pub async fn invoke(&self, registry: &SkillRegistry, stdout: &mut impl Write) -> Result<InvokeOutput> {
+        self.invoke_with_feedback(registry, stdout, true).await
+    }
+
+    pub async fn invoke_with_feedback(
+        &self,
+        registry: &SkillRegistry,
+        stdout: &mut impl Write,
+        show_feedback: bool,
+    ) -> Result<InvokeOutput> {
+        if show_feedback {
+            writeln!(stdout, "🔧 Executing skill: {}", self.skill_name)?;
+        }
+
+        let start = Instant::now();
+
         let skill = registry
             .get(&self.skill_name)
             .ok_or_else(|| eyre::eyre!("Skill not found: {}", self.skill_name))?;
 
-        let result = skill
-            .execute(self.params.clone())
-            .await
-            .map_err(|e| eyre::eyre!("Skill execution failed: {}", e))?;
+        let result = skill.execute(self.params.clone()).await;
+        let duration = start.elapsed();
 
-        writeln!(stdout, "{}", result.output)?;
+        match result {
+            Ok(output) => {
+                if show_feedback {
+                    writeln!(stdout, "✓ Skill completed in {:.2}s", duration.as_secs_f64())?;
+                }
+                writeln!(stdout, "{}", output.output)?;
 
-        Ok(InvokeOutput {
-            output: OutputKind::Text(result.output),
-        })
+                Ok(InvokeOutput {
+                    output: OutputKind::Text(output.output),
+                })
+            }
+            Err(e) => {
+                if show_feedback {
+                    writeln!(stdout, "✗ Skill failed after {:.2}s", duration.as_secs_f64())?;
+                }
+                Err(eyre::eyre!("Skill execution failed: {}", e))
+            }
+        }
     }
 }
 
