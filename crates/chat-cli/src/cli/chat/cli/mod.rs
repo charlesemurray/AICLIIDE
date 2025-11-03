@@ -327,10 +327,53 @@ async fn execute_memory_command(
             )?;
         },
         MemorySubcommand::List(args) => {
-            execute!(
-                session.stderr,
-                style::Print(format!("Listing {} memories...\n", args.limit)),
-            )?;
+            if let Some(ref mut cortex) = session.cortex {
+                match cortex.list_recent(args.limit) {
+                    Ok(items) => {
+                        if items.is_empty() {
+                            execute!(
+                                session.stderr,
+                                StyledText::warning_fg(),
+                                style::Print("No memories stored yet\n"),
+                                StyledText::reset(),
+                            )?;
+                        } else {
+                            execute!(
+                                session.stderr,
+                                StyledText::brand_fg(),
+                                style::Print(format!("Recent {} memories:\n", items.len())),
+                                StyledText::reset(),
+                            )?;
+                            for (i, item) in items.iter().enumerate() {
+                                let preview = if item.content.len() > 80 {
+                                    format!("{}...", &item.content[..77])
+                                } else {
+                                    item.content.clone()
+                                };
+                                execute!(
+                                    session.stderr,
+                                    style::Print(format!("{}. {}\n", i + 1, preview)),
+                                )?;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        execute!(
+                            session.stderr,
+                            StyledText::error_fg(),
+                            style::Print(format!("Error: {}\n", e)),
+                            StyledText::reset(),
+                        )?;
+                    }
+                }
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::warning_fg(),
+                    style::Print("Memory is disabled\n"),
+                    StyledText::reset(),
+                )?;
+            }
         },
         MemorySubcommand::Search(args) => {
             if let Some(ref mut cortex) = session.cortex {

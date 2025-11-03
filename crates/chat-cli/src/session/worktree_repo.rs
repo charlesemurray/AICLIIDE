@@ -38,9 +38,7 @@ impl WorktreeSessionRepository {
             std::fs::create_dir_all(parent)?;
         }
 
-        save_metadata(metadata, &session_file)
-            .await
-            ?;
+        save_metadata(&session_file, metadata).await?;
 
         // Also save to main repository
         self.inner.save(metadata).await
@@ -51,12 +49,10 @@ impl WorktreeSessionRepository {
         let session_file = worktree_path.join(".amazonq").join("session.json");
 
         if !session_file.exists() {
-            return Err(SessionError::NotFound);
+            return Err(SessionError::NotFound(worktree_path.display().to_string()));
         }
 
-        load_metadata(&session_file)
-            .await
-            
+        load_metadata(&session_file).await
     }
 
     /// Detect if current directory is in a worktree and load session

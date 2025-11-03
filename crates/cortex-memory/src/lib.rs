@@ -25,6 +25,7 @@ pub use memory_note::MemoryNote;
 pub use qcli_api::{
     ContextItem,
     CortexMemory,
+    MemoryStats,
 };
 pub use stm::ShortTermMemory;
 

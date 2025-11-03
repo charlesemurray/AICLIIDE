@@ -34,6 +34,19 @@ pub fn generate_branch_name(context: &str, prefix: Option<&str>) -> String {
     }
 }
 
+/// Generate a branch name from conversation context
+pub fn generate_from_conversation(first_message: &str, session_type: Option<&str>) -> String {
+    let words: Vec<&str> = first_message
+        .split_whitespace()
+        .filter(|w| w.len() > 3)
+        .take(4)
+        .collect();
+    
+    let context = words.join(" ");
+    let prefix = session_type.or(Some("feature"));
+    generate_branch_name(&context, prefix)
+}
+
 pub fn check_branch_conflict(repo_root: &Path, branch_name: &str) -> Result<bool, GitError> {
     let worktrees = list_worktrees(repo_root)?;
     Ok(worktrees.iter().any(|wt| wt.branch == branch_name))
