@@ -98,4 +98,44 @@ mod tests {
         let result = search.validate(&os).await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_permission_no_restrictions_allows() {
+        let search = CodeSearch {
+            query: "test".to_string(),
+            path: Some("./src".to_string()),
+            file_types: None,
+            limit: None,
+        };
+        
+        let agent = Agent {
+            name: "test_agent".to_string(),
+            tools_settings: std::collections::HashMap::new(),
+            ..Default::default()
+        };
+        let os = Os::new().await.unwrap();
+        
+        let result = search.eval_perm(&os, &agent);
+        assert_eq!(result, PermissionEvalResult::Allow);
+    }
+
+    #[tokio::test]
+    async fn test_permission_no_path_allows() {
+        let search = CodeSearch {
+            query: "test".to_string(),
+            path: None,
+            file_types: None,
+            limit: None,
+        };
+        
+        let agent = Agent {
+            name: "test_agent".to_string(),
+            tools_settings: std::collections::HashMap::new(),
+            ..Default::default()
+        };
+        let os = Os::new().await.unwrap();
+        
+        let result = search.eval_perm(&os, &agent);
+        assert_eq!(result, PermissionEvalResult::Allow);
+    }
 }
