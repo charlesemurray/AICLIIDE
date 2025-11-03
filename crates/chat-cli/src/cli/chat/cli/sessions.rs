@@ -144,8 +144,16 @@ impl SessionsSubcommand {
                 println!("🧹 Cleaning up sessions...");
 
                 let mut cleaned = 0;
+                let mut failed = 0;
 
-                if let Ok(sessions) = get_current_repo_sessions() {
+                if let Ok((sessions, scan_errors)) = get_current_repo_sessions() {
+                    if !scan_errors.is_empty() {
+                        eprintln!("⚠️  Some sessions could not be scanned:");
+                        for err in scan_errors.iter().take(3) {
+                            eprintln!("  • {}", err);
+                        }
+                    }
+                    
                     for session in sessions {
                         let should_clean = if *completed {
                             // Clean if status is archived or no recent activity
@@ -160,19 +168,25 @@ impl SessionsSubcommand {
 
                         if should_clean {
                             if let Some(wt) = &session.worktree_info {
-                                if remove_worktree(&wt.path).is_ok() {
-                                    println!("  ✓ Removed worktree: {}", wt.branch);
-                                    cleaned += 1;
+                                match remove_worktree(&wt.path) {
+                                    Ok(_) => {
+                                        println!("  ✓ Removed worktree: {}", wt.branch);
+                                        cleaned += 1;
+                                    },
+                                    Err(e) => {
+                                        eprintln!("  ✗ Failed to remove {}: {}", wt.branch, e);
+                                        failed += 1;
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                if cleaned == 0 {
+                if cleaned == 0 && failed == 0 {
                     println!("  No sessions to clean up");
                 } else {
-                    println!("✓ Cleaned up {} session(s)", cleaned);
+                    println!("✓ Cleaned: {}, Failed: {}", cleaned, failed);
                 }
 
                 Ok(ChatState::PromptUser {
