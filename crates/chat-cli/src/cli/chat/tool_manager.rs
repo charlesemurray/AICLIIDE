@@ -887,6 +887,68 @@ impl ToolManager {
         Ok(self.schema.clone())
     }
 
+    /// Validate skill arguments against parameter schema
+    fn validate_skill_args(args: &serde_json::Value, parameters: &Option<serde_json::Value>) -> Result<(), String> {
+        let Some(params_schema) = parameters else {
+            // No schema means no validation required
+            return Ok(());
+        };
+
+        let Some(params_obj) = params_schema.as_object() else {
+            return Err("Invalid parameters schema: not an object".to_string());
+        };
+
+        // Get properties and required fields
+        let properties = params_obj.get("properties")
+            .and_then(|p| p.as_object())
+            .ok_or("Invalid parameters schema: missing properties")?;
+        
+        let required = params_obj.get("required")
+            .and_then(|r| r.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<HashSet<_>>())
+            .unwrap_or_default();
+
+        let Some(args_obj) = args.as_object() else {
+            return Err("Arguments must be an object".to_string());
+        };
+
+        // Check required parameters are present
+        for req_param in &required {
+            if !args_obj.contains_key(*req_param) {
+                return Err(format!("Missing required parameter: {}", req_param));
+            }
+        }
+
+        // Check parameter types
+        for (param_name, param_value) in args_obj {
+            let Some(param_schema) = properties.get(param_name) else {
+                return Err(format!("Unknown parameter: {}", param_name));
+            };
+
+            let Some(expected_type) = param_schema.get("type").and_then(|t| t.as_str()) else {
+                continue; // No type specified, skip validation
+            };
+
+            let actual_type = match param_value {
+                serde_json::Value::String(_) => "string",
+                serde_json::Value::Number(_) => "number",
+                serde_json::Value::Bool(_) => "boolean",
+                serde_json::Value::Array(_) => "array",
+                serde_json::Value::Object(_) => "object",
+                serde_json::Value::Null => "null",
+            };
+
+            if expected_type != actual_type {
+                return Err(format!(
+                    "Parameter '{}' has wrong type: expected {}, got {}",
+                    param_name, expected_type, actual_type
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn get_tool_from_tool_use(&mut self, value: AssistantToolUse) -> Result<Tool, ToolResult> {
         let map_err = |parse_error| ToolResult {
             tool_use_id: value.id.clone(),
@@ -925,6 +987,16 @@ impl ToolManager {
             name => {
                 // Check if it's a skill
                 if let Some(definition) = self.skill_registry.get(name) {
+                    // Validate arguments against skill parameters
+                    Self::validate_skill_args(&value.args, &definition.parameters)
+                        .map_err(|e| ToolResult {
+                            tool_use_id: value.id.clone(),
+                            content: vec![ToolResultContentBlock::Text(format!(
+                                "Invalid parameters for skill '{}': {}", name, e
+                            ))],
+                            status: ToolResultStatus::Error,
+                        })?;
+                    
                     let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(definition);
                     return Ok(Tool::SkillNew(skill_tool));
                 }
@@ -2729,6 +2801,108 @@ mod tests {
         } else {
             panic!("Expected Tool::SkillNew");
         }
+    }
+
+    #[tokio::test]
+    async fn test_skill_parameter_validation_missing_required() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::cli::chat::message::AssistantToolUse;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        // Skill with required parameter
+        let skill_json = r#"{
+            "name": "calculator",
+            "description": "Calculate expressions",
+            "skill_type": "command",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string"}
+                },
+                "required": ["expression"]
+            },
+            "implementation": {
+                "type": "command",
+                "command": "echo {{expression}}"
+            }
+        }"#;
+        fs::write(dir.path().join("calculator.json"), skill_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+        manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+
+        // LLM sends empty args (missing required parameter)
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "calculator".to_string(),
+            orig_name: "calculator".to_string(),
+            args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
+        };
+
+        // Should return error
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.status, ToolResultStatus::Error);
+        assert!(err.content[0].to_string().contains("expression"));
+    }
+
+    #[tokio::test]
+    async fn test_skill_parameter_validation_wrong_type() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        use crate::cli::chat::message::AssistantToolUse;
+
+        let mut os = Os::new().await.unwrap();
+        let dir = tempdir().unwrap();
+
+        // Skill expects string parameter
+        let skill_json = r#"{
+            "name": "calculator",
+            "description": "Calculate expressions",
+            "skill_type": "command",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string"}
+                },
+                "required": ["expression"]
+            },
+            "implementation": {
+                "type": "command",
+                "command": "echo {{expression}}"
+            }
+        }"#;
+        fs::write(dir.path().join("calculator.json"), skill_json).unwrap();
+
+        let mut manager = ToolManager::new_with_skills(&os).await.unwrap();
+        manager.skill_registry.load_from_directory(dir.path()).await.unwrap();
+        manager.load_tools(&mut os, &mut std::io::sink()).await.unwrap();
+
+        // LLM sends number instead of string
+        let tool_use = AssistantToolUse {
+            id: "test-id".to_string(),
+            name: "calculator".to_string(),
+            orig_name: "calculator".to_string(),
+            args: serde_json::json!({"expression": 42}),
+            orig_args: serde_json::json!({"expression": 42}),
+        };
+
+        // Should return error
+        let result = manager.get_tool_from_tool_use(tool_use).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.status, ToolResultStatus::Error);
+        assert!(err.content[0].to_string().contains("type"));
     }
 
     #[tokio::test]

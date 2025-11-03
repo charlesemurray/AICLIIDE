@@ -47,6 +47,9 @@ mod persistence_test;
 #[cfg(test)]
 mod quality_validator_tests;
 
+#[cfg(test)]
+mod renderer_tests;
+
 pub use command_builder::{
     CommandBuilder,
     CommandConfig,

@@ -117,6 +117,30 @@ impl<R: SessionRepository> SessionManager<R> {
         Ok(())
     }
 
+    /// Optimize frequently accessed sessions in background (optional)
+    pub async fn optimize_hot_sessions(&self, session_ids: &[String]) -> Result<(), SessionError> {
+        // Only optimize a small number of "hot" sessions to avoid resource usage
+        let limit = session_ids.len().min(10);
+        
+        for session_id in &session_ids[..limit] {
+            if let Ok(preview) = self.get_session_preview(session_id).await {
+                // Pre-warm the cache for hot sessions
+                let _ = preview.precise_workspace_size().await;
+                debug!("Pre-warmed cache for hot session: {}", session_id);
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Get single session preview by ID
+    async fn get_session_preview(&self, session_id: &str) -> Result<SessionPreview, SessionError> {
+        let metadata = self.repository.get(session_id).await?;
+        let session_path = std::path::PathBuf::from(".amazonq/sessions").join(session_id);
+        SessionPreview::new(metadata, session_path)
+    }
+    }
+
     /// Archive a session
     #[instrument(skip(self))]
     pub async fn archive_session(&self, session_id: &str) -> Result<(), SessionError> {
