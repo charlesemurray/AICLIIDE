@@ -20,6 +20,7 @@ pub mod memory_monitor;
 mod message;
 mod parse;
 pub mod rate_limiter;
+pub mod resource_cleanup;
 pub mod session_autocomplete;
 pub mod session_commands;
 pub mod session_lock;

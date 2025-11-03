@@ -19,6 +19,7 @@ use crate::cli::chat::managed_session::{
 };
 use crate::cli::chat::memory_monitor::MemoryMonitor;
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
+use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
 use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
 use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
@@ -69,6 +70,8 @@ pub struct MultiSessionCoordinator {
     persistence: Option<SessionPersistence>,
     /// Lock manager for race condition protection
     lock_manager: SessionLockManager,
+    /// Resource cleanup manager
+    cleanup_manager: ResourceCleanupManager,
 }
 
 impl MultiSessionCoordinator {
@@ -88,6 +91,7 @@ impl MultiSessionCoordinator {
             memory_monitor,
             persistence: None,
             lock_manager: SessionLockManager::default(),
+            cleanup_manager: ResourceCleanupManager::default(),
         }
     }
 
@@ -193,6 +197,61 @@ impl MultiSessionCoordinator {
     /// Clean up stale locks
     pub async fn cleanup_stale_locks(&self) -> usize {
         self.lock_manager.cleanup_stale_locks().await
+    }
+
+    /// Update resource statistics
+    pub async fn update_resource_stats(&self) {
+        let sessions = self.sessions.lock().await;
+        let active_count = sessions.len();
+        
+        // Calculate total buffer usage
+        let mut total_bytes = 0;
+        for session in sessions.values() {
+            let buffer = session.output_buffer.lock().await;
+            total_bytes += buffer.current_size();
+        }
+        
+        self.cleanup_manager.update_stats(active_count, total_bytes).await;
+    }
+
+    /// Get resource statistics
+    pub async fn get_resource_stats(&self) -> crate::cli::chat::resource_cleanup::ResourceStats {
+        self.cleanup_manager.get_stats().await
+    }
+
+    /// Check for resource leaks
+    pub async fn check_resource_leaks(&self) -> Vec<String> {
+        self.cleanup_manager.check_for_leaks().await
+    }
+
+    /// Get cleanup recommendations
+    pub async fn get_cleanup_recommendations(&self) -> Vec<String> {
+        self.cleanup_manager.get_recommendations().await
+    }
+
+    /// Perform periodic cleanup
+    pub async fn perform_cleanup(&self) -> eyre::Result<()> {
+        if !self.cleanup_manager.needs_cleanup().await {
+            return Ok(());
+        }
+
+        // Update stats
+        self.update_resource_stats().await;
+
+        // Clean up stale locks
+        let stale_locks = self.cleanup_stale_locks().await;
+        if stale_locks > 0 {
+            eprintln!("Cleaned up {} stale locks", stale_locks);
+        }
+
+        // Check for leaks
+        let warnings = self.check_resource_leaks().await;
+        for warning in warnings {
+            eprintln!("Resource warning: {}", warning);
+        }
+
+        self.cleanup_manager.mark_cleanup_done().await;
+        Ok(())
     }
 
     /// Close a session
@@ -518,5 +577,39 @@ mod tests {
         // This test just verifies the method exists and runs
         let count = coordinator.cleanup_stale_locks().await;
         assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_update_resource_stats() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        coordinator.update_resource_stats().await;
+        
+        let stats = coordinator.get_resource_stats().await;
+        assert_eq!(stats.active_sessions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_check_resource_leaks_empty() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let warnings = coordinator.check_resource_leaks().await;
+        assert_eq!(warnings.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_cleanup_recommendations() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let recommendations = coordinator.get_cleanup_recommendations().await;
+        assert_eq!(recommendations.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_perform_cleanup() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let result = coordinator.perform_cleanup().await;
+        assert!(result.is_ok());
     }
 }
