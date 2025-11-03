@@ -117,3 +117,41 @@ fn test_persist_creates_directory() {
     assert!(amazonq_dir.exists());
     assert!(amazonq_dir.is_dir());
 }
+
+#[test]
+fn test_load_session_from_worktree() {
+    use chat_cli::cli::chat::worktree_session::{persist_to_worktree, load_from_worktree};
+    use tempfile::TempDir;
+    
+    let temp_dir = TempDir::new().unwrap();
+    let worktree_path = temp_dir.path();
+    
+    let worktree_info = WorktreeInfo {
+        path: worktree_path.to_path_buf(),
+        branch: "feature/resume-test".to_string(),
+        repo_root: PathBuf::from("/repo"),
+        is_temporary: false,
+        merge_target: "main".to_string(),
+    };
+    
+    // Persist first
+    persist_to_worktree(worktree_path, "resume-session-789", &worktree_info).unwrap();
+    
+    // Load back
+    let loaded = load_from_worktree(worktree_path).unwrap();
+    
+    assert_eq!(loaded.id, "resume-session-789");
+    assert!(loaded.is_worktree_session());
+    assert_eq!(loaded.worktree_info.as_ref().unwrap().branch, "feature/resume-test");
+}
+
+#[test]
+fn test_load_nonexistent_session_fails() {
+    use chat_cli::cli::chat::worktree_session::load_from_worktree;
+    use tempfile::TempDir;
+    
+    let temp_dir = TempDir::new().unwrap();
+    let result = load_from_worktree(temp_dir.path());
+    
+    assert!(result.is_err());
+}
