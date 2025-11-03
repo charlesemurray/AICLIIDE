@@ -99,6 +99,24 @@ q chat "Say hello to Alice"
 
 The agent will automatically discover and use your skill.
 
+### CLI Commands
+
+Manage skills and workflows from the command line:
+
+```bash
+# Skills
+q skills list                    # List all available skills
+q skills info calculator         # Show skill details
+q skills install ./my-skill.json # Add a new skill
+q skills remove my-skill         # Remove a skill
+
+# Workflows
+q workflows list                 # List all workflows
+q workflows show data-pipeline   # Show workflow details
+q workflows add ./workflow.json  # Add a workflow
+q workflows remove my-workflow   # Remove a workflow
+```
+
 ### Built-in Skills
 
 - **calculator**: Perform arithmetic operations
@@ -106,6 +124,8 @@ The agent will automatically discover and use your skill.
 
 ### Documentation
 
+- [Skills User Guide](docs/SKILLS_USER_GUIDE.md) - Complete guide to creating and using skills
+- [Workflows User Guide](docs/WORKFLOWS_USER_GUIDE.md) - Guide to multi-step workflows
 - [Quick Start Guide](docs/SKILLS_QUICKSTART.md) - Get started in 5 minutes
 - [Full Integration Guide](docs/SKILLS_WORKFLOWS_INTEGRATION.md) - Complete documentation
 - [API Reference](docs/SKILLS_WORKFLOWS_INTEGRATION.md#api-reference) - For developers

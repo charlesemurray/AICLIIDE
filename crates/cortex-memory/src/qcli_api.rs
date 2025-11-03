@@ -1,0 +1,81 @@
+use std::path::Path;
+
+use crate::{CortexEmbedder, MemoryConfig, MemoryManager, MemoryNote, Result};
+
+/// High-level API for Q CLI integration
+pub struct CortexMemory {
+    manager: MemoryManager,
+    embedder: CortexEmbedder,
+    config: MemoryConfig,
+}
+
+impl CortexMemory {
+    /// Create a new CortexMemory instance
+    pub fn new<P: AsRef<Path>>(db_path: P, config: MemoryConfig) -> Result<Self> {
+        let embedder = CortexEmbedder::new()?;
+        let manager = MemoryManager::new(db_path, embedder.dimensions(), 20)?;
+        
+        Ok(Self {
+            manager,
+            embedder,
+            config,
+        })
+    }
+
+    /// Store a user-assistant interaction
+    pub fn store_interaction(
+        &mut self,
+        user_message: &str,
+        assistant_response: &str,
+        session_id: &str,
+    ) -> Result<String> {
+        if !self.config.enabled {
+            return Ok(String::new());
+        }
+
+        let content = format!("User: {}\nAssistant: {}", user_message, assistant_response);
+        let embedding = self.embedder.embed(&content)?;
+        
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("session_id".to_string(), serde_json::json!(session_id));
+        
+        let id = uuid::Uuid::new_v4().to_string();
+        let note = MemoryNote::new(id.clone(), content, metadata);
+        
+        self.manager.add(note, embedding)?;
+        Ok(id)
+    }
+
+    /// Recall relevant context for a query
+    pub fn recall_context(&mut self, query: &str, limit: usize) -> Result<Vec<ContextItem>> {
+        if !self.config.enabled {
+            return Ok(Vec::new());
+        }
+
+        let query_embedding = self.embedder.embed(query)?;
+        let results = self.manager.search(&query_embedding, limit);
+        
+        let mut items = Vec::new();
+        for (id, score) in results {
+            if let Some(note) = self.manager.get(&id)? {
+                items.push(ContextItem {
+                    id: note.id,
+                    content: note.content,
+                    score,
+                    metadata: note.metadata,
+                });
+            }
+        }
+        
+        Ok(items)
+    }
+}
+
+/// A recalled context item
+#[derive(Debug, Clone)]
+pub struct ContextItem {
+    pub id: String,
+    pub content: String,
+    pub score: f32,
+    pub metadata: std::collections::HashMap<String, serde_json::Value>,
+}
