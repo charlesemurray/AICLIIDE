@@ -1338,13 +1338,12 @@ mod handlers {
     }
 
     /// Handle the example command
-    pub fn example_command(output: &mut dyn Write) -> Result<(), error::SkillsCliError> {
-        writeln!(output, "{}\n", constants::example::HEADER)?;
-        writeln!(output, "{}", constants::example::STEP_1)?;
-        writeln!(output, "{}\n", constants::example::STEP_1_CMD)?;
-        writeln!(output, "{}", constants::example::STEP_2)?;
-        writeln!(output, "{}\n", constants::example::STEP_2_CMD)?;
-        writeln!(output, "{}", constants::example::STEP_3)?;
+    pub fn example_command(_output: &mut dyn Write) -> Result<(), error::SkillsCliError> {
+        use crate::cli::skills::onboarding;
+        
+        onboarding::run_interactive_example()
+            .map_err(|e| error::SkillsCliError::ExecutionFailed(e.to_string()))?;
+        
         Ok(())
     }
 

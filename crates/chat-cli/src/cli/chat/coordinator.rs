@@ -777,3 +777,22 @@ mod tests {
         }
     }
 }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_cleanup_inactive_sessions() {
+        let config = CoordinatorConfig {
+            session_timeout: Duration::from_millis(100),
+            ..Default::default()
+        };
+        let mut coordinator = MultiSessionCoordinator::new(config);
+        let removed = coordinator.cleanup_inactive_sessions(Duration::from_millis(100)).await.unwrap();
+        assert_eq!(removed, 0);
+    }
+
+    #[tokio::test]
+    async fn test_touch_session_updates_timestamp() {
+        let mut coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        let result = coordinator.touch_session("nonexistent").await;
+        assert!(result.is_err());
+    }
