@@ -67,6 +67,15 @@ impl<'a> SessionManager<'a> {
         Ok(())
     }
 
+    /// Name a session
+    pub async fn name_session(&self, session_id: &str, name: impl Into<String>) -> Result<(), SessionError> {
+        let session_dir = self.session_dir(session_id)?;
+        let mut metadata = load_metadata(&session_dir).await?;
+        metadata.set_name(name)?;
+        save_metadata(&session_dir, &metadata).await?;
+        Ok(())
+    }
+
     /// Get the directory path for a session
     fn session_dir(&self, session_id: &str) -> Result<PathBuf, SessionError> {
         Ok(self.os.env.current_dir()?.join(".amazonq/sessions").join(session_id))
@@ -200,6 +209,42 @@ mod tests {
 
         let updated = load_metadata(&session_dir).await.unwrap();
         assert_eq!(updated.status, SessionStatus::Archived);
+    }
+
+    #[tokio::test]
+    async fn test_name_session() {
+        let temp_dir = TempDir::new().unwrap();
+        let os = create_test_os(&temp_dir);
+
+        let session_dir = temp_dir.path().join(".amazonq/sessions/test-1");
+        let metadata = SessionMetadata::new("test-1", "Test");
+        save_metadata(&session_dir, &metadata).await.unwrap();
+
+        let manager = SessionManager::new(&os);
+        manager.name_session("test-1", "My Session").await.unwrap();
+
+        let updated = load_metadata(&session_dir).await.unwrap();
+        assert_eq!(updated.name, Some("My Session".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_name_session_validation() {
+        let temp_dir = TempDir::new().unwrap();
+        let os = create_test_os(&temp_dir);
+
+        let session_dir = temp_dir.path().join(".amazonq/sessions/test-1");
+        let metadata = SessionMetadata::new("test-1", "Test");
+        save_metadata(&session_dir, &metadata).await.unwrap();
+
+        let manager = SessionManager::new(&os);
+        
+        // Invalid name should fail
+        let result = manager.name_session("test-1", "invalid name with spaces").await;
+        assert!(result.is_err());
+        
+        // Original name should be unchanged
+        let unchanged = load_metadata(&session_dir).await.unwrap();
+        assert_eq!(unchanged.name, None);
     }
 
     #[tokio::test]

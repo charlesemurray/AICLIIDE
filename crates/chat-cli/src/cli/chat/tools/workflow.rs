@@ -192,6 +192,13 @@ impl WorkflowTool {
             self.format_results(results)
         ))
     }
+
+    pub fn from_definition(definition: &WorkflowDefinition) -> Self {
+        Self {
+            name: definition.name.clone(),
+            description: definition.description.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
