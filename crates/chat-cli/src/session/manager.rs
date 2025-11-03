@@ -98,7 +98,7 @@ impl<'a> SessionManager<'a> {
     }
 
     /// Name a session
-    #[instrument(skip(self))]
+    #[instrument(skip(self, name))]
     pub async fn name_session(&self, session_id: &str, name: impl Into<String>) -> Result<(), SessionError> {
         let name = name.into();
         info!(session_id, name = %name, "Naming session");
