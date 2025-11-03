@@ -95,6 +95,51 @@ impl MultiSessionCoordinator {
         }
     }
 
+    /// Enable persistence with error handling
+    pub fn enable_persistence(&mut self, base_dir: std::path::PathBuf) -> Result<()> {
+        self.persistence = Some(SessionPersistence::new(&base_dir)?);
+        Ok(())
+    }
+
+    /// Save session to disk with error handling
+    pub async fn save_session(&self, conversation_id: &str) -> Result<()> {
+        let persistence = match &self.persistence {
+            Some(p) => p,
+            None => return Ok(()), // Persistence disabled
+        };
+
+        let sessions = self.sessions.lock().await;
+        let session = sessions.get(conversation_id)
+            .ok_or_else(|| eyre::eyre!("Session not found: {}", conversation_id))?;
+
+        let persisted = PersistedSession {
+            conversation_id: conversation_id.to_string(),
+            name: session.display.name.clone(),
+            session_type: session.display.session_type,
+            status: session.display.status,
+            created_at: 0,
+            last_active: 0,
+        };
+
+        persistence.save_session(&persisted)?;
+        Ok(())
+    }
+
+    /// Load all sessions from disk with error handling
+    pub async fn load_sessions(&mut self) -> Result<usize> {
+        let persistence = match &self.persistence {
+            Some(p) => p,
+            None => return Ok(0), // Persistence disabled
+        };
+
+        let persisted_sessions = persistence.load_all_sessions()?;
+        let count = persisted_sessions.len();
+
+        // TODO: Restore actual session state
+        // For now, just return count
+        Ok(count)
+    }
+
     /// Create a new session
     pub async fn create_session(
         &mut self,
