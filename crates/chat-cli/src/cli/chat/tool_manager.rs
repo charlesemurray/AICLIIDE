@@ -784,21 +784,17 @@ impl ToolManager {
             }
 
             // Add skills to schema
-            for skill_name in self.skill_registry.list() {
-                if let Some(definition) = self.skill_registry.get(&skill_name) {
-                    let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(definition);
-                    let tool_spec = skill_tool.definition_to_toolspec(definition);
-                    tool_specs.insert(skill_name.clone(), tool_spec);
-                }
+            for skill_def in self.skill_registry.list_skills() {
+                let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(skill_def);
+                let tool_spec = skill_tool.definition_to_toolspec(skill_def);
+                tool_specs.insert(skill_def.name.clone(), tool_spec);
             }
 
             // Add workflows to schema
-            for workflow_name in self.workflow_registry.list() {
-                if let Some(definition) = self.workflow_registry.get(&workflow_name) {
-                    let workflow_tool = crate::cli::chat::tools::workflow::WorkflowTool::from_definition(definition);
-                    let tool_spec = workflow_tool.definition_to_toolspec(definition);
-                    tool_specs.insert(workflow_name.clone(), tool_spec);
-                }
+            for workflow_def in self.workflow_registry.list_workflows() {
+                let workflow_tool = crate::cli::chat::tools::workflow::WorkflowTool::from_definition(workflow_def);
+                let tool_spec = workflow_tool.definition_to_toolspec(workflow_def);
+                tool_specs.insert(workflow_def.name.clone(), tool_spec);
             }
 
             tool_specs

@@ -288,6 +288,15 @@ impl ChatArgs {
     pub async fn execute(mut self, os: &mut Os) -> Result<ExitCode> {
         let mut input = self.input;
 
+        // Initialize multi-session coordinator if enabled
+        let mut coordinator = if std::env::var("Q_MULTI_SESSION").is_ok() {
+            Some(coordinator::MultiSessionCoordinator::new(
+                coordinator::CoordinatorConfig::default()
+            ))
+        } else {
+            None
+        };
+
         if self.no_interactive && input.is_none() {
             if !std::io::stdin().is_terminal() {
                 let mut buffer = String::new();
