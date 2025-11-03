@@ -45,7 +45,9 @@ async fn test_skill_registry_in_tool_manager() {
     let os = Os::new().await.unwrap();
     let tool_manager = ToolManager::new_with_skills(&os).await.unwrap();
 
-    let skill = tool_manager.skill_registry.get_skill("calculator");
-    assert!(skill.is_some(), "Skill should be in registry");
-    assert_eq!(skill.unwrap().name, "calculator");
+    // Verify skills are loaded into the tool manager's schema
+    assert!(!tool_manager.schema.is_empty(), "Tool manager should have skills loaded");
+    
+    // Verify calculator is available
+    assert!(tool_manager.schema.contains_key("calculator"), "Calculator should be available");
 }
