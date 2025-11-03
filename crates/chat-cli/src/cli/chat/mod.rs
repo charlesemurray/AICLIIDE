@@ -4989,6 +4989,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5132,6 +5133,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5230,6 +5232,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5306,6 +5309,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5358,6 +5362,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5467,6 +5472,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
@@ -5599,6 +5605,7 @@ mod tests {
             None,
             None,
             false,
+            false, // no_memory
         )
         .await
         .unwrap()
