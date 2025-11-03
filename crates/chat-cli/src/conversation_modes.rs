@@ -96,7 +96,7 @@ impl ConversationMode {
             ConversationMode::Review => "🔍 Review Mode".to_string(),
         }
     }
-    
+
     /// Get a compact prompt indicator for the current mode
     pub fn get_prompt_indicator(&self) -> String {
         match self {
@@ -120,11 +120,11 @@ impl ConversationMode {
             },
         }
     }
-    
+
     fn get_mode_name(&self) -> &str {
         match self {
             ConversationMode::Interactive => "Interactive",
-            ConversationMode::ExecutePlan => "ExecutePlan", 
+            ConversationMode::ExecutePlan => "ExecutePlan",
             ConversationMode::Review => "Review",
         }
     }
@@ -149,7 +149,8 @@ Auto-Detection Examples:
 • "review this code" → Review mode
 • "analyze the architecture" → Review mode
 
-Use /help for general help."#.to_string()
+Use /help for general help."#
+            .to_string()
     }
 }
 
@@ -180,7 +181,7 @@ mod tests {
             ConversationMode::ExecutePlan,
             ConversationMode::Review,
         ];
-        
+
         for mode in modes {
             let status = mode.get_status_display();
             let prompt = mode.get_prompt_indicator();
@@ -217,11 +218,7 @@ mod tests {
     #[test]
     fn test_transition_with_confirmation() {
         let mut manager = TransitionManager::new();
-        let result = manager.add_transition_record(
-            ConversationMode::Interactive,
-            ConversationMode::ExecutePlan,
-            true
-        );
+        let result = manager.add_transition_record(ConversationMode::Interactive, ConversationMode::ExecutePlan, true);
         assert!(result);
         assert_eq!(manager.get_transition_count(), 1);
     }
@@ -247,7 +244,7 @@ mod tests {
     fn test_mode_command_registry() {
         let mut registry = ModeCommandRegistry::new();
         assert_eq!(registry.get_command_count(), 0);
-        
+
         let result = registry.register_command("test", Box::new(TestCommand));
         assert!(result.is_ok());
         assert_eq!(registry.get_command_count(), 1);
@@ -257,13 +254,13 @@ mod tests {
     fn test_mode_suggestion_engine() {
         let mut engine = ModeSuggestionEngine::new();
         assert_eq!(engine.get_pattern_count(), 0);
-        
+
         let suggestion = engine.suggest_mode("implement complete solution");
         assert!(suggestion.is_some());
         let (mode, confidence) = suggestion.unwrap();
         assert_eq!(mode, ConversationMode::ExecutePlan);
         assert!(confidence > 0.8);
-        
+
         engine.learn_from_transition(ConversationMode::Interactive, ConversationMode::ExecutePlan, "test");
         assert_eq!(engine.get_pattern_count(), 1);
     }
@@ -272,12 +269,12 @@ mod tests {
     fn test_template_manager() {
         let mut manager = TemplateManager::new();
         assert_eq!(manager.get_template_count(), 3);
-        
+
         let template = ModeTemplate::new("test", "Test template", ConversationMode::Interactive);
         let result = manager.add_template(template);
         assert!(result.is_ok());
         assert_eq!(manager.get_template_count(), 4);
-        
+
         let dev_template = manager.get_template("development");
         assert!(dev_template.is_some());
         assert_eq!(dev_template.unwrap().initial_mode, ConversationMode::ExecutePlan);
@@ -285,16 +282,16 @@ mod tests {
 
     // Mock command for testing
     struct TestCommand;
-    
+
     impl ModeSpecificCommand for TestCommand {
         fn execute_in_mode(&self, mode: ConversationMode, _args: &[String]) -> Result<String, String> {
             Ok(format!("{:?} mode execution", mode))
         }
-        
+
         fn is_available_in_mode(&self, mode: ConversationMode) -> bool {
             !matches!(mode, ConversationMode::Review)
         }
-        
+
         fn get_mode_help(&self, mode: ConversationMode) -> String {
             format!("Help for {:?} mode", mode)
         }
@@ -311,29 +308,35 @@ impl TransitionManager {
     pub fn new() -> Self {
         Self { transition_count: 0 }
     }
-    
+
     pub fn add_transition_record(&mut self, _from: ConversationMode, _to: ConversationMode, _confirmed: bool) -> bool {
         self.transition_count += 1;
         true
     }
-    
+
     pub fn get_transition_count(&self) -> usize {
         self.transition_count
     }
-    
-    pub fn transition_with_confirmation(&mut self, _from: ConversationMode, _to: ConversationMode, _trigger: crate::analytics::ModeTransitionTrigger) -> Result<bool, String> {
+
+    pub fn transition_with_confirmation(
+        &mut self,
+        _from: ConversationMode,
+        _to: ConversationMode,
+        _trigger: crate::analytics::ModeTransitionTrigger,
+    ) -> Result<bool, String> {
         self.transition_count += 1;
         Ok(true)
     }
-    
+
     pub fn show_transition_preview(&self, from: ConversationMode, to: ConversationMode) -> String {
         format!("{:?} → {:?}", from, to)
     }
-    
+
     pub fn requires_confirmation(&self, from: &ConversationMode, to: &ConversationMode) -> bool {
-        matches!((from, to), 
-            (ConversationMode::ExecutePlan, ConversationMode::Review) |
-            (ConversationMode::ExecutePlan, ConversationMode::Interactive)
+        matches!(
+            (from, to),
+            (ConversationMode::ExecutePlan, ConversationMode::Review)
+                | (ConversationMode::ExecutePlan, ConversationMode::Interactive)
         )
     }
 }
@@ -356,31 +359,28 @@ impl UserPreferences {
             transition_confirmations: true,
         }
     }
-    
+
     pub fn to_config_string(&self) -> String {
         let mode_str = match self.default_mode {
             ConversationMode::Interactive => "Interactive",
-            ConversationMode::ExecutePlan => "ExecutePlan", 
+            ConversationMode::ExecutePlan => "ExecutePlan",
             ConversationMode::Review => "Review",
         };
-        
+
         format!(
             "default_mode = {}\nauto_detection_enabled = {}\nvisual_indicators_enabled = {}\ntransition_confirmations = {}",
-            mode_str,
-            self.auto_detection_enabled,
-            self.visual_indicators_enabled,
-            self.transition_confirmations
+            mode_str, self.auto_detection_enabled, self.visual_indicators_enabled, self.transition_confirmations
         )
     }
-    
+
     pub fn from_config_string(config: &str) -> Result<Self, String> {
         let mut prefs = Self::new();
-        
+
         for line in config.lines() {
             if let Some((key, value)) = line.split_once('=') {
                 let key = key.trim();
                 let value = value.trim();
-                
+
                 match key {
                     "default_mode" => {
                         prefs.default_mode = match value {
@@ -394,29 +394,31 @@ impl UserPreferences {
                         prefs.auto_detection_enabled = value.parse().map_err(|_| "Invalid auto_detection_enabled")?;
                     },
                     "visual_indicators_enabled" => {
-                        prefs.visual_indicators_enabled = value.parse().map_err(|_| "Invalid visual_indicators_enabled")?;
+                        prefs.visual_indicators_enabled =
+                            value.parse().map_err(|_| "Invalid visual_indicators_enabled")?;
                     },
                     "transition_confirmations" => {
-                        prefs.transition_confirmations = value.parse().map_err(|_| "Invalid transition_confirmations")?;
+                        prefs.transition_confirmations =
+                            value.parse().map_err(|_| "Invalid transition_confirmations")?;
                     },
-                    _ => {} // Ignore unknown keys
+                    _ => {}, // Ignore unknown keys
                 }
             }
         }
-        
+
         Ok(prefs)
     }
-    
+
     pub fn save_to_config(&self) -> Result<(), String> {
         // Mock implementation - in real code would write to ~/.q/config
         Ok(())
     }
-    
+
     pub fn load_from_config() -> Result<Self, String> {
         // Mock implementation - in real code would read from ~/.q/config
         Ok(Self::new())
     }
-    
+
     pub fn reset_to_defaults(&mut self) {
         *self = Self::new();
     }
@@ -440,18 +442,22 @@ impl ModeCommandRegistry {
     pub fn new() -> Self {
         Self { command_count: 0 }
     }
-    
+
     pub fn register_command(&mut self, _name: &str, _command: Box<dyn ModeSpecificCommand>) -> Result<(), String> {
         self.command_count += 1;
         Ok(())
     }
-    
+
     pub fn get_command_count(&self) -> usize {
         self.command_count
     }
-    
+
     pub fn get_available_commands(&self, _mode: ConversationMode) -> Vec<String> {
-        if self.command_count > 0 { vec!["test".to_string()] } else { vec![] }
+        if self.command_count > 0 {
+            vec!["test".to_string()]
+        } else {
+            vec![]
+        }
     }
 }
 
@@ -465,7 +471,7 @@ impl ModeSuggestionEngine {
     pub fn new() -> Self {
         Self { pattern_count: 0 }
     }
-    
+
     pub fn suggest_mode(&self, context: &str) -> Option<(ConversationMode, f32)> {
         let context_lower = context.to_lowercase();
         if context_lower.contains("implement complete") {
@@ -476,11 +482,11 @@ impl ModeSuggestionEngine {
             None
         }
     }
-    
+
     pub fn learn_from_transition(&mut self, _from: ConversationMode, _to: ConversationMode, _context: &str) {
         self.pattern_count += 1;
     }
-    
+
     pub fn get_pattern_count(&self) -> usize {
         self.pattern_count
     }
@@ -513,19 +519,23 @@ impl TemplateManager {
     pub fn new() -> Self {
         Self { template_count: 3 } // Default templates
     }
-    
+
     pub fn add_template(&mut self, _template: ModeTemplate) -> Result<(), String> {
         self.template_count += 1;
         Ok(())
     }
-    
+
     pub fn get_template(&self, name: &str) -> Option<ModeTemplate> {
         match name {
-            "development" => Some(ModeTemplate::new("development", "Dev template", ConversationMode::ExecutePlan)),
+            "development" => Some(ModeTemplate::new(
+                "development",
+                "Dev template",
+                ConversationMode::ExecutePlan,
+            )),
             _ => None,
         }
     }
-    
+
     pub fn get_template_count(&self) -> usize {
         self.template_count
     }

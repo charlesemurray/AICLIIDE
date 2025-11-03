@@ -24,8 +24,11 @@ fn test_worktree_strategy_no_worktree_flag() {
 fn test_worktree_strategy_in_existing_worktree() {
     let context = GitContext {
         repo_root: PathBuf::from("/tmp/repo"),
-        current_branch: "feature/test".to_string(),
+        repo_name: "repo".to_string(),
+        branch_name: "feature/test".to_string(),
         is_worktree: true,
+        is_main_branch: false,
+        worktree_path: None,
     };
     let strategy = resolve_worktree_strategy(None, false, Some(&context));
     assert_eq!(strategy, WorktreeStrategy::UseExisting);

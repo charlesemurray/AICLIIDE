@@ -400,13 +400,16 @@ impl ConversationState {
 
         // Update session metadata with first message if this is the first message
         if self.history.is_empty() {
-            use crate::session::{load_metadata, save_metadata};
+            use crate::session::{
+                load_metadata,
+                save_metadata,
+            };
             let session_dir = os
                 .env
                 .current_dir()
                 .ok()
                 .map(|d| d.join(".amazonq/sessions").join(&self.conversation_id));
-            
+
             if let Some(dir) = session_dir {
                 if let Ok(mut metadata) = load_metadata(&dir).await {
                     metadata.first_message = input.clone();
@@ -1766,7 +1769,9 @@ mod tests {
         .await;
 
         // Add main conversation
-        conversation.set_next_user_message("main question".to_string(), &os).await;
+        conversation
+            .set_next_user_message("main question".to_string(), &os)
+            .await;
         conversation.push_assistant_message(
             &mut os,
             AssistantMessage::new_response(None, "main response".to_string()),
@@ -1780,7 +1785,9 @@ mod tests {
         assert!(conversation.is_in_tangent_mode());
 
         // Add tangent conversation
-        conversation.set_next_user_message("tangent question".to_string(), &os).await;
+        conversation
+            .set_next_user_message("tangent question".to_string(), &os)
+            .await;
         conversation.push_assistant_message(
             &mut os,
             AssistantMessage::new_response(None, "tangent response".to_string()),
@@ -1819,7 +1826,9 @@ mod tests {
         .await;
 
         // Add main conversation
-        conversation.set_next_user_message("main question".to_string(), &os).await;
+        conversation
+            .set_next_user_message("main question".to_string(), &os)
+            .await;
         conversation.push_assistant_message(
             &mut os,
             AssistantMessage::new_response(None, "main response".to_string()),

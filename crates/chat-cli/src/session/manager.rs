@@ -1,5 +1,12 @@
 use std::path::PathBuf;
 
+use tracing::{
+    debug,
+    info,
+    instrument,
+    warn,
+};
+
 use super::error::SessionError;
 use super::io::{
     load_metadata,
@@ -22,10 +29,13 @@ impl<'a> SessionManager<'a> {
     }
 
     /// List all sessions from the filesystem
+    #[instrument(skip(self), fields(session_count))]
     pub async fn list_sessions(&self) -> Result<Vec<SessionMetadata>, SessionError> {
+        debug!("Listing sessions from filesystem");
         let sessions_dir = self.os.env.current_dir()?.join(".amazonq/sessions");
 
         if !sessions_dir.exists() {
+            debug!("Sessions directory does not exist");
             return Ok(Vec::new());
         }
 
@@ -34,8 +44,14 @@ impl<'a> SessionManager<'a> {
 
         while let Some(entry) = entries.next_entry().await? {
             if entry.file_type().await?.is_dir() {
-                if let Ok(metadata) = load_metadata(&entry.path()).await {
-                    sessions.push(metadata);
+                match load_metadata(&entry.path()).await {
+                    Ok(metadata) => {
+                        debug!(session_id = %metadata.id, "Loaded session metadata");
+                        sessions.push(metadata);
+                    },
+                    Err(e) => {
+                        warn!(path = ?entry.path(), error = %e, "Failed to load session metadata");
+                    },
                 }
             }
         }
@@ -43,19 +59,30 @@ impl<'a> SessionManager<'a> {
         // Sort by last_active, most recent first
         sessions.sort_by(|a, b| b.last_active.cmp(&a.last_active));
 
+        info!(count = sessions.len(), "Listed sessions successfully");
+        tracing::Span::current().record("session_count", sessions.len());
+
         Ok(sessions)
     }
 
     /// List sessions filtered by status
+    #[instrument(skip(self))]
     pub async fn list_by_status(&self, status: SessionStatus) -> Result<Vec<SessionMetadata>, SessionError> {
+        debug!(?status, "Listing sessions by status");
         let all_sessions = self.list_sessions().await?;
-        Ok(all_sessions.into_iter().filter(|s| s.status == status).collect())
+        let filtered: Vec<_> = all_sessions.into_iter().filter(|s| s.status == status).collect();
+        info!(status = ?status, count = filtered.len(), "Filtered sessions by status");
+        Ok(filtered)
     }
 
     /// Get a specific session by ID
+    #[instrument(skip(self))]
     pub async fn get_session(&self, session_id: &str) -> Result<SessionMetadata, SessionError> {
+        debug!(session_id, "Getting session");
         let session_dir = self.session_dir(session_id)?;
-        load_metadata(&session_dir).await
+        let metadata = load_metadata(&session_dir).await?;
+        info!(session_id, "Retrieved session successfully");
+        Ok(metadata)
     }
 
     /// Archive a session
@@ -237,11 +264,11 @@ mod tests {
         save_metadata(&session_dir, &metadata).await.unwrap();
 
         let manager = SessionManager::new(&os);
-        
+
         // Invalid name should fail
         let result = manager.name_session("test-1", "invalid name with spaces").await;
         assert!(result.is_err());
-        
+
         // Original name should be unchanged
         let unchanged = load_metadata(&session_dir).await.unwrap();
         assert_eq!(unchanged.name, None);

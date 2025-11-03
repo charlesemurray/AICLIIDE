@@ -1,7 +1,10 @@
 use eyre::Result;
 use serde::Deserialize;
 
-use crate::cli::agent::{Agent, PermissionEvalResult};
+use crate::cli::agent::{
+    Agent,
+    PermissionEvalResult,
+};
 use crate::os::Os;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -48,7 +51,7 @@ mod tests {
             file_types: Some(vec!["rs".to_string(), "py".to_string()]),
             limit: Some(10),
         };
-        
+
         assert_eq!(search.query, "function");
         assert_eq!(search.path, Some("./src".to_string()));
         assert_eq!(search.limit, Some(10));
@@ -63,7 +66,7 @@ mod tests {
             file_types: None,
             limit: None,
         };
-        
+
         // Create a minimal Os for testing
         let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
@@ -79,7 +82,7 @@ mod tests {
             file_types: None,
             limit: None,
         };
-        
+
         let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
         assert!(result.is_err());
@@ -93,7 +96,7 @@ mod tests {
             file_types: None,
             limit: None,
         };
-        
+
         let os = Os::new().await.unwrap();
         let result = search.validate(&os).await;
         assert!(result.is_ok());
@@ -107,14 +110,14 @@ mod tests {
             file_types: None,
             limit: None,
         };
-        
+
         let agent = Agent {
             name: "test_agent".to_string(),
             tools_settings: std::collections::HashMap::new(),
             ..Default::default()
         };
         let os = Os::new().await.unwrap();
-        
+
         let result = search.eval_perm(&os, &agent);
         assert_eq!(result, PermissionEvalResult::Allow);
     }
@@ -127,14 +130,14 @@ mod tests {
             file_types: None,
             limit: None,
         };
-        
+
         let agent = Agent {
             name: "test_agent".to_string(),
             tools_settings: std::collections::HashMap::new(),
             ..Default::default()
         };
         let os = Os::new().await.unwrap();
-        
+
         let result = search.eval_perm(&os, &agent);
         assert_eq!(result, PermissionEvalResult::Allow);
     }

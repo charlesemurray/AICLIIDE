@@ -387,7 +387,11 @@ async fn execute_memory_command(
                                 } else {
                                     item.content.clone()
                                 };
-                                execute!(session.stderr, style::Print(format!("{}. {}\n", i + 1, preview)),)?;
+                                let id_short = if item.id.len() >= 8 { &item.id[..8] } else { &item.id };
+                                execute!(
+                                    session.stderr,
+                                    style::Print(format!("{}. [{}] {}\n", i + 1, id_short, preview)),
+                                )?;
                             }
                         }
                     },
@@ -420,9 +424,14 @@ async fn execute_memory_command(
                             StyledText::reset(),
                         )?;
                         for item in items {
+                            let id_short = if item.id.len() >= 8 {
+                                &item.id[..8]
+                            } else {
+                                &item.id
+                            };
                             execute!(
                                 session.stderr,
-                                style::Print(format!("  • {} (score: {:.2})\n", item.content, item.score)),
+                                style::Print(format!("  • [{}] {} (score: {:.2})\n", id_short, item.content, item.score)),
                             )?;
                         }
                     },
@@ -447,6 +456,9 @@ async fn execute_memory_command(
         MemorySubcommand::Stats => {
             if let Some(ref cortex) = session.cortex {
                 let stats = cortex.stats();
+                let cb_state = cortex.circuit_breaker_state();
+                let cb_failures = cortex.circuit_breaker_failures();
+
                 execute!(
                     session.stderr,
                     StyledText::brand_fg(),
@@ -460,7 +472,34 @@ async fn execute_memory_command(
                         "  Short-term: {}/{} memories\n",
                         stats.stm_count, stats.stm_capacity
                     )),
+                    style::Print(format!(
+                        "  Circuit Breaker: {:?} ({} failures)\n",
+                        cb_state, cb_failures
+                    )),
                 )?;
+
+                // Show warning if circuit is open
+                if cb_state == cortex_memory::CircuitState::Open {
+                    execute!(
+                        session.stderr,
+                        StyledText::warning_fg(),
+                        style::Print("  ⚠️  Memory operations temporarily disabled\n"),
+                        StyledText::reset(),
+                    )?;
+                }
+
+                // Add feedback statistics
+                if let Some(ref feedback_mgr) = session.feedback_manager {
+                    if let Ok((helpful, not_helpful)) = feedback_mgr.get_stats() {
+                        execute!(
+                            session.stderr,
+                            style::Print(format!(
+                                "  Feedback: {} helpful, {} not helpful\n",
+                                helpful, not_helpful
+                            )),
+                        )?;
+                    }
+                }
             } else {
                 execute!(
                     session.stderr,
@@ -537,16 +576,34 @@ async fn execute_memory_command(
                     StyledText::reset(),
                 )?;
             } else {
-                execute!(
-                    session.stderr,
-                    StyledText::success_fg(),
-                    style::Print(format!(
-                        "Feedback recorded for memory {}\n",
-                        args.memory_id
-                    )),
-                    StyledText::reset(),
-                )?;
-                // TODO: Wire up to FeedbackManager when integrated
+                if let Some(ref feedback_mgr) = session.feedback_manager {
+                    let helpful = args.helpful;
+                    match feedback_mgr.record_feedback(&args.memory_id, helpful) {
+                        Ok(_) => {
+                            execute!(
+                                session.stderr,
+                                StyledText::success_fg(),
+                                style::Print(format!("✓ Feedback recorded for memory {}\n", args.memory_id)),
+                                StyledText::reset(),
+                            )?;
+                        },
+                        Err(e) => {
+                            execute!(
+                                session.stderr,
+                                StyledText::error_fg(),
+                                style::Print(format!("Error: {}\n", e)),
+                                StyledText::reset(),
+                            )?;
+                        },
+                    }
+                } else {
+                    execute!(
+                        session.stderr,
+                        StyledText::warning_fg(),
+                        style::Print("Memory system not initialized\n"),
+                        StyledText::reset(),
+                    )?;
+                }
             }
         },
     }

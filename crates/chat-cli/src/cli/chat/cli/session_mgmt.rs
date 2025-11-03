@@ -1,8 +1,18 @@
-use clap::{Args, Subcommand};
+use clap::{
+    Args,
+    Subcommand,
+};
 
-use crate::cli::chat::{ChatError, ChatSession, ChatState};
+use crate::cli::chat::{
+    ChatError,
+    ChatSession,
+    ChatState,
+};
 use crate::os::Os;
-use crate::session::{SessionManager, SessionStatus};
+use crate::session::{
+    SessionManager,
+    SessionStatus,
+};
 
 #[derive(Debug, PartialEq, Args)]
 pub struct SessionMgmtArgs {
@@ -89,7 +99,9 @@ impl SessionMgmtArgs {
                 if let Some(term) = search {
                     sessions.retain(|s| {
                         s.first_message.to_lowercase().contains(&term.to_lowercase())
-                            || s.name.as_ref().map_or(false, |n| n.to_lowercase().contains(&term.to_lowercase()))
+                            || s.name
+                                .as_ref()
+                                .map_or(false, |n| n.to_lowercase().contains(&term.to_lowercase()))
                     });
                 }
 
@@ -127,7 +139,9 @@ impl SessionMgmtArgs {
                 if let Some(term) = search {
                     sessions.retain(|s| {
                         s.first_message.to_lowercase().contains(&term.to_lowercase())
-                            || s.name.as_ref().map_or(false, |n| n.to_lowercase().contains(&term.to_lowercase()))
+                            || s.name
+                                .as_ref()
+                                .map_or(false, |n| n.to_lowercase().contains(&term.to_lowercase()))
                     });
                 }
 

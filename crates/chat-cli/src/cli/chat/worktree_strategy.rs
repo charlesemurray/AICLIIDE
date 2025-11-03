@@ -69,8 +69,11 @@ mod tests {
     fn test_already_in_worktree() {
         let context = GitContext {
             repo_root: "/tmp/repo".into(),
-            current_branch: "feature".to_string(),
+            repo_name: "repo".to_string(),
+            branch_name: "feature".to_string(),
             is_worktree: true,
+            is_main_branch: false,
+            worktree_path: None,
         };
         let strategy = resolve_worktree_strategy(None, false, Some(&context));
         assert_eq!(strategy, WorktreeStrategy::UseExisting);
@@ -86,8 +89,11 @@ mod tests {
     fn test_not_in_worktree_asks() {
         let context = GitContext {
             repo_root: "/tmp/repo".into(),
-            current_branch: "main".to_string(),
+            repo_name: "repo".to_string(),
+            branch_name: "main".to_string(),
             is_worktree: false,
+            is_main_branch: true,
+            worktree_path: None,
         };
         let strategy = resolve_worktree_strategy(None, false, Some(&context));
         assert_eq!(strategy, WorktreeStrategy::Ask);

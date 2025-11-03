@@ -1,7 +1,11 @@
 //! User feedback for memory quality
 
-use rusqlite::{Connection, Result};
 use std::path::Path;
+
+use rusqlite::{
+    Connection,
+    Result,
+};
 
 /// Feedback on memory usefulness
 #[derive(Debug, Clone)]
@@ -20,7 +24,7 @@ impl FeedbackManager {
     /// Create new feedback manager
     pub fn new<P: AsRef<Path>>(db_path: P) -> Result<Self> {
         let conn = Connection::open(db_path)?;
-        
+
         // Create feedback table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS memory_feedback (
@@ -70,17 +74,17 @@ impl FeedbackManager {
 
     /// Get feedback statistics
     pub fn get_stats(&self) -> Result<(usize, usize)> {
-        let helpful: usize = self.conn.query_row(
-            "SELECT COUNT(*) FROM memory_feedback WHERE helpful = 1",
-            [],
-            |row| row.get(0),
-        )?;
+        let helpful: usize =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM memory_feedback WHERE helpful = 1", [], |row| {
+                    row.get(0)
+                })?;
 
-        let not_helpful: usize = self.conn.query_row(
-            "SELECT COUNT(*) FROM memory_feedback WHERE helpful = 0",
-            [],
-            |row| row.get(0),
-        )?;
+        let not_helpful: usize =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM memory_feedback WHERE helpful = 0", [], |row| {
+                    row.get(0)
+                })?;
 
         Ok((helpful, not_helpful))
     }
@@ -88,8 +92,9 @@ impl FeedbackManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::TempDir;
+
+    use super::*;
 
     #[test]
     fn test_feedback_storage() {

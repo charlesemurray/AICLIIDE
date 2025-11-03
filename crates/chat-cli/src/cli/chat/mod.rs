@@ -17,6 +17,7 @@ pub mod input_router;
 mod input_source;
 pub mod managed_session;
 pub mod memory_monitor;
+pub mod merge_workflow;
 mod message;
 mod parse;
 pub mod rate_limiter;
@@ -30,7 +31,6 @@ pub mod session_persistence;
 pub mod session_scanner;
 pub mod session_switcher;
 pub mod session_transition;
-pub mod merge_workflow;
 pub mod terminal_state;
 pub mod terminal_ui;
 pub mod worktree_session;
@@ -291,29 +291,27 @@ impl ChatArgs {
 
         // Initialize multi-session coordinator if enabled
         let mut coordinator = if std::env::var("Q_MULTI_SESSION").is_ok() {
-            let mut coord = coordinator::MultiSessionCoordinator::new(
-                coordinator::CoordinatorConfig::default()
-            );
-            
+            let mut coord = coordinator::MultiSessionCoordinator::new(coordinator::CoordinatorConfig::default());
+
             // Enable persistence
             if let Ok(home) = std::env::var("HOME") {
                 let base_dir = std::path::PathBuf::from(home).join(".amazonq");
                 if let Err(e) = coord.enable_persistence(base_dir) {
                     eprintln!("Warning: Failed to enable session persistence: {}", e);
                 }
-                
+
                 // Load saved sessions
                 match coord.load_sessions().await {
                     Ok(count) if count > 0 => {
                         eprintln!("✓ Loaded {} saved session(s)", count);
-                    }
+                    },
                     Ok(_) => {}, // No sessions to load
                     Err(e) => {
                         eprintln!("Warning: Failed to load sessions: {}", e);
-                    }
+                    },
                 }
             }
-            
+
             Some(coord)
         } else {
             None
@@ -345,11 +343,11 @@ impl ChatArgs {
                 let mut stderr = std::io::stderr();
                 match session_integration::handle_session_command(inp, coord, &mut stderr).await {
                     Ok(true) => return Ok(ExitCode::SUCCESS), // Command handled
-                    Ok(false) => {}, // Not a session command, continue
+                    Ok(false) => {},                          // Not a session command, continue
                     Err(e) => {
                         eprintln!("Session command error: {}", e);
                         return Ok(ExitCode::FAILURE);
-                    }
+                    },
                 }
             }
         }
@@ -376,9 +374,9 @@ impl ChatArgs {
 
         // Check if we're in a worktree with an existing session
         let (conversation_id, resume_from_worktree) = {
-            use crate::git::detect_git_context;
             use crate::cli::chat::worktree_session::load_from_worktree;
-            
+            use crate::git::detect_git_context;
+
             let current_dir = os.env.current_dir()?;
             if let Ok(git_ctx) = detect_git_context(&current_dir) {
                 if git_ctx.is_worktree {
@@ -395,7 +393,7 @@ impl ChatArgs {
                 (uuid::Uuid::new_v4().to_string(), false)
             }
         };
-        
+
         if !resume_from_worktree {
             info!(?conversation_id, "Generated new conversation id");
         } else {
@@ -561,8 +559,8 @@ impl ChatArgs {
                 WorktreeStrategy::Create(name) => {
                     if let Some(ref ctx) = git_context {
                         use crate::cli::chat::branch_naming::sanitize_branch_name;
-                        use crate::git::create_worktree;
                         use crate::cli::chat::worktree_session::persist_to_worktree;
+                        use crate::git::create_worktree;
                         use crate::session::metadata::WorktreeInfo;
 
                         let branch_name = sanitize_branch_name(&name);
@@ -573,7 +571,7 @@ impl ChatArgs {
                             Ok(path) => {
                                 eprintln!("✓ Created worktree at: {}", path.display());
                                 eprintln!("✓ Branch: {}", unique_branch);
-                                
+
                                 // Persist session metadata
                                 let wt_info = WorktreeInfo {
                                     path: path.clone(),
@@ -583,12 +581,12 @@ impl ChatArgs {
                                     merge_target: ctx.branch_name.clone(),
                                 };
                                 let _ = persist_to_worktree(&path, &conversation_id, &wt_info);
-                                
+
                                 // Change to worktree directory
                                 if std::env::set_current_dir(&path).is_ok() {
                                     eprintln!("✓ Changed to worktree directory");
                                 }
-                                
+
                                 Some(path)
                             },
                             Err(e) => {
@@ -615,15 +613,19 @@ impl ChatArgs {
                 },
                 WorktreeStrategy::Ask => {
                     if let Some(ref ctx) = git_context {
-                        use std::io::{self, Write};
+                        use std::io::{
+                            self,
+                            Write,
+                        };
+
                         use crate::cli::chat::branch_naming::sanitize_branch_name;
-                        use crate::git::create_worktree;
                         use crate::cli::chat::worktree_session::persist_to_worktree;
+                        use crate::git::create_worktree;
                         use crate::session::metadata::WorktreeInfo;
-                        
+
                         eprint!("Create a worktree for this session? [branch name/auto/N]: ");
                         io::stderr().flush().ok();
-                        
+
                         let mut input = String::new();
                         if io::stdin().read_line(&mut input).is_ok() {
                             let input = input.trim();
@@ -634,15 +636,15 @@ impl ChatArgs {
                                 } else {
                                     sanitize_branch_name(input)
                                 };
-                                
-                                let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
-                                    .unwrap_or(branch_name);
-                                
+
+                                let unique_branch =
+                                    ensure_unique_branch_name(&ctx.repo_root, &branch_name).unwrap_or(branch_name);
+
                                 match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
                                     Ok(path) => {
                                         eprintln!("✓ Created worktree at: {}", path.display());
                                         eprintln!("✓ Branch: {}", unique_branch);
-                                        
+
                                         let wt_info = WorktreeInfo {
                                             path: path.clone(),
                                             branch: unique_branch.clone(),
@@ -651,17 +653,17 @@ impl ChatArgs {
                                             merge_target: ctx.branch_name.clone(),
                                         };
                                         let _ = persist_to_worktree(&path, &conversation_id, &wt_info);
-                                        
+
                                         if std::env::set_current_dir(&path).is_ok() {
                                             eprintln!("✓ Changed to worktree directory");
                                         }
-                                        
+
                                         Some(path)
                                     },
                                     Err(e) => {
                                         eprintln!("✗ Failed to create worktree: {}", e);
                                         None
-                                    }
+                                    },
                                 }
                             } else {
                                 None
@@ -704,9 +706,7 @@ impl ChatArgs {
             session.coordinator = Some(Arc::new(Mutex::new(coord)));
         }
 
-        session.spawn(os)
-        .await
-        .map(|_| ExitCode::SUCCESS)
+        session.spawn(os).await.map(|_| ExitCode::SUCCESS)
     }
 }
 
@@ -892,6 +892,8 @@ pub struct ChatSession {
     mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine,
     /// Cortex memory system
     cortex: Option<cortex_memory::CortexMemory>,
+    /// Feedback manager for memory quality
+    feedback_manager: Option<cortex_memory::FeedbackManager>,
     /// Last user message for memory storage
     last_user_message: Option<String>,
 }
@@ -1058,6 +1060,25 @@ impl ChatSession {
             None
         };
 
+        // Initialize feedback manager if cortex is enabled
+        let feedback_manager = if cortex.is_some() {
+            let memory_dir = crate::util::paths::logs_dir()
+                .ok()
+                .and_then(|logs| logs.parent().map(|p| p.join("memory")));
+
+            memory_dir.and_then(|dir| {
+                let feedback_db = dir.join("feedback.db");
+                cortex_memory::FeedbackManager::new(feedback_db)
+                    .map_err(|e| {
+                        tracing::warn!("Failed to initialize feedback manager: {}", e);
+                        e
+                    })
+                    .ok()
+            })
+        } else {
+            None
+        };
+
         // Spawn a task for listening and broadcasting sigints.
         let (ctrlc_tx, ctrlc_rx) = tokio::sync::broadcast::channel(4);
         tokio::spawn(async move {
@@ -1110,6 +1131,7 @@ impl ChatSession {
             user_preferences: crate::conversation_modes::UserPreferences::new(),
             mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine::new(),
             cortex,
+            feedback_manager,
             last_user_message: None,
         };
 
@@ -2641,10 +2663,14 @@ impl ChatSession {
         };
 
         // Check for session commands (if multi-session is enabled)
-        if user_input.starts_with("/sessions") || user_input.starts_with("/switch") || 
-           user_input.starts_with("/s ") || user_input.starts_with("/new") || 
-           user_input.starts_with("/close") || user_input.starts_with("/rename") ||
-           user_input.starts_with("/session-name") {
+        if user_input.starts_with("/sessions")
+            || user_input.starts_with("/switch")
+            || user_input.starts_with("/s ")
+            || user_input.starts_with("/new")
+            || user_input.starts_with("/close")
+            || user_input.starts_with("/rename")
+            || user_input.starts_with("/session-name")
+        {
             // Session commands need coordinator - show message if not enabled
             if self.coordinator.is_none() {
                 execute!(
@@ -2655,15 +2681,14 @@ impl ChatSession {
                 // Handle session command with coordinator
                 if let Some(ref coord) = self.coordinator {
                     let mut coord_lock = coord.lock().await;
-                    match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr).await {
-                        Ok(true) => {}, // Command handled
+                    match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr)
+                        .await
+                    {
+                        Ok(true) => {},  // Command handled
                         Ok(false) => {}, // Not a session command
                         Err(e) => {
-                            execute!(
-                                self.stderr,
-                                style::Print(format!("Session command error: {}\n", e))
-                            )?;
-                        }
+                            execute!(self.stderr, style::Print(format!("Session command error: {}\n", e)))?;
+                        },
                     }
                 }
             }
@@ -2803,7 +2828,7 @@ impl ChatSession {
             let _ = self.transition_manager.transition_with_confirmation(
                 old_mode.clone(),
                 new_mode.clone(),
-                crate::analytics::ModeTransitionTrigger::UserCommand
+                crate::analytics::ModeTransitionTrigger::UserCommand,
             );
 
             // Log mode transition for analytics
@@ -2818,7 +2843,8 @@ impl ChatSession {
             }
 
             // Show transition notification
-            let notification = new_mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::UserCommand);
+            let notification =
+                new_mode.get_transition_notification(&crate::analytics::ModeTransitionTrigger::UserCommand);
             execute!(
                 self.stderr,
                 StyledText::success_fg(),
@@ -3154,16 +3180,17 @@ impl ChatSession {
                 // Auto-detect conversation mode for new conversations
                 if self.conversation.history().is_empty() {
                     // Use suggestion engine for smarter detection (Epic 4)
-                    let detected_mode = if let Some((suggested_mode, confidence)) = self.mode_suggestion_engine.suggest_mode(input) {
-                        if confidence > 0.7 {
-                            suggested_mode
+                    let detected_mode =
+                        if let Some((suggested_mode, confidence)) = self.mode_suggestion_engine.suggest_mode(input) {
+                            if confidence > 0.7 {
+                                suggested_mode
+                            } else {
+                                crate::conversation_modes::ConversationMode::detect_from_context(input)
+                            }
                         } else {
                             crate::conversation_modes::ConversationMode::detect_from_context(input)
-                        }
-                    } else {
-                        crate::conversation_modes::ConversationMode::detect_from_context(input)
-                    };
-                    
+                        };
+
                     if detected_mode != self.conversation_mode {
                         let old_mode = self.conversation_mode.clone();
                         self.conversation_mode = detected_mode.clone();
@@ -3172,9 +3199,13 @@ impl ChatSession {
                         let _ = self.transition_manager.transition_with_confirmation(
                             old_mode.clone(),
                             detected_mode.clone(),
-                            crate::analytics::ModeTransitionTrigger::Auto
+                            crate::analytics::ModeTransitionTrigger::Auto,
                         );
-                        self.mode_suggestion_engine.learn_from_transition(old_mode.clone(), detected_mode.clone(), input);
+                        self.mode_suggestion_engine.learn_from_transition(
+                            old_mode.clone(),
+                            detected_mode.clone(),
+                            input,
+                        );
 
                         // Log mode transition for analytics
                         if let Some(session_id) = self.analytics_session_id() {
@@ -4153,27 +4184,20 @@ impl ChatSession {
             // Store interaction in memory
             if let Some(ref mut cortex) = self.cortex {
                 if let Some(ref user_msg) = self.last_user_message {
-                    let verbose = os
-                        .database
-                        .settings
-                        .get_bool(Setting::MemoryVerbose)
-                        .unwrap_or(false);
+                    let verbose = os.database.settings.get_bool(Setting::MemoryVerbose).unwrap_or(false);
 
                     // Use the accumulated buffer as the assistant response
                     if !buf.is_empty() {
                         match cortex.store_interaction(user_msg, &buf, self.conversation.conversation_id()) {
                             Ok(_) => {
                                 if verbose && self.interactive {
-                                    let _ = execute!(
-                                        self.stderr,
-                                        style::Print("💾 Stored interaction in memory\n")
-                                    );
+                                    let _ = execute!(self.stderr, style::Print("💾 Stored interaction in memory\n"));
                                 }
                                 tracing::debug!("Stored interaction in memory");
-                            }
+                            },
                             Err(e) => {
                                 tracing::warn!("Failed to store interaction in memory: {}", e);
-                            }
+                            },
                         }
                     }
                     // Clear the stored message

@@ -6,7 +6,6 @@ pub mod repository;
 pub mod session_id;
 pub mod worktree_repo;
 
-
 pub use error::SessionError;
 pub use io::{
     load_metadata,

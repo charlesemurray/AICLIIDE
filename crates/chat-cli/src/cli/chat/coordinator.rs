@@ -1,7 +1,6 @@
 //! Multi-session coordinator for managing concurrent chat sessions
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::{
@@ -22,7 +21,10 @@ use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
 use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
-use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
+use crate::cli::chat::session_persistence::{
+    PersistedSession,
+    SessionPersistence,
+};
 use crate::theme::session::{
     SessionDisplay,
     SessionStatus,
@@ -50,12 +52,19 @@ impl Default for CoordinatorConfig {
     }
 }
 
+/// Combined session state to prevent race conditions
+/// All session-related data is protected by a single lock
+struct SessionState {
+    /// All managed sessions by conversation_id
+    sessions: HashMap<String, ManagedSession>,
+    /// Currently active session ID
+    active_session_id: Option<String>,
+}
+
 /// Coordinates multiple chat sessions
 pub struct MultiSessionCoordinator {
-    /// All managed sessions by conversation_id
-    pub(crate) sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
-    /// Currently active session ID
-    active_session_id: Arc<Mutex<Option<String>>>,
+    /// Combined session state (single lock to prevent deadlocks)
+    state: Arc<Mutex<SessionState>>,
     /// Configuration
     config: CoordinatorConfig,
     /// State change receiver
@@ -82,8 +91,10 @@ impl MultiSessionCoordinator {
         let memory_monitor = MemoryMonitor::new();
 
         Self {
-            sessions: Arc::new(Mutex::new(HashMap::new())),
-            active_session_id: Arc::new(Mutex::new(None)),
+            state: Arc::new(Mutex::new(SessionState {
+                sessions: HashMap::new(),
+                active_session_id: None,
+            })),
             config,
             state_rx,
             state_tx,
@@ -108,8 +119,10 @@ impl MultiSessionCoordinator {
             None => return Ok(()), // Persistence disabled
         };
 
-        let sessions = self.sessions.lock().await;
-        let session = sessions.get(conversation_id)
+        let state = self.state.lock().await;
+        let session = state
+            .sessions
+            .get(conversation_id)
             .ok_or_else(|| eyre::eyre!("Session not found: {}", conversation_id))?;
 
         let persisted = PersistedSession {
@@ -152,18 +165,18 @@ impl MultiSessionCoordinator {
         tool_manager: crate::cli::chat::tool_manager::ToolManager,
         model_id: Option<String>,
     ) -> Result<String> {
-        let mut sessions = self.sessions.lock().await;
+        let mut state = self.state.lock().await;
 
         // Check session limit
-        if sessions.len() >= self.config.max_active_sessions {
+        if state.sessions.len() >= self.config.max_active_sessions {
             bail!("Maximum active sessions ({}) reached", self.config.max_active_sessions);
         }
 
         // Generate name if not provided
-        let session_name = name.unwrap_or_else(|| format!("session-{}", sessions.len() + 1));
+        let session_name = name.unwrap_or_else(|| format!("session-{}", state.sessions.len() + 1));
 
         // Check for duplicate names
-        if sessions.values().any(|s| s.display.name == session_name) {
+        if state.sessions.values().any(|s| s.display.name == session_name) {
             bail!("Session with name '{}' already exists", session_name);
         }
 
@@ -182,7 +195,8 @@ impl MultiSessionCoordinator {
             model_id,
             os,
             true, // mcp_enabled
-        ).await;
+        )
+        .await;
 
         // Create managed session with real ConversationState
         let session = ManagedSession {
@@ -195,12 +209,11 @@ impl MultiSessionCoordinator {
             last_error: None,
         };
 
-        sessions.insert(conversation_id.clone(), session);
+        state.sessions.insert(conversation_id.clone(), session);
 
         // Set as active if first session
-        let mut active_id = self.active_session_id.lock().await;
-        if active_id.is_none() {
-            *active_id = Some(conversation_id.clone());
+        if state.active_session_id.is_none() {
+            state.active_session_id = Some(conversation_id.clone());
         }
 
         Ok(conversation_id)
@@ -208,24 +221,28 @@ impl MultiSessionCoordinator {
 
     /// Switch to a different session
     pub async fn switch_session(&mut self, name: &str) -> Result<()> {
-        let sessions = self.sessions.lock().await;
+        let mut state = self.state.lock().await;
 
         // Find session by name
-        let target_id = sessions
+        let target_id = state
+            .sessions
             .iter()
             .find(|(_, s)| s.display.name == name)
             .map(|(id, _)| id.clone())
             .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
 
         // Update active session
-        let mut active_id = self.active_session_id.lock().await;
-        *active_id = Some(target_id);
+        state.active_session_id = Some(target_id);
 
         Ok(())
     }
 
     /// Acquire lock for session (prevents concurrent access)
-    pub async fn lock_session(&self, session_id: &str, holder: &str) -> Result<crate::cli::chat::session_lock::SessionLockGuard> {
+    pub async fn lock_session(
+        &self,
+        session_id: &str,
+        holder: &str,
+    ) -> Result<crate::cli::chat::session_lock::SessionLockGuard> {
         self.lock_manager.try_lock(session_id, holder).await
     }
 
@@ -246,16 +263,16 @@ impl MultiSessionCoordinator {
 
     /// Update resource statistics
     pub async fn update_resource_stats(&self) {
-        let sessions = self.sessions.lock().await;
-        let active_count = sessions.len();
-        
+        let state = self.state.lock().await;
+        let active_count = state.sessions.len();
+
         // Calculate total buffer usage
         let mut total_bytes = 0;
-        for session in sessions.values() {
+        for session in state.sessions.values() {
             let buffer = session.output_buffer.lock().await;
             total_bytes += buffer.current_size();
         }
-        
+
         self.cleanup_manager.update_stats(active_count, total_bytes).await;
     }
 
@@ -301,22 +318,22 @@ impl MultiSessionCoordinator {
 
     /// Close a session
     pub async fn close_session(&mut self, name: &str) -> Result<()> {
-        let mut sessions = self.sessions.lock().await;
+        let mut state = self.state.lock().await;
 
         // Find session by name
-        let target_id = sessions
+        let target_id = state
+            .sessions
             .iter()
             .find(|(_, s)| s.display.name == name)
             .map(|(id, _)| id.clone())
             .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
 
         // Remove session
-        sessions.remove(&target_id);
+        state.sessions.remove(&target_id);
 
         // Clear active if it was the active session
-        let mut active_id = self.active_session_id.lock().await;
-        if active_id.as_ref() == Some(&target_id) {
-            *active_id = None;
+        if state.active_session_id.as_ref() == Some(&target_id) {
+            state.active_session_id = None;
         }
 
         Ok(())
@@ -324,25 +341,27 @@ impl MultiSessionCoordinator {
 
     /// Get the active session ID
     pub async fn active_session_id(&self) -> Option<String> {
-        self.active_session_id.lock().await.clone()
+        let state = self.state.lock().await;
+        state.active_session_id.clone()
     }
 
     /// Get session by ID
     pub async fn get_session(&self, id: &str) -> Option<String> {
-        let sessions = self.sessions.lock().await;
-        sessions.get(id).map(|s| s.display.name.clone())
+        let state = self.state.lock().await;
+        state.sessions.get(id).map(|s| s.display.name.clone())
     }
 
     /// List all session names
     pub async fn list_sessions(&self) -> Vec<String> {
-        let sessions = self.sessions.lock().await;
-        sessions.values().map(|s| s.display.name.clone()).collect()
+        let state = self.state.lock().await;
+        state.sessions.values().map(|s| s.display.name.clone()).collect()
     }
 
     /// Get sessions waiting for input
     pub async fn get_waiting_sessions(&self) -> Vec<String> {
-        let sessions = self.sessions.lock().await;
-        sessions
+        let state = self.state.lock().await;
+        state
+            .sessions
             .values()
             .filter(|s| {
                 matches!(
@@ -360,9 +379,9 @@ impl MultiSessionCoordinator {
         id: &str,
         new_state: crate::cli::chat::managed_session::SessionState,
     ) -> Result<()> {
-        let mut sessions = self.sessions.lock().await;
+        let mut state = self.state.lock().await;
 
-        if let Some(session) = sessions.get_mut(id) {
+        if let Some(session) = state.sessions.get_mut(id) {
             session.update_state(new_state).map_err(|e| eyre::eyre!(e))?;
 
             // Update display status
@@ -422,14 +441,14 @@ impl MultiSessionCoordinator {
                 },
                 SessionStateChange::Completed(id) => {
                     // Mark as completed
-                    let mut sessions = self.sessions.lock().await;
-                    if let Some(session) = sessions.get_mut(&id) {
+                    let mut state = self.state.lock().await;
+                    if let Some(session) = state.sessions.get_mut(&id) {
                         session.display.status = SessionStatus::Completed;
                     }
                 },
                 SessionStateChange::Error(id, error) => {
-                    let mut sessions = self.sessions.lock().await;
-                    if let Some(session) = sessions.get_mut(&id) {
+                    let mut state = self.state.lock().await;
+                    if let Some(session) = state.sessions.get_mut(&id) {
                         session.last_error = Some(error);
                     }
                 },
@@ -448,13 +467,13 @@ mod tests {
     async fn test_create_session_with_real_conversation_state() {
         // This test verifies that we can create a session with a real ConversationState
         // (no unsafe placeholder)
-        
+
         let config = CoordinatorConfig::default();
-        let mut coordinator = MultiSessionCoordinator::new(config);
-        
+        let coordinator = MultiSessionCoordinator::new(config);
+
         // Note: This test would need a real Os, agents, tool_config, etc.
         // For now, we just verify the signature compiles
-        assert!(coordinator.sessions.lock().await.is_empty());
+        assert!(coordinator.state.lock().await.sessions.is_empty());
     }
 
     #[tokio::test]
@@ -523,7 +542,7 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_lock_session() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let guard = coordinator.lock_session("test-1", "user-1").await;
         assert!(guard.is_ok());
     }
@@ -532,10 +551,10 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_concurrent_lock_fails() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
         let result = coordinator.lock_session("test-1", "user-2").await;
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("locked"));
     }
@@ -544,9 +563,9 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_is_session_locked() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         assert!(!coordinator.is_session_locked("test-1").await);
-        
+
         let _guard = coordinator.lock_session("test-1", "user-1").await.unwrap();
         assert!(coordinator.is_session_locked("test-1").await);
     }
@@ -555,10 +574,10 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_get_locked_sessions() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
         let _guard2 = coordinator.lock_session("test-2", "user-2").await.unwrap();
-        
+
         let locked = coordinator.get_locked_sessions().await;
         assert_eq!(locked.len(), 2);
     }
@@ -567,7 +586,7 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_cleanup_stale_locks() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         // This test just verifies the method exists and runs
         let count = coordinator.cleanup_stale_locks().await;
         assert_eq!(count, 0);
@@ -577,9 +596,9 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_update_resource_stats() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         coordinator.update_resource_stats().await;
-        
+
         let stats = coordinator.get_resource_stats().await;
         assert_eq!(stats.active_sessions, 0);
     }
@@ -588,7 +607,7 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_check_resource_leaks_empty() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let warnings = coordinator.check_resource_leaks().await;
         assert_eq!(warnings.len(), 0);
     }
@@ -597,7 +616,7 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_get_cleanup_recommendations() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let recommendations = coordinator.get_cleanup_recommendations().await;
         assert_eq!(recommendations.len(), 0);
     }
@@ -606,7 +625,7 @@ mod tests {
     #[ignore] // Requires full context
     async fn test_perform_cleanup() {
         let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
-        
+
         let result = coordinator.perform_cleanup().await;
         assert!(result.is_ok());
     }

@@ -51,16 +51,18 @@ impl SessionSwitcher {
             Ok(_) => {
                 VisualFeedback::clear_progress(writer)?;
                 VisualFeedback::success(writer, &format!("Switched to '{}'", target_name))?;
-            }
+            },
             Err(e) => {
                 VisualFeedback::clear_progress(writer)?;
                 VisualFeedback::error(writer, &format!("Failed to switch: {}", e))?;
                 return Err(e);
-            }
+            },
         }
 
         // Get new session ID
-        let new_id = coordinator.active_session_id().await
+        let new_id = coordinator
+            .active_session_id()
+            .await
             .ok_or_else(|| eyre::eyre!("Failed to get new session ID"))?;
 
         // Perform transition
@@ -78,11 +80,7 @@ impl SessionSwitcher {
     }
 
     /// List all sessions with visual formatting
-    pub async fn list_sessions<W: Write>(
-        &self,
-        coordinator: &MultiSessionCoordinator,
-        writer: &mut W,
-    ) -> Result<()> {
+    pub async fn list_sessions<W: Write>(&self, coordinator: &MultiSessionCoordinator, writer: &mut W) -> Result<()> {
         let sessions = coordinator.list_sessions().await;
 
         let mut session_info = Vec::new();
@@ -101,11 +99,7 @@ impl SessionSwitcher {
     }
 
     /// Update session indicator
-    pub fn update_indicator<W: Write>(
-        &self,
-        coordinator: &MultiSessionCoordinator,
-        writer: &mut W,
-    ) -> Result<()> {
+    pub fn update_indicator<W: Write>(&self, coordinator: &MultiSessionCoordinator, writer: &mut W) -> Result<()> {
         self.ui.render_indicator(writer, coordinator)
     }
 }

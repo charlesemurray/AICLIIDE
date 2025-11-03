@@ -1,5 +1,8 @@
 use crossterm::style::Color;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// Types of sessions in Q CLI
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

@@ -1,9 +1,9 @@
+use std::fs;
+
 /// Tests for skill loading feedback
 ///
 /// Validates that users see clear feedback when skills are loaded
-
 use chat_cli::cli::chat::skill_registry::SkillRegistry;
-use std::fs;
 use tempfile::TempDir;
 
 #[tokio::test]

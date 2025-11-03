@@ -59,15 +59,10 @@ impl SkillRegistry {
     }
 
     pub async fn load_from_directory(&mut self, path: &Path) -> Result<()> {
-        self.load_from_directory_with_feedback(path, &mut std::io::sink())
-            .await
+        self.load_from_directory_with_feedback(path, &mut std::io::sink()).await
     }
 
-    pub async fn load_from_directory_with_feedback(
-        &mut self,
-        path: &Path,
-        output: &mut impl Write,
-    ) -> Result<()> {
+    pub async fn load_from_directory_with_feedback(&mut self, path: &Path, output: &mut impl Write) -> Result<()> {
         let mut summary = LoadingSummary::new();
         let mut entries = tokio::fs::read_dir(path).await?;
 
@@ -86,14 +81,14 @@ impl SkillRegistry {
                             let name = skill.name.clone();
                             self.skills.insert(name.clone(), skill);
                             summary.loaded.push(name);
-                        }
+                        },
                         Err(e) => {
                             summary.failed.push((filename, e.to_string()));
-                        }
+                        },
                     },
                     Err(e) => {
                         summary.failed.push((filename, e.to_string()));
-                    }
+                    },
                 }
             }
         }

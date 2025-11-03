@@ -167,16 +167,103 @@ pub trait CacheManager: Send + Sync {
     async fn put(&self, id: &str, template: &PromptTemplate) -> Result<()>;
 }
 
-// Placeholder implementations (to be implemented in subsequent steps)
+// Real implementations
 pub struct MultiDimensionalValidator;
-pub struct SafeTemplateRenderer;
-pub struct TwoTierCacheManager;
 
 impl MultiDimensionalValidator {
     pub fn new() -> Self {
         Self
     }
+
+    fn calculate_role_clarity(&self, prompt: &str) -> f64 {
+        let mut score = 0.0;
+        let word_count = prompt.split_whitespace().count();
+
+        // Length score (0-0.3): Detailed roles are clearer
+        let length_score = if word_count < 5 {
+            0.0
+        } else if word_count < 10 {
+            0.1
+        } else if word_count < 20 {
+            0.2
+        } else {
+            0.3
+        };
+        score += length_score;
+
+        // Specificity score (0-0.4): Technical terms and domain keywords
+        let technical_terms = [
+            "expert",
+            "specialist",
+            "senior",
+            "architect",
+            "engineer",
+            "developer",
+            "analyst",
+            "consultant",
+            "reviewer",
+            "writer",
+            "rust",
+            "python",
+            "java",
+            "javascript",
+            "code",
+            "software",
+            "system",
+            "data",
+            "security",
+            "performance",
+            "testing",
+            "async",
+            "concurrent",
+            "distributed",
+            "microservices",
+            "cloud",
+        ];
+
+        let prompt_lower = prompt.to_lowercase();
+        let term_count = technical_terms
+            .iter()
+            .filter(|term| prompt_lower.contains(*term))
+            .count();
+
+        let specificity_score = (term_count as f64 * 0.1).min(0.4);
+        score += specificity_score;
+
+        // Structure score (0-0.3): Presence of "You are" pattern
+        if prompt_lower.contains("you are") {
+            score += 0.15;
+        }
+        if prompt_lower.contains("with") || prompt_lower.contains("specializing") {
+            score += 0.15;
+        }
+
+        score.min(1.0)
+    }
 }
+
+impl QualityValidator for MultiDimensionalValidator {
+    fn validate(&self, prompt: &str) -> QualityScore {
+        let mut component_scores = HashMap::new();
+
+        // Calculate role clarity
+        let role_clarity = self.calculate_role_clarity(prompt);
+        component_scores.insert("role_clarity".to_string(), role_clarity);
+
+        // Overall score is just role_clarity for now (will add more components)
+        let overall_score = role_clarity;
+
+        QualityScore {
+            overall_score,
+            component_scores,
+            feedback: vec![],
+            confidence: 0.8,
+        }
+    }
+}
+
+pub struct SafeTemplateRenderer;
+pub struct TwoTierCacheManager;
 
 impl SafeTemplateRenderer {
     pub fn new() -> Self {
@@ -187,18 +274,6 @@ impl SafeTemplateRenderer {
 impl TwoTierCacheManager {
     pub fn new() -> Self {
         Self
-    }
-}
-
-// Temporary implementations - will be replaced with real implementations
-impl QualityValidator for MultiDimensionalValidator {
-    fn validate(&self, _prompt: &str) -> QualityScore {
-        QualityScore {
-            overall_score: 3.5,
-            component_scores: HashMap::new(),
-            feedback: vec![],
-            confidence: 0.8,
-        }
     }
 }
 

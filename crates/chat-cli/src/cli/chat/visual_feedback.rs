@@ -2,9 +2,12 @@
 
 use std::io::Write;
 
-use crossterm::{
-    execute,
-    style::{Color, Print, ResetColor, SetForegroundColor},
+use crossterm::execute;
+use crossterm::style::{
+    Color,
+    Print,
+    ResetColor,
+    SetForegroundColor,
 };
 use eyre::Result;
 

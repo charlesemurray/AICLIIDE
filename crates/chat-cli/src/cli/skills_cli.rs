@@ -19,6 +19,73 @@ use crate::cli::skills::{
 };
 use crate::os::Os;
 
+/// Constants for the skills CLI
+mod constants {
+    /// Directory name for skills in workspace
+    pub const SKILLS_DIR_NAME: &str = ".q-skills";
+
+    /// Directory name for skills in home directory
+    pub const HOME_SKILLS_DIR_NAME: &str = ".q-skills";
+
+    /// File extension for skill files
+    pub const SKILL_FILE_EXTENSION: &str = "json";
+
+    /// Template names
+    pub mod templates {
+        pub const COMMAND: &str = "command";
+        pub const SCRIPT: &str = "script";
+        pub const HTTP_API: &str = "http-api";
+        pub const FILE_PROCESSOR: &str = "file-processor";
+    }
+
+    /// User-facing messages
+    pub mod messages {
+        pub const NO_SKILLS_FOUND: &str = "No skills found.";
+        pub const TIP_TRY_EXAMPLE: &str = "💡 Try: q skills example";
+        pub const TIP_GET_DETAILS: &str = "💡 Get details: q skills info <name>";
+        pub const TIP_USE_NATURAL_LANGUAGE: &str = "💡 Tip: Use natural language in chat";
+        pub const TIP_SKILLS_LOCATION: &str = "💡 Tip: Skills are in ~/.q-skills/";
+        pub const AVAILABLE_SKILLS_HEADER: &str = "Available Skills:";
+        pub const SKILL_CREATED: &str = "✓ Created skill:";
+        pub const SKILL_VALID: &str = "✓ Skill file is valid";
+        pub const VALIDATION_FAILED: &str = "✗ Validation failed:";
+        pub const UNKNOWN_TEMPLATE: &str = "Unknown template:";
+        pub const AVAILABLE_TEMPLATES: &str = "Available templates:";
+        pub const INVALID_TEMPLATE_ERROR: &str = "Invalid template";
+        pub const COULD_NOT_FIND_HOME: &str = "Could not find home directory";
+        pub const NO_SKILLS_DIR_FOUND: &str = "No skills directory found at";
+        pub const SKILL_NOT_FOUND: &str = "Skill '{}' not found";
+        pub const REMOVE_CONFIRM_PROMPT: &str = "Remove skill '{}'? (y/N): ";
+        pub const CANCELLED: &str = "Cancelled";
+        pub const SKILL_REMOVED: &str = "✓ Removed skill:";
+        pub const SKILL_EXECUTION_FAILED: &str = "Skill execution failed";
+        pub const VALIDATION_FAILED_ERROR: &str = "Validation failed";
+        pub const FAILED_TO_READ_FILE: &str = "Failed to read file:";
+        pub const INVALID_JSON_FOR_SKILL: &str = "Invalid JSON for skill '{}':";
+    }
+
+    /// Help text
+    pub mod help {
+        pub const HEADER: &str = "Q Skills Help";
+        pub const COMMANDS_HEADER: &str = "Commands:";
+        pub const CMD_LIST: &str = "  q skills list       List all skills";
+        pub const CMD_INFO: &str = "  q skills info <name>  Show skill details";
+        pub const CMD_RUN: &str = "  q skills run <name>   Run a skill";
+        pub const CMD_EXAMPLE: &str = "  q skills example    Interactive creation";
+        pub const CMD_HELP: &str = "  q skills help       Show this help";
+    }
+
+    /// Example text
+    pub mod example {
+        pub const HEADER: &str = "Interactive skill creation example:";
+        pub const STEP_1: &str = "1. Create a simple command skill:";
+        pub const STEP_1_CMD: &str = "   q skills create hello --from-template command";
+        pub const STEP_2: &str = "2. View available templates:";
+        pub const STEP_2_CMD: &str = "   q skills create --help";
+        pub const STEP_3: &str = "3. See examples in: examples/skills/";
+    }
+}
+
 // Map user-friendly names to internal types
 fn map_user_type_to_internal(user_type: &str) -> &str {
     match user_type {
@@ -127,7 +194,7 @@ pub enum SkillsSlashCommand {
 impl SkillsArgs {
     pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        let mut registry = SkillRegistry::with_workspace_skills(&current_dir)
+        let registry = SkillRegistry::with_workspace_skills(&current_dir)
             .await
             .unwrap_or_else(|_| SkillRegistry::with_builtins());
 
@@ -140,12 +207,12 @@ impl SkillsArgs {
                 let skills = registry.list();
 
                 if skills.is_empty() {
-                    println!("No skills found.\n");
-                    println!("💡 Try: q skills example");
+                    println!("{}\n", constants::messages::NO_SKILLS_FOUND);
+                    println!("{}", constants::messages::TIP_TRY_EXAMPLE);
                     return Ok(ExitCode::SUCCESS);
                 }
 
-                println!("Available Skills:\n");
+                println!("{}\n", constants::messages::AVAILABLE_SKILLS_HEADER);
                 for skill in skills {
                     println!("  📦 {}", skill.name());
                     println!("     {}", skill.description());
@@ -156,15 +223,19 @@ impl SkillsArgs {
                     println!();
                 }
 
-                println!("💡 Get details: q skills info <name>");
-                println!("💡 Try example: q skills example");
+                println!("{}", constants::messages::TIP_GET_DETAILS);
+                println!("{}", constants::messages::TIP_TRY_EXAMPLE);
 
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Run { skill_name, params } => {
                 let params = match params {
                     Some(p) => serde_json::from_str(&p).map_err(|e| {
-                        SkillError::InvalidInput(format!("Invalid JSON for skill '{}': {}", skill_name, e))
+                        SkillError::InvalidInput(format!(
+                            "{} {}",
+                            constants::messages::INVALID_JSON_FOR_SKILL.replace("{}", &skill_name),
+                            e
+                        ))
                     })?,
                     None => json!({}),
                 };
@@ -173,11 +244,11 @@ impl SkillsArgs {
                     Ok(result) => {
                         println!("{}", result.output);
                         Ok(ExitCode::SUCCESS)
-                    }
+                    },
                     Err(e) => {
                         eprintln!("Error: {}", e);
-                        Err(eyre::eyre!("Skill execution failed"))
-                    }
+                        Err(eyre::eyre!(constants::messages::SKILL_EXECUTION_FAILED))
+                    },
                 }
             },
             SkillsCommand::Info { skill_name } => {
@@ -203,41 +274,41 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Help => {
-                println!("Q Skills Help\n");
-                println!("Commands:");
-                println!("  q skills list       List all skills");
-                println!("  q skills info <name>  Show skill details");
-                println!("  q skills run <name>   Run a skill");
-                println!("  q skills example    Interactive creation");
-                println!("  q skills help       Show this help\n");
-                println!("💡 Tip: Use natural language in chat");
-                println!("💡 Tip: Skills are in ~/.q-skills/");
+                println!("{}\n", constants::help::HEADER);
+                println!("{}", constants::help::COMMANDS_HEADER);
+                println!("{}", constants::help::CMD_LIST);
+                println!("{}", constants::help::CMD_INFO);
+                println!("{}", constants::help::CMD_RUN);
+                println!("{}", constants::help::CMD_EXAMPLE);
+                println!("{}\n", constants::help::CMD_HELP);
+                println!("{}", constants::messages::TIP_USE_NATURAL_LANGUAGE);
+                println!("{}", constants::messages::TIP_SKILLS_LOCATION);
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Example => {
-                println!("Interactive skill creation example:\n");
-                println!("1. Create a simple command skill:");
-                println!("   q skills create hello --from-template command\n");
-                println!("2. View available templates:");
-                println!("   q skills create --help\n");
-                println!("3. See examples in: examples/skills/");
+                println!("{}\n", constants::example::HEADER);
+                println!("{}", constants::example::STEP_1);
+                println!("{}\n", constants::example::STEP_1_CMD);
+                println!("{}", constants::example::STEP_2);
+                println!("{}\n", constants::example::STEP_2_CMD);
+                println!("{}", constants::example::STEP_3);
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Validate { file } => {
                 use crate::cli::skills::validation::SkillValidator;
-                
+
                 let content = fs::read_to_string(&file)
-                    .map_err(|e| eyre::eyre!("Failed to read file: {}", e))?;
-                
+                    .map_err(|e| eyre::eyre!("{} {}", constants::messages::FAILED_TO_READ_FILE, e))?;
+
                 match SkillValidator::validate_skill_json(&content) {
                     Ok(_) => {
-                        println!("✓ Skill file is valid");
+                        println!("{}", constants::messages::SKILL_VALID);
                         Ok(ExitCode::SUCCESS)
-                    }
+                    },
                     Err(e) => {
-                        eprintln!("✗ Validation failed: {}", e);
-                        Err(eyre::eyre!("Validation failed"))
-                    }
+                        eprintln!("{} {}", constants::messages::VALIDATION_FAILED, e);
+                        Err(eyre::eyre!(constants::messages::VALIDATION_FAILED_ERROR))
+                    },
                 }
             },
             SkillsCommand::Install { source: _source } => {
@@ -245,24 +316,29 @@ impl SkillsArgs {
                 println!("Skill installation not yet implemented");
                 Ok(ExitCode::SUCCESS)
             },
-            SkillsCommand::Create { name, from_template, description, .. } => {
+            SkillsCommand::Create {
+                name,
+                from_template,
+                description,
+                ..
+            } => {
                 use crate::cli::skills::templates::SkillTemplate;
 
                 if let Some(template_name) = from_template {
                     // Create from template
                     let template = match template_name.as_str() {
-                        "command" => SkillTemplate::Command,
-                        "script" => SkillTemplate::Script,
-                        "http-api" => SkillTemplate::HttpApi,
-                        "file-processor" => SkillTemplate::FileProcessor,
+                        constants::templates::COMMAND => SkillTemplate::Command,
+                        constants::templates::SCRIPT => SkillTemplate::Script,
+                        constants::templates::HTTP_API => SkillTemplate::HttpApi,
+                        constants::templates::FILE_PROCESSOR => SkillTemplate::FileProcessor,
                         _ => {
-                            eprintln!("Unknown template: {}\n", template_name);
-                            eprintln!("Available templates:");
+                            eprintln!("{} {}\n", constants::messages::UNKNOWN_TEMPLATE, template_name);
+                            eprintln!("{}", constants::messages::AVAILABLE_TEMPLATES);
                             for t in SkillTemplate::all() {
                                 eprintln!("  {} - {}", t.name(), t.description());
                             }
-                            return Err(eyre::eyre!("Invalid template"));
-                        }
+                            return Err(eyre::eyre!(constants::messages::INVALID_TEMPLATE_ERROR));
+                        },
                     };
 
                     let desc = description.unwrap_or_else(|| format!("{} skill", name));
@@ -270,14 +346,14 @@ impl SkillsArgs {
 
                     // Save to ~/.q-skills/
                     let skills_dir = dirs::home_dir()
-                        .ok_or_else(|| eyre::eyre!("Could not find home directory"))?
-                        .join(".q-skills");
-                    
+                        .ok_or_else(|| eyre::eyre!(constants::messages::COULD_NOT_FIND_HOME))?
+                        .join(constants::HOME_SKILLS_DIR_NAME);
+
                     std::fs::create_dir_all(&skills_dir)?;
-                    let skill_file = skills_dir.join(format!("{}.json", name));
+                    let skill_file = skills_dir.join(format!("{}.{}", name, constants::SKILL_FILE_EXTENSION));
                     std::fs::write(&skill_file, serde_json::to_string_pretty(&skill_json)?)?;
 
-                    println!("✓ Created skill: {}", skill_file.display());
+                    println!("{} {}", constants::messages::SKILL_CREATED, skill_file.display());
                     println!("\nUsage:");
                     println!("  {}", template.example(&name));
 
@@ -286,8 +362,11 @@ impl SkillsArgs {
 
                 // Fallback message
                 println!("⚠️  Use templates for quick creation:");
-                println!("  q skills create {} --from-template command --description 'My skill'\n", name);
-                println!("Available templates:");
+                println!(
+                    "  q skills create {} --from-template command --description 'My skill'\n",
+                    name
+                );
+                println!("{}", constants::messages::AVAILABLE_TEMPLATES);
                 for t in SkillTemplate::all() {
                     println!("  {} - {}", t.name(), t.description());
                 }
@@ -296,32 +375,39 @@ impl SkillsArgs {
             },
             SkillsCommand::Remove { skill_name } => {
                 // Find skill file in workspace
-                let skills_dir = current_dir.join(".q-skills");
+                let skills_dir = current_dir.join(constants::SKILLS_DIR_NAME);
                 if !skills_dir.exists() {
-                    return Err(eyre::eyre!("No skills directory found at {}", skills_dir.display()));
+                    return Err(eyre::eyre!(
+                        "{} {}",
+                        constants::messages::NO_SKILLS_DIR_FOUND,
+                        skills_dir.display()
+                    ));
                 }
 
                 // Look for skill file
-                let skill_file = skills_dir.join(format!("{}.json", skill_name));
+                let skill_file = skills_dir.join(format!("{}.{}", skill_name, constants::SKILL_FILE_EXTENSION));
                 if !skill_file.exists() {
                     return Err(eyre::eyre!("Skill '{}' not found", skill_name));
                 }
 
                 // Confirm removal
-                print!("Remove skill '{}'? (y/N): ", skill_name);
+                print!(
+                    "{}",
+                    constants::messages::REMOVE_CONFIRM_PROMPT.replace("{}", &skill_name)
+                );
                 io::stdout().flush()?;
 
                 let mut input = String::new();
                 io::stdin().read_line(&mut input)?;
 
                 if input.trim().to_lowercase() != "y" {
-                    println!("Cancelled");
+                    println!("{}", constants::messages::CANCELLED);
                     return Ok(ExitCode::SUCCESS);
                 }
 
                 // Remove file
                 fs::remove_file(&skill_file)?;
-                println!("✓ Removed skill '{}'", skill_name);
+                println!("{} '{}'", constants::messages::SKILL_REMOVED, skill_name);
 
                 Ok(ExitCode::SUCCESS)
             },

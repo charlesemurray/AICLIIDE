@@ -34,11 +34,11 @@ use chat_cli_ui::protocol::{
     Event,
     ToolCallArgs,
 };
+use code_search::CodeSearch;
 use crossterm::queue;
 use crossterm::style::{
     self,
 };
-use code_search::CodeSearch;
 use custom_tool::CustomTool;
 use delegate::Delegate;
 use execute::ExecuteCommand;

@@ -1,6 +1,9 @@
 //! Circuit breaker for fault tolerance
 
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 /// Circuit breaker states
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,7 +57,7 @@ impl CircuitBreaker {
                 } else {
                     false
                 }
-            }
+            },
             CircuitState::HalfOpen => true,
         }
     }
@@ -72,14 +75,14 @@ impl CircuitBreaker {
                     self.failure_count = 0;
                     self.success_count = 0;
                 }
-            }
+            },
             CircuitState::Closed => {
                 // Reset failure count on success
                 if self.failure_count > 0 {
                     self.failure_count = 0;
                 }
-            }
-            CircuitState::Open => {}
+            },
+            CircuitState::Open => {},
         }
     }
 
@@ -97,14 +100,14 @@ impl CircuitBreaker {
                     );
                     self.state = CircuitState::Open;
                 }
-            }
+            },
             CircuitState::HalfOpen => {
                 // Any failure in half-open goes back to open
                 tracing::warn!("Circuit breaker reopening after failure in half-open state");
                 self.state = CircuitState::Open;
                 self.success_count = 0;
-            }
-            CircuitState::Open => {}
+            },
+            CircuitState::Open => {},
         }
     }
 
@@ -132,14 +135,14 @@ mod tests {
     #[test]
     fn test_circuit_breaker_opens_after_threshold() {
         let mut cb = CircuitBreaker::new(3, Duration::from_secs(60));
-        
+
         assert_eq!(cb.state(), CircuitState::Closed);
         assert!(cb.should_allow());
-        
+
         cb.record_failure();
         cb.record_failure();
         assert_eq!(cb.state(), CircuitState::Closed);
-        
+
         cb.record_failure();
         assert_eq!(cb.state(), CircuitState::Open);
         assert!(!cb.should_allow());
@@ -148,15 +151,15 @@ mod tests {
     #[test]
     fn test_circuit_breaker_recovers() {
         let mut cb = CircuitBreaker::new(2, Duration::from_millis(10));
-        
+
         cb.record_failure();
         cb.record_failure();
         assert_eq!(cb.state(), CircuitState::Open);
-        
+
         std::thread::sleep(Duration::from_millis(20));
         assert!(cb.should_allow());
         assert_eq!(cb.state(), CircuitState::HalfOpen);
-        
+
         cb.record_success();
         cb.record_success();
         cb.record_success();
@@ -166,15 +169,15 @@ mod tests {
     #[test]
     fn test_circuit_breaker_reopens_on_half_open_failure() {
         let mut cb = CircuitBreaker::new(2, Duration::from_millis(10));
-        
+
         cb.record_failure();
         cb.record_failure();
         assert_eq!(cb.state(), CircuitState::Open);
-        
+
         std::thread::sleep(Duration::from_millis(20));
         cb.should_allow();
         assert_eq!(cb.state(), CircuitState::HalfOpen);
-        
+
         cb.record_failure();
         assert_eq!(cb.state(), CircuitState::Open);
     }

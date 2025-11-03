@@ -1,8 +1,10 @@
 //! Cortex Memory System - Advanced memory for AI agents
 
+pub mod circuit_breaker;
 pub mod config;
 pub mod embedder;
 pub mod error;
+pub mod feedback;
 pub mod hnsw_wrapper;
 pub mod id_mapper;
 pub mod ltm;
@@ -10,16 +12,20 @@ pub mod memory_manager;
 pub mod memory_note;
 pub mod qcli_api;
 pub mod stm;
-pub mod circuit_breaker;
-pub mod feedback;
 
-pub use circuit_breaker::{CircuitBreaker, CircuitState};
+pub use circuit_breaker::{
+    CircuitBreaker,
+    CircuitState,
+};
 pub use config::MemoryConfig;
-pub use feedback::{FeedbackManager, MemoryFeedback};
 pub use embedder::CortexEmbedder;
 pub use error::{
     CortexError,
     Result,
+};
+pub use feedback::{
+    FeedbackManager,
+    MemoryFeedback,
 };
 pub use hnsw_wrapper::HnswWrapper;
 pub use id_mapper::IdMapper;

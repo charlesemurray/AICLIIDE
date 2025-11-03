@@ -127,16 +127,16 @@ impl SkillTemplate {
         match self {
             SkillTemplate::Command => {
                 format!("q chat \"use {} to process 'hello world'\"", name)
-            }
+            },
             SkillTemplate::Script => {
                 format!("q chat \"use {} with arguments '--verbose'\"", name)
-            }
+            },
             SkillTemplate::HttpApi => {
                 format!("q chat \"use {} to call https://api.example.com/data\"", name)
-            }
+            },
             SkillTemplate::FileProcessor => {
                 format!("q chat \"use {} to process data.txt\"", name)
-            }
+            },
         }
     }
 }
@@ -163,7 +163,7 @@ mod tests {
     fn test_template_generation() {
         let template = SkillTemplate::Command;
         let json = template.generate("test", "Test skill");
-        
+
         assert_eq!(json["name"], "test");
         assert_eq!(json["description"], "Test skill");
         assert!(json["parameters"].is_array());

@@ -1,7 +1,10 @@
 //! Resource cleanup for preventing memory leaks and file handle exhaustion
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
 use tokio::sync::Mutex;
 
@@ -71,10 +74,7 @@ impl ResourceCleanupManager {
 
         // Check for too many active sessions
         if stats.active_sessions > 20 {
-            warnings.push(format!(
-                "High session count: {} active sessions",
-                stats.active_sessions
-            ));
+            warnings.push(format!("High session count: {} active sessions", stats.active_sessions));
         }
 
         warnings
@@ -105,15 +105,16 @@ impl Default for ResourceCleanupManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio::time::sleep;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_update_stats() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(5, 1024 * 1024).await;
-        
+
         let stats = manager.get_stats().await;
         assert_eq!(stats.active_sessions, 5);
         assert_eq!(stats.total_buffer_bytes, 1024 * 1024);
@@ -122,14 +123,14 @@ mod tests {
     #[tokio::test]
     async fn test_needs_cleanup_initially() {
         let manager = ResourceCleanupManager::default();
-        
+
         assert!(manager.needs_cleanup().await);
     }
 
     #[tokio::test]
     async fn test_needs_cleanup_after_mark() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.mark_cleanup_done().await;
         assert!(!manager.needs_cleanup().await);
     }
@@ -137,10 +138,10 @@ mod tests {
     #[tokio::test]
     async fn test_needs_cleanup_after_interval() {
         let manager = ResourceCleanupManager::new(Duration::from_millis(50));
-        
+
         manager.mark_cleanup_done().await;
         assert!(!manager.needs_cleanup().await);
-        
+
         sleep(Duration::from_millis(100)).await;
         assert!(manager.needs_cleanup().await);
     }
@@ -148,9 +149,9 @@ mod tests {
     #[tokio::test]
     async fn test_check_for_leaks_high_buffer() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(5, 150 * 1024 * 1024).await;
-        
+
         let warnings = manager.check_for_leaks().await;
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("High buffer usage"));
@@ -159,9 +160,9 @@ mod tests {
     #[tokio::test]
     async fn test_check_for_leaks_high_sessions() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(25, 1024).await;
-        
+
         let warnings = manager.check_for_leaks().await;
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("High session count"));
@@ -170,9 +171,9 @@ mod tests {
     #[tokio::test]
     async fn test_check_for_leaks_both() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(25, 150 * 1024 * 1024).await;
-        
+
         let warnings = manager.check_for_leaks().await;
         assert_eq!(warnings.len(), 2);
     }
@@ -180,9 +181,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_recommendations() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(15, 60 * 1024 * 1024).await;
-        
+
         let recommendations = manager.get_recommendations().await;
         assert_eq!(recommendations.len(), 2);
     }
@@ -190,9 +191,9 @@ mod tests {
     #[tokio::test]
     async fn test_no_recommendations_when_healthy() {
         let manager = ResourceCleanupManager::default();
-        
+
         manager.update_stats(5, 10 * 1024 * 1024).await;
-        
+
         let recommendations = manager.get_recommendations().await;
         assert_eq!(recommendations.len(), 0);
     }

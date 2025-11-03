@@ -44,6 +44,9 @@ mod e2e_test;
 #[cfg(test)]
 mod persistence_test;
 
+#[cfg(test)]
+mod quality_validator_tests;
+
 pub use command_builder::{
     CommandBuilder,
     CommandConfig,

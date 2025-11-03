@@ -35,7 +35,16 @@ impl SessionAutocomplete {
 
     /// Get session type completions
     pub fn complete_session_type(partial: &str) -> Vec<String> {
-        let types = vec!["debug", "planning", "development", "review", "feature", "hotfix", "refactor", "experiment"];
+        let types = vec![
+            "debug",
+            "planning",
+            "development",
+            "review",
+            "feature",
+            "hotfix",
+            "refactor",
+            "experiment",
+        ];
 
         types
             .into_iter()
@@ -47,13 +56,13 @@ impl SessionAutocomplete {
     /// Get context-aware completions based on command
     pub fn complete_context_aware(input: &str, available_sessions: &[String]) -> Vec<String> {
         let parts: Vec<&str> = input.split_whitespace().collect();
-        
+
         if parts.is_empty() {
             return Self::complete_command("");
         }
 
         let command = parts[0];
-        
+
         match command {
             "/switch" | "/s" | "/close" | "/rename" => {
                 if parts.len() == 1 {
@@ -63,7 +72,7 @@ impl SessionAutocomplete {
                     // Complete partial session name
                     Self::complete_session_name(parts[1], available_sessions)
                 }
-            }
+            },
             "/new" => {
                 if parts.len() == 1 {
                     // Complete session type
@@ -71,11 +80,11 @@ impl SessionAutocomplete {
                 } else {
                     Self::complete_session_type(parts[1])
                 }
-            }
+            },
             _ => {
                 // Complete command
                 Self::complete_command(command)
-            }
+            },
         }
     }
 }

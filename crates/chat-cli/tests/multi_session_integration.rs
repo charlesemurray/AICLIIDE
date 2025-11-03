@@ -1,5 +1,5 @@
 /// Integration test for multi-session functionality
-/// 
+///
 /// Tests:
 /// - Create 2 sessions
 /// - Switch between them
@@ -8,7 +8,10 @@
 
 #[cfg(test)]
 mod multi_session_integration {
-    use chat_cli::cli::chat::coordinator::{CoordinatorConfig, MultiSessionCoordinator};
+    use chat_cli::cli::chat::coordinator::{
+        CoordinatorConfig,
+        MultiSessionCoordinator,
+    };
     use chat_cli::theme::session::SessionType;
 
     #[tokio::test]

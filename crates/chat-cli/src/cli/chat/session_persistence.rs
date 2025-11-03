@@ -1,12 +1,25 @@
 //! Session persistence with error handling
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{
+    Path,
+    PathBuf,
+};
 
-use eyre::{Context, Result, bail};
-use serde::{Deserialize, Serialize};
+use eyre::{
+    Context,
+    Result,
+    bail,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::theme::session::{SessionType, SessionStatus};
+use crate::theme::session::{
+    SessionStatus,
+    SessionType,
+};
 
 /// Persisted session data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +42,7 @@ impl SessionPersistence {
         let sessions_dir = base_dir.join("sessions");
         fs::create_dir_all(&sessions_dir)
             .wrap_err_with(|| format!("Failed to create sessions directory: {}", sessions_dir.display()))?;
-        
+
         Ok(Self { sessions_dir })
     }
 

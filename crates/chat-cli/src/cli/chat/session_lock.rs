@@ -2,9 +2,15 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{
+    Duration,
+    Instant,
+};
 
-use eyre::{Result, bail};
+use eyre::{
+    Result,
+    bail,
+};
 use tokio::sync::Mutex;
 
 /// Lock guard for a session
@@ -60,22 +66,15 @@ impl SessionLockManager {
                     session_id, lock_info.holder
                 );
             } else {
-                bail!(
-                    "Session {} is locked by {}",
-                    session_id,
-                    lock_info.holder
-                );
+                bail!("Session {} is locked by {}", session_id, lock_info.holder);
             }
         }
 
         // Acquire lock
-        locks.insert(
-            session_id.to_string(),
-            LockInfo {
-                acquired_at: Instant::now(),
-                holder: holder.to_string(),
-            },
-        );
+        locks.insert(session_id.to_string(), LockInfo {
+            acquired_at: Instant::now(),
+            holder: holder.to_string(),
+        });
 
         Ok(SessionLockGuard {
             session_id: session_id.to_string(),
@@ -126,13 +125,14 @@ impl Default for SessionLockManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio::time::sleep;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_acquire_lock() {
         let manager = SessionLockManager::default();
-        
+
         let guard = manager.try_lock("session-1", "user-1").await;
         assert!(guard.is_ok());
     }
@@ -140,10 +140,10 @@ mod tests {
     #[tokio::test]
     async fn test_double_lock_fails() {
         let manager = SessionLockManager::default();
-        
+
         let _guard1 = manager.try_lock("session-1", "user-1").await.unwrap();
         let result = manager.try_lock("session-1", "user-2").await;
-        
+
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("locked"));
     }
@@ -151,15 +151,15 @@ mod tests {
     #[tokio::test]
     async fn test_lock_released_on_drop() {
         let manager = SessionLockManager::default();
-        
+
         {
             let _guard = manager.try_lock("session-1", "user-1").await.unwrap();
             assert!(manager.is_locked("session-1").await);
         }
-        
+
         // Give async drop time to complete
         sleep(Duration::from_millis(10)).await;
-        
+
         // Should be able to lock again
         let result = manager.try_lock("session-1", "user-2").await;
         assert!(result.is_ok());
@@ -168,9 +168,9 @@ mod tests {
     #[tokio::test]
     async fn test_is_locked() {
         let manager = SessionLockManager::default();
-        
+
         assert!(!manager.is_locked("session-1").await);
-        
+
         let _guard = manager.try_lock("session-1", "user-1").await.unwrap();
         assert!(manager.is_locked("session-1").await);
     }
@@ -178,10 +178,10 @@ mod tests {
     #[tokio::test]
     async fn test_force_unlock() {
         let manager = SessionLockManager::default();
-        
+
         let _guard = manager.try_lock("session-1", "user-1").await.unwrap();
         assert!(manager.is_locked("session-1").await);
-        
+
         manager.force_unlock("session-1").await;
         assert!(!manager.is_locked("session-1").await);
     }
@@ -189,10 +189,10 @@ mod tests {
     #[tokio::test]
     async fn test_locked_sessions() {
         let manager = SessionLockManager::default();
-        
+
         let _guard1 = manager.try_lock("session-1", "user-1").await.unwrap();
         let _guard2 = manager.try_lock("session-2", "user-2").await.unwrap();
-        
+
         let locked = manager.locked_sessions().await;
         assert_eq!(locked.len(), 2);
         assert!(locked.contains(&"session-1".to_string()));
@@ -202,12 +202,12 @@ mod tests {
     #[tokio::test]
     async fn test_stale_lock_cleanup() {
         let manager = SessionLockManager::new(Duration::from_millis(50));
-        
+
         let _guard = manager.try_lock("session-1", "user-1").await.unwrap();
-        
+
         // Wait for lock to become stale
         sleep(Duration::from_millis(100)).await;
-        
+
         let count = manager.cleanup_stale_locks().await;
         assert_eq!(count, 1);
         assert!(!manager.is_locked("session-1").await);
@@ -216,12 +216,12 @@ mod tests {
     #[tokio::test]
     async fn test_stale_lock_broken_on_new_acquire() {
         let manager = SessionLockManager::new(Duration::from_millis(50));
-        
+
         let _guard1 = manager.try_lock("session-1", "user-1").await.unwrap();
-        
+
         // Wait for lock to become stale
         sleep(Duration::from_millis(100)).await;
-        
+
         // Should be able to acquire despite existing lock
         let result = manager.try_lock("session-1", "user-2").await;
         assert!(result.is_ok());

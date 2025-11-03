@@ -1,7 +1,11 @@
 //! Evaluation framework for memory recall quality
 
-use cortex_memory::{CortexMemory, MemoryConfig};
 use std::collections::HashMap;
+
+use cortex_memory::{
+    CortexMemory,
+    MemoryConfig,
+};
 use tempfile::TempDir;
 
 /// Test case for evaluation
@@ -58,7 +62,11 @@ fn create_evaluation_cases() -> Vec<EvaluationCase> {
     vec![
         EvaluationCase {
             query: "authentication JWT".to_string(),
-            expected_keywords: vec!["authentication".to_string(), "JWT".to_string(), "jsonwebtoken".to_string()],
+            expected_keywords: vec![
+                "authentication".to_string(),
+                "JWT".to_string(),
+                "jsonwebtoken".to_string(),
+            ],
             min_score: 0.6,
         },
         EvaluationCase {
@@ -93,7 +101,7 @@ fn evaluate_recall(memory: &mut CortexMemory, cases: &[EvaluationCase]) -> Evalu
 
     for case in cases {
         let results = memory.recall_context(&case.query, 5).unwrap_or_default();
-        
+
         if results.is_empty() {
             continue;
         }
@@ -104,10 +112,14 @@ fn evaluate_recall(memory: &mut CortexMemory, cases: &[EvaluationCase]) -> Evalu
 
         for item in &results {
             score_sum += item.score;
-            
+
             // Check if content contains any expected keywords
             let content_lower = item.content.to_lowercase();
-            if case.expected_keywords.iter().any(|kw| content_lower.contains(&kw.to_lowercase())) {
+            if case
+                .expected_keywords
+                .iter()
+                .any(|kw| content_lower.contains(&kw.to_lowercase()))
+            {
                 relevant_count += 1;
             }
         }
@@ -127,7 +139,7 @@ fn evaluate_recall(memory: &mut CortexMemory, cases: &[EvaluationCase]) -> Evalu
     }
 
     let cases_total = cases.len();
-    
+
     EvaluationMetrics {
         precision_at_5: total_precision / cases_total as f32,
         recall_at_5: total_recall / cases_total as f32,
@@ -160,7 +172,10 @@ fn test_memory_recall_quality() {
     println!("Recall@5: {:.2}%", metrics.recall_at_5 * 100.0);
     println!("Avg Score: {:.3}", metrics.avg_score);
     println!("Cases Passed: {}/{}", metrics.cases_passed, metrics.cases_total);
-    println!("Pass Rate: {:.1}%", (metrics.cases_passed as f32 / metrics.cases_total as f32) * 100.0);
+    println!(
+        "Pass Rate: {:.1}%",
+        (metrics.cases_passed as f32 / metrics.cases_total as f32) * 100.0
+    );
 
     // Quality thresholds
     assert!(
@@ -168,7 +183,7 @@ fn test_memory_recall_quality() {
         "Precision@5 too low: {:.2} (expected >= 0.6)",
         metrics.precision_at_5
     );
-    
+
     assert!(
         metrics.avg_score >= 0.5,
         "Average score too low: {:.3} (expected >= 0.5)",
@@ -199,7 +214,7 @@ fn test_session_isolation_quality() {
         "Redis is an in-memory data store. Use the redis crate...",
         "session_a",
     );
-    
+
     let _ = memory.store_interaction(
         "How do I use MongoDB?",
         "MongoDB is a document database. Use the mongodb crate...",
@@ -212,12 +227,10 @@ fn test_session_isolation_quality() {
 
     // Session-specific query should filter
     let session_results = memory.recall_by_session("database", "session_a", 5).unwrap();
-    
+
     // Verify session isolation
     for item in &session_results {
-        let session_id = item.metadata.get("session_id")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let session_id = item.metadata.get("session_id").and_then(|v| v.as_str()).unwrap_or("");
         assert_eq!(session_id, "session_a", "Should only return session_a memories");
     }
 
@@ -233,17 +246,13 @@ fn test_deduplication_quality() {
     let mut memory = CortexMemory::new(&db_path, config).unwrap();
 
     // Store same interaction twice
-    let id1 = memory.store_interaction(
-        "What is Rust?",
-        "Rust is a systems programming language...",
-        "session1",
-    ).unwrap();
+    let id1 = memory
+        .store_interaction("What is Rust?", "Rust is a systems programming language...", "session1")
+        .unwrap();
 
-    let id2 = memory.store_interaction(
-        "What is Rust?",
-        "Rust is a systems programming language...",
-        "session1",
-    ).unwrap();
+    let id2 = memory
+        .store_interaction("What is Rust?", "Rust is a systems programming language...", "session1")
+        .unwrap();
 
     // Second store should return empty (duplicate)
     assert!(id2.is_empty(), "Duplicate should not be stored");

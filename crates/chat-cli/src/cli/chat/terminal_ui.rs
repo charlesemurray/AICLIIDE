@@ -2,13 +2,28 @@
 
 use std::io::Write;
 
+use crossterm::style::{
+    Color,
+    Print,
+    ResetColor,
+    SetForegroundColor,
+};
+use crossterm::terminal::{
+    self,
+    Clear,
+    ClearType,
+};
 use crossterm::{
-    cursor, execute, style::{Color, Print, ResetColor, SetForegroundColor}, terminal::{self, Clear, ClearType}
+    cursor,
+    execute,
 };
 use eyre::Result;
 
 use crate::cli::chat::coordinator::MultiSessionCoordinator;
-use crate::theme::session::{SessionColors, SessionType};
+use crate::theme::session::{
+    SessionColors,
+    SessionType,
+};
 
 /// Terminal UI manager for sessions
 pub struct TerminalUI {
@@ -113,10 +128,10 @@ mod tests {
     fn test_show_switch_message() {
         let ui = TerminalUI::new();
         let mut buffer = Vec::new();
-        
+
         let result = ui.show_switch_message(&mut buffer, "session-1", "session-2");
         assert!(result.is_ok());
-        
+
         let output = String::from_utf8_lossy(&buffer);
         assert!(output.contains("session-1"));
         assert!(output.contains("session-2"));
@@ -126,15 +141,15 @@ mod tests {
     fn test_show_session_list() {
         let ui = TerminalUI::new();
         let mut buffer = Vec::new();
-        
+
         let sessions = vec![
             ("dev-session".to_string(), SessionType::Development, true),
             ("debug-session".to_string(), SessionType::Debug, false),
         ];
-        
+
         let result = ui.show_session_list(&mut buffer, &sessions);
         assert!(result.is_ok());
-        
+
         let output = String::from_utf8_lossy(&buffer);
         assert!(output.contains("dev-session"));
         assert!(output.contains("debug-session"));
@@ -144,7 +159,7 @@ mod tests {
     fn test_clear_for_switch() {
         let ui = TerminalUI::new();
         let mut buffer = Vec::new();
-        
+
         let result = ui.clear_for_switch(&mut buffer);
         assert!(result.is_ok());
     }

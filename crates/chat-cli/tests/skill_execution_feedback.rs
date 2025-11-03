@@ -1,7 +1,6 @@
 /// Tests for skill execution feedback
 ///
 /// Validates that users see clear feedback during skill execution
-
 use chat_cli::cli::chat::tools::skill_tool::SkillTool;
 use chat_cli::cli::skills::SkillRegistry;
 

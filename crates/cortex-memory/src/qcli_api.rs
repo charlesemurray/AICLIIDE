@@ -56,7 +56,7 @@ impl CortexMemory {
         }
 
         let content = format!("User: {}\nAssistant: {}", user_message, assistant_response);
-        
+
         match self.embedder.embed(&content) {
             Ok(embedding) => {
                 // Check for duplicates (similarity > 0.95)
@@ -81,17 +81,17 @@ impl CortexMemory {
                     Ok(_) => {
                         self.circuit_breaker.record_success();
                         Ok(id)
-                    }
+                    },
                     Err(e) => {
                         self.circuit_breaker.record_failure();
                         Err(e)
-                    }
+                    },
                 }
-            }
+            },
             Err(e) => {
                 self.circuit_breaker.record_failure();
                 Err(e)
-            }
+            },
         }
     }
 
@@ -126,11 +126,11 @@ impl CortexMemory {
 
                 self.circuit_breaker.record_success();
                 Ok(items)
-            }
+            },
             Err(e) => {
                 self.circuit_breaker.record_failure();
                 Err(e)
-            }
+            },
         }
     }
 
@@ -224,10 +224,11 @@ impl CortexMemory {
         }
 
         // Error messages
-        if assistant_msg.contains("Error:") 
+        if assistant_msg.contains("Error:")
             || assistant_msg.contains("Failed to")
             || assistant_msg.contains("error[E")
-            || assistant_msg.starts_with("error:") {
+            || assistant_msg.starts_with("error:")
+        {
             return false;
         }
 
@@ -242,6 +243,16 @@ impl CortexMemory {
     /// Check if memory is enabled
     pub fn is_enabled(&self) -> bool {
         self.config.enabled
+    }
+
+    /// Get circuit breaker state
+    pub fn circuit_breaker_state(&self) -> crate::CircuitState {
+        self.circuit_breaker.state()
+    }
+
+    /// Get circuit breaker failure count
+    pub fn circuit_breaker_failures(&self) -> u32 {
+        self.circuit_breaker.failure_count()
     }
 }
 
