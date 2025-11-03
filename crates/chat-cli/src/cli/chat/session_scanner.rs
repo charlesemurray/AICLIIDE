@@ -10,17 +10,19 @@ use crate::git::{
 use crate::session::metadata::SessionMetadata;
 
 /// Scan for worktree-based sessions
-pub fn scan_worktree_sessions(repo_root: &Path) -> Result<Vec<SessionMetadata>> {
+pub fn scan_worktree_sessions(repo_root: &Path) -> Result<(Vec<SessionMetadata>, Vec<String>)> {
     let worktrees = list_worktrees(repo_root)?;
     let mut sessions = Vec::new();
+    let mut errors = Vec::new();
 
     for wt in worktrees {
-        if let Ok(metadata) = load_from_worktree(&wt.path) {
-            sessions.push(metadata);
+        match load_from_worktree(&wt.path) {
+            Ok(metadata) => sessions.push(metadata),
+            Err(e) => errors.push(format!("{}: {}", wt.path.display(), e)),
         }
     }
 
-    Ok(sessions)
+    Ok((sessions, errors))
 }
 
 /// Get all worktree sessions in current repository
