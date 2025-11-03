@@ -291,9 +291,30 @@ impl ChatArgs {
 
         // Initialize multi-session coordinator if enabled
         let mut coordinator = if std::env::var("Q_MULTI_SESSION").is_ok() {
-            Some(coordinator::MultiSessionCoordinator::new(
+            let mut coord = coordinator::MultiSessionCoordinator::new(
                 coordinator::CoordinatorConfig::default()
-            ))
+            );
+            
+            // Enable persistence
+            if let Ok(home) = std::env::var("HOME") {
+                let base_dir = std::path::PathBuf::from(home).join(".amazonq");
+                if let Err(e) = coord.enable_persistence(base_dir) {
+                    eprintln!("Warning: Failed to enable session persistence: {}", e);
+                }
+                
+                // Load saved sessions
+                match coord.load_sessions().await {
+                    Ok(count) if count > 0 => {
+                        eprintln!("✓ Loaded {} saved session(s)", count);
+                    }
+                    Ok(_) => {}, // No sessions to load
+                    Err(e) => {
+                        eprintln!("Warning: Failed to load sessions: {}", e);
+                    }
+                }
+            }
+            
+            Some(coord)
         } else {
             None
         };

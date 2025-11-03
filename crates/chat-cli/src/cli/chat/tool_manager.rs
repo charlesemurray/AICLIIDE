@@ -2393,7 +2393,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2438,7 +2438,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2482,7 +2482,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2603,7 +2603,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2636,7 +2636,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2669,7 +2669,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let mut os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();
@@ -2725,7 +2725,7 @@ mod tests {
 
         use tempfile::tempdir;
 
-        use crate::bedrock::types::AssistantToolUse;
+        use crate::cli::chat::message::AssistantToolUse;
 
         let mut os = Os::new().await.unwrap();
         let dir = tempdir().unwrap();

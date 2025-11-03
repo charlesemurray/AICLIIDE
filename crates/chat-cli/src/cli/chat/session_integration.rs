@@ -29,6 +29,10 @@ pub async fn handle_session_command<W: Write>(
         }
         SessionCommand::Switch(name) => {
             switcher.switch_to(coordinator, &name, writer).await?;
+            // Save active session state
+            if let Some(id) = coordinator.active_session_id().await {
+                let _ = coordinator.save_session(&id).await; // Ignore errors
+            }
         }
         SessionCommand::New { session_type, name } => {
             VisualFeedback::info(writer, &format!(
