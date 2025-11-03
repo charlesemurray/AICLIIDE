@@ -57,6 +57,7 @@ mod tests {
 
     #[test]
     #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+    #[ignore] // Requires model files
     fn test_embedder_creation() {
         let embedder = CortexEmbedder::new();
         assert!(embedder.is_ok());
@@ -64,6 +65,7 @@ mod tests {
 
     #[test]
     #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+    #[ignore] // Requires model files
     fn test_embed_text() {
         let embedder = CortexEmbedder::new().unwrap();
         let embedding = embedder.embed("test text").unwrap();
@@ -74,6 +76,7 @@ mod tests {
 
     #[test]
     #[cfg(not(all(target_os = "linux", target_arch = "aarch64")))]
+    #[ignore] // Requires model files
     fn test_dimensions() {
         let embedder = CortexEmbedder::new().unwrap();
         assert_eq!(embedder.dimensions(), 384);
