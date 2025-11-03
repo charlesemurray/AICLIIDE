@@ -26,7 +26,7 @@ pub fn scan_worktree_sessions(repo_root: &Path) -> Result<(Vec<SessionMetadata>,
 }
 
 /// Get all worktree sessions in current repository
-pub fn get_current_repo_sessions() -> Result<Vec<SessionMetadata>> {
+pub fn get_current_repo_sessions() -> Result<(Vec<SessionMetadata>, Vec<String>)> {
     let current_dir = std::env::current_dir()?;
     let git_ctx = detect_git_context(&current_dir)?;
     scan_worktree_sessions(&git_ctx.repo_root)
