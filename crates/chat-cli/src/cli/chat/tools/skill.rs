@@ -263,11 +263,13 @@ impl SkillTool {
     ) -> Result<String> {
         match &definition.implementation {
             Some(SkillImplementation::Script { .. }) => {
-                let output = tokio::runtime::Runtime::new()?.block_on(self.execute_script_with_timeout(definition, &params, 30))?;
+                let output = tokio::runtime::Runtime::new()?
+                    .block_on(self.execute_script_with_timeout(definition, &params, 30))?;
                 Ok(self.truncate_output(output))
             },
             Some(SkillImplementation::Command { .. }) => {
-                let output = tokio::runtime::Runtime::new()?.block_on(self.execute_command_with_timeout(definition, &params, 30))?;
+                let output = tokio::runtime::Runtime::new()?
+                    .block_on(self.execute_command_with_timeout(definition, &params, 30))?;
                 Ok(self.truncate_output(output))
             },
             None => Err(eyre::eyre!("Skill has no implementation defined")),
@@ -275,7 +277,10 @@ impl SkillTool {
     }
 
     pub fn definition_to_toolspec(&self, definition: &SkillDefinition) -> super::ToolSpec {
-        use super::{InputSchema, ToolOrigin};
+        use super::{
+            InputSchema,
+            ToolOrigin,
+        };
 
         let input_schema = definition.parameters.clone().unwrap_or(serde_json::json!({
             "type": "object",

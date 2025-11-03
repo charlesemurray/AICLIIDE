@@ -37,7 +37,10 @@ use hooks::HooksArgs;
 use knowledge::KnowledgeSubcommand;
 use logdump::LogdumpArgs;
 use mcp::McpArgs;
-use memory::{MemorySubcommand, RecallArgs};
+use memory::{
+    MemorySubcommand,
+    RecallArgs,
+};
 use model::ModelArgs;
 use paste::PasteArgs;
 use persist::PersistSubcommand;

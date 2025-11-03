@@ -1,6 +1,12 @@
 use std::path::Path;
 
-use crate::{CortexEmbedder, MemoryConfig, MemoryManager, MemoryNote, Result};
+use crate::{
+    CortexEmbedder,
+    MemoryConfig,
+    MemoryManager,
+    MemoryNote,
+    Result,
+};
 
 /// High-level API for Q CLI integration
 pub struct CortexMemory {
@@ -14,7 +20,7 @@ impl CortexMemory {
     pub fn new<P: AsRef<Path>>(db_path: P, config: MemoryConfig) -> Result<Self> {
         let embedder = CortexEmbedder::new()?;
         let manager = MemoryManager::new(db_path, embedder.dimensions(), 20)?;
-        
+
         Ok(Self {
             manager,
             embedder,
@@ -35,13 +41,13 @@ impl CortexMemory {
 
         let content = format!("User: {}\nAssistant: {}", user_message, assistant_response);
         let embedding = self.embedder.embed(&content)?;
-        
+
         let mut metadata = std::collections::HashMap::new();
         metadata.insert("session_id".to_string(), serde_json::json!(session_id));
-        
+
         let id = uuid::Uuid::new_v4().to_string();
         let note = MemoryNote::new(id.clone(), content, metadata);
-        
+
         self.manager.add(note, embedding)?;
         Ok(id)
     }
@@ -54,7 +60,7 @@ impl CortexMemory {
 
         let query_embedding = self.embedder.embed(query)?;
         let results = self.manager.search(&query_embedding, limit);
-        
+
         let mut items = Vec::new();
         for (id, score) in results {
             if let Some(note) = self.manager.get(&id)? {
@@ -66,7 +72,7 @@ impl CortexMemory {
                 });
             }
         }
-        
+
         Ok(items)
     }
 }

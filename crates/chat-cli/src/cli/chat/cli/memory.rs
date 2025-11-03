@@ -1,4 +1,7 @@
-use clap::{Args, Subcommand};
+use clap::{
+    Args,
+    Subcommand,
+};
 
 #[derive(Debug, Clone, PartialEq, Subcommand)]
 pub enum MemorySubcommand {
@@ -34,7 +37,7 @@ pub struct ListArgs {
     /// Maximum number of memories to show
     #[arg(long, default_value = "10")]
     pub limit: usize,
-    
+
     /// Filter by session ID
     #[arg(long)]
     pub session: Option<String>,
@@ -44,7 +47,7 @@ pub struct ListArgs {
 pub struct SearchArgs {
     /// Search query
     pub query: String,
-    
+
     /// Maximum number of results
     #[arg(long, default_value = "5")]
     pub limit: usize,
@@ -68,15 +71,15 @@ pub struct ToggleArgs {
 pub struct RecallArgs {
     /// Query to recall memories for
     pub query: String,
-    
+
     /// Search across all sessions
     #[arg(long)]
     pub global: bool,
-    
+
     /// Specific session to search
     #[arg(long)]
     pub session: Option<String>,
-    
+
     /// Maximum number of results
     #[arg(long, default_value = "5")]
     pub limit: usize,
