@@ -1,4 +1,7 @@
-use crate::{CortexError, Result};
+use crate::{
+    CortexError,
+    Result,
+};
 
 /// Embedder wrapper for generating text embeddings
 pub struct CortexEmbedder {
@@ -15,11 +18,11 @@ impl CortexEmbedder {
                 .map_err(|e| CortexError::EmbeddingError(e.to_string()))?;
             Ok(Self { embedder })
         }
-        
+
         #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
         {
             Err(CortexError::EmbeddingError(
-                "Embeddings not supported on Linux ARM64".to_string()
+                "Embeddings not supported on Linux ARM64".to_string(),
             ))
         }
     }
@@ -32,12 +35,12 @@ impl CortexEmbedder {
                 .embed(text)
                 .map_err(|e| CortexError::EmbeddingError(e.to_string()))
         }
-        
+
         #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
         {
             let _ = text;
             Err(CortexError::EmbeddingError(
-                "Embeddings not supported on Linux ARM64".to_string()
+                "Embeddings not supported on Linux ARM64".to_string(),
             ))
         }
     }
@@ -64,7 +67,7 @@ mod tests {
     fn test_embed_text() {
         let embedder = CortexEmbedder::new().unwrap();
         let embedding = embedder.embed("test text").unwrap();
-        
+
         assert_eq!(embedding.len(), 384);
         assert!(embedding.iter().any(|&x| x != 0.0));
     }

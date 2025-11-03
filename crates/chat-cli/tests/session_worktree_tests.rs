@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use chat_cli::session::{SessionMetadata, WorktreeInfo};
+use chat_cli::session::{
+    SessionMetadata,
+    WorktreeInfo,
+};
 
 #[test]
 fn test_worktree_info_creation() {
@@ -12,8 +15,7 @@ fn test_worktree_info_creation() {
         merge_target: "main".to_string(),
     };
 
-    let metadata = SessionMetadata::new("test-session", "First message")
-        .with_worktree(worktree_info.clone());
+    let metadata = SessionMetadata::new("test-session", "First message").with_worktree(worktree_info.clone());
 
     assert!(metadata.is_worktree_session());
     assert_eq!(metadata.worktree_path(), Some(&PathBuf::from("/tmp/worktree")));
@@ -41,8 +43,7 @@ fn test_worktree_serialization() {
         merge_target: "main".to_string(),
     };
 
-    let metadata = SessionMetadata::new("test-session", "First message")
-        .with_worktree(worktree_info);
+    let metadata = SessionMetadata::new("test-session", "First message").with_worktree(worktree_info);
 
     // Serialize to JSON
     let json = serde_json::to_string(&metadata).unwrap();

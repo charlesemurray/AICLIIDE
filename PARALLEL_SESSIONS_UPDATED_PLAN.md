@@ -115,22 +115,23 @@ pub struct WorktreeInfo {
 
 **Tasks**:
 
-#### Task 2.1: Extend SessionMetadata (2 hours)
-```rust
-// crates/chat-cli/src/session/metadata.rs (modify existing)
-impl SessionMetadata {
-    pub fn with_worktree(mut self, worktree_info: WorktreeInfo) -> Self {
-        self.worktree_info = Some(worktree_info);
-        self
-    }
-    
-    pub fn is_worktree_session(&self) -> bool {
-        self.worktree_info.is_some()
-    }
-}
-```
+#### Task 2.1: Extend SessionMetadata ✅ COMPLETE (2 hours)
+**Completed**:
+- ✅ Added `WorktreeInfo` struct to `metadata.rs`
+- ✅ Extended `SessionMetadata` with `worktree_info: Option<WorktreeInfo>`
+- ✅ Implemented `with_worktree()`, `is_worktree_session()`, `worktree_path()` methods
+- ✅ Added 4 integration tests (all passing)
+- ✅ Proper serialization with `skip_serializing_if` for None values
+
+**Files Modified**:
+- `crates/chat-cli/src/session/metadata.rs`
+- `crates/chat-cli/src/session/mod.rs`
+
+**Files Created**:
+- `crates/chat-cli/tests/session_worktree_tests.rs`
 
 #### Task 2.2: Worktree-Aware Repository (4 hours)
+**Status**: Next - Ready to start
 ```rust
 // crates/chat-cli/src/session/worktree_repo.rs (NEW)
 pub struct WorktreeSessionRepository {

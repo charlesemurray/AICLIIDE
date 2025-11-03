@@ -12,27 +12,27 @@ impl MemoryConfig {
         self.enabled = enabled;
         self
     }
-    
+
     pub fn with_retention_days(mut self, days: u32) -> Self {
         self.retention_days = days;
         self
     }
-    
+
     pub fn with_max_size_mb(mut self, mb: u32) -> Self {
         self.max_size_mb = mb;
         self
     }
-    
+
     pub fn with_cross_session(mut self, cross_session: bool) -> Self {
         self.cross_session = cross_session;
         self
     }
-    
+
     pub fn with_auto_promote(mut self, auto_promote: bool) -> Self {
         self.auto_promote = auto_promote;
         self
     }
-    
+
     pub fn with_warn_threshold(mut self, threshold: u8) -> Self {
         self.warn_threshold = threshold;
         self
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn test_config_defaults() {
         let config = MemoryConfig::default();
-        
+
         assert_eq!(config.enabled, true);
         assert_eq!(config.retention_days, 30);
         assert_eq!(config.max_size_mb, 100);
@@ -67,7 +67,7 @@ mod tests {
         assert_eq!(config.auto_promote, true);
         assert_eq!(config.warn_threshold, 80);
     }
-    
+
     #[test]
     fn test_config_builder() {
         let config = MemoryConfig::default()
@@ -77,7 +77,7 @@ mod tests {
             .with_cross_session(true)
             .with_auto_promote(false)
             .with_warn_threshold(90);
-        
+
         assert_eq!(config.enabled, false);
         assert_eq!(config.retention_days, 60);
         assert_eq!(config.max_size_mb, 200);

@@ -1,4 +1,5 @@
 use eyre::Result;
+
 use crate::cli::chat::input_router::SessionCommand;
 use crate::theme::session::SessionStatus;
 
@@ -7,24 +8,12 @@ pub struct SessionCommandHandler;
 impl SessionCommandHandler {
     pub fn execute(command: SessionCommand) -> Result<String> {
         match command {
-            SessionCommand::List { all, waiting } => {
-                Self::handle_list(all, waiting)
-            },
-            SessionCommand::Switch(name) => {
-                Self::handle_switch(&name)
-            },
-            SessionCommand::New { session_type, name } => {
-                Self::handle_new(session_type, name)
-            },
-            SessionCommand::Close(name) => {
-                Self::handle_close(name)
-            },
-            SessionCommand::Rename(name) => {
-                Self::handle_rename(&name)
-            },
-            SessionCommand::SessionName(name) => {
-                Self::handle_session_name(name)
-            },
+            SessionCommand::List { all, waiting } => Self::handle_list(all, waiting),
+            SessionCommand::Switch(name) => Self::handle_switch(&name),
+            SessionCommand::New { session_type, name } => Self::handle_new(session_type, name),
+            SessionCommand::Close(name) => Self::handle_close(name),
+            SessionCommand::Rename(name) => Self::handle_rename(&name),
+            SessionCommand::SessionName(name) => Self::handle_session_name(name),
         }
     }
 
@@ -44,7 +33,9 @@ impl SessionCommandHandler {
     }
 
     fn handle_new(session_type: Option<crate::theme::session::SessionType>, name: Option<String>) -> Result<String> {
-        let type_str = session_type.map(|t| format!("{:?}", t)).unwrap_or_else(|| "Development".to_string());
+        let type_str = session_type
+            .map(|t| format!("{:?}", t))
+            .unwrap_or_else(|| "Development".to_string());
         let name_str = name.unwrap_or_else(|| "auto-generated".to_string());
         Ok(format!("Creating new {} session: {}", type_str, name_str))
     }
@@ -76,7 +67,8 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::List {
             all: false,
             waiting: false,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("active"));
     }
 
@@ -85,7 +77,8 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::List {
             all: true,
             waiting: false,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("all"));
     }
 
@@ -94,15 +87,14 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::List {
             all: false,
             waiting: true,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("waiting"));
     }
 
     #[test]
     fn test_handle_switch() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::Switch("my-session".to_string())
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::Switch("my-session".to_string())).unwrap();
         assert!(result.contains("my-session"));
     }
 
@@ -111,7 +103,8 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::New {
             session_type: None,
             name: None,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("Development"));
         assert!(result.contains("auto-generated"));
     }
@@ -121,7 +114,8 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::New {
             session_type: Some(SessionType::Debug),
             name: None,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("Debug"));
     }
 
@@ -130,47 +124,38 @@ mod tests {
         let result = SessionCommandHandler::execute(SessionCommand::New {
             session_type: None,
             name: Some("my-session".to_string()),
-        }).unwrap();
+        })
+        .unwrap();
         assert!(result.contains("my-session"));
     }
 
     #[test]
     fn test_handle_close_current() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::Close(None)
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::Close(None)).unwrap();
         assert!(result.contains("current"));
     }
 
     #[test]
     fn test_handle_close_named() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::Close(Some("my-session".to_string()))
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::Close(Some("my-session".to_string()))).unwrap();
         assert!(result.contains("my-session"));
     }
 
     #[test]
     fn test_handle_rename() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::Rename("new-name".to_string())
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::Rename("new-name".to_string())).unwrap();
         assert!(result.contains("new-name"));
     }
 
     #[test]
     fn test_handle_session_name_view() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::SessionName(None)
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::SessionName(None)).unwrap();
         assert!(result.contains("Viewing"));
     }
 
     #[test]
     fn test_handle_session_name_set() {
-        let result = SessionCommandHandler::execute(
-            SessionCommand::SessionName(Some("new-name".to_string()))
-        ).unwrap();
+        let result = SessionCommandHandler::execute(SessionCommand::SessionName(Some("new-name".to_string()))).unwrap();
         assert!(result.contains("new-name"));
     }
 }

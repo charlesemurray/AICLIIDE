@@ -51,19 +51,29 @@ impl WorkflowTool {
         PermissionEvalResult::Allow
     }
 
+    fn format_error(&self, step_num: usize, step_name: &str, error: &eyre::Error) -> String {
+        format!("Workflow failed at step {} ('{}'): {}", step_num, step_name, error)
+    }
+
     pub fn invoke_with_definition(
         &self,
         definition: &WorkflowDefinition,
         _params: std::collections::HashMap<String, serde_json::Value>,
     ) -> Result<String> {
+        let mut current_step = 0;
+
         for step in &definition.steps {
+            current_step += 1;
+
             // Validate tool exists
             let known_tools = ["echo", "calculator"];
             if !known_tools.contains(&step.tool.as_str()) {
-                return Err(eyre::eyre!("Unknown tool '{}' in step '{}'", step.tool, step.name));
+                let error = eyre::eyre!("Unknown tool '{}'", step.tool);
+                return Err(eyre::eyre!(self.format_error(current_step, &step.name, &error)));
             }
         }
-        Ok("Success".to_string())
+
+        Ok(format!("Executed {} steps successfully", definition.steps.len()))
     }
 }
 
@@ -208,5 +218,67 @@ mod tests {
         let error = result.unwrap_err();
         let error_msg = error.to_string();
         assert!(error_msg.contains("failing_step") || error_msg.contains("nonexistent"));
+    }
+
+    #[test]
+    fn test_workflow_state_tracking() {
+        use std::collections::HashMap;
+
+        let definition = WorkflowDefinition {
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            description: "Test".to_string(),
+            steps: vec![WorkflowStep {
+                name: "step1".to_string(),
+                tool: "echo".to_string(),
+                parameters: serde_json::json!({"msg": "first"}),
+            }],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new("test".to_string(), "Test".to_string());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("step1"));
+    }
+
+    #[test]
+    fn test_format_workflow_error() {
+        use std::collections::HashMap;
+
+        let definition = WorkflowDefinition {
+            name: "test-workflow".to_string(),
+            version: "1.0".to_string(),
+            description: "Test workflow".to_string(),
+            steps: vec![
+                WorkflowStep {
+                    name: "step1".to_string(),
+                    tool: "echo".to_string(),
+                    parameters: serde_json::json!({"msg": "first"}),
+                },
+                WorkflowStep {
+                    name: "failing_step".to_string(),
+                    tool: "bad_tool".to_string(),
+                    parameters: serde_json::json!({}),
+                },
+            ],
+            context: None,
+        };
+
+        let workflow = WorkflowTool::new("test".to_string(), "Test".to_string());
+        let params = HashMap::new();
+
+        let result = workflow.invoke_with_definition(&definition, params);
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+
+        // Error should include step number, step name, and context
+        assert!(error_msg.contains("step 2") || error_msg.contains("failing_step"));
+        assert!(error_msg.contains("bad_tool") || error_msg.contains("Unknown"));
     }
 }

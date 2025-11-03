@@ -3,6 +3,7 @@ pub mod io;
 pub mod manager;
 pub mod metadata;
 pub mod repository;
+pub mod worktree_repo;
 
 #[cfg(test)]
 mod integration_tests;
