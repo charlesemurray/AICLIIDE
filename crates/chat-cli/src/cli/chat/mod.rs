@@ -970,6 +970,8 @@ impl ChatSession {
             terminal_state: None,
             analytics,
             conversation_mode: crate::conversation_modes::ConversationMode::Interactive,
+            transition_manager: crate::conversation_modes::TransitionManager::new(),
+            user_preferences: crate::conversation_modes::UserPreferences::new(),
             cortex,
             last_user_message: None,
         };
