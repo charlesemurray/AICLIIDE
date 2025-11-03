@@ -38,6 +38,23 @@ impl FeedbackManager {
         Ok(Self { conn })
     }
 
+    /// Validate memory ID
+    fn validate_memory_id(memory_id: &str) -> Result<()> {
+        if memory_id.is_empty() {
+            return Err(rusqlite::Error::InvalidParameterName(
+                "memory_id cannot be empty".to_string()
+            ));
+        }
+
+        if memory_id.len() > 255 {
+            return Err(rusqlite::Error::InvalidParameterName(
+                "memory_id too long (max 255 characters)".to_string()
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Record feedback for a memory
     pub fn record_feedback(&self, memory_id: &str, helpful: bool) -> Result<()> {
         let timestamp = std::time::SystemTime::now()
