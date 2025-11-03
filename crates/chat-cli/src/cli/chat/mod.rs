@@ -272,6 +272,9 @@ pub struct ChatArgs {
     /// Control line wrapping behavior (default: auto-detect)
     #[arg(short = 'w', long, value_enum)]
     pub wrap: Option<WrapMode>,
+    /// Disable memory system for this session (ephemeral mode)
+    #[arg(long, alias = "ephemeral")]
+    pub no_memory: bool,
 }
 
 impl ChatArgs {
@@ -536,6 +539,7 @@ impl ChatArgs {
             self.wrap,
             self.auto_approve,
             self.batch_mode,
+            self.no_memory,
         )
         .await?
         .spawn(os)

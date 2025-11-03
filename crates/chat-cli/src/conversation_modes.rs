@@ -8,6 +8,12 @@ pub enum ConversationMode {
     Review,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConversationModeTrigger {
+    UserCommand,
+    Auto,
+}
+
 impl ConversationMode {
     pub fn system_prompt_suffix(&self) -> &'static str {
         match self {
@@ -99,6 +105,26 @@ impl ConversationMode {
             ConversationMode::Review => "[REVIEW]".to_string(),
         }
     }
+
+    /// Get a notification message for mode transitions
+    pub fn get_transition_notification(&self, trigger: &ConversationModeTrigger) -> String {
+        match trigger {
+            ConversationModeTrigger::Auto => {
+                format!("🔄 Automatically switched to {} mode", self.get_mode_name())
+            },
+            ConversationModeTrigger::UserCommand => {
+                format!("✅ Switched to {} mode", self.get_mode_name())
+            },
+        }
+    }
+    
+    fn get_mode_name(&self) -> &str {
+        match self {
+            ConversationMode::Interactive => "Interactive",
+            ConversationMode::ExecutePlan => "ExecutePlan", 
+            ConversationMode::Review => "Review",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -135,5 +161,23 @@ mod tests {
             assert!(!status.is_empty(), "Mode {:?} should have status display", mode);
             assert!(!prompt.is_empty(), "Mode {:?} should have prompt indicator", mode);
         }
+    }
+
+    #[test]
+    fn test_auto_transition_notification() {
+        let mode = ConversationMode::ExecutePlan;
+        let notification = mode.get_transition_notification(&ConversationModeTrigger::Auto);
+        assert!(notification.contains("ExecutePlan"));
+        assert!(notification.contains("Automatically"));
+        assert!(!notification.is_empty());
+    }
+
+    #[test]
+    fn test_manual_transition_notification() {
+        let mode = ConversationMode::Review;
+        let notification = mode.get_transition_notification(&ConversationModeTrigger::UserCommand);
+        assert!(notification.contains("Review"));
+        assert!(notification.contains("Switched"));
+        assert!(!notification.is_empty());
     }
 }
