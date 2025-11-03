@@ -138,7 +138,7 @@ mod tests {
         let result = search.eval_perm(&os, &agent);
         assert_eq!(result, PermissionEvalResult::Allow);
     }
-}
+
     #[test]
     fn test_tool_registration() {
         // Test tool can be created from JSON

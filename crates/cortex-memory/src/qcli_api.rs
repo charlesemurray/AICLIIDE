@@ -42,6 +42,12 @@ impl CortexMemory {
             return Ok(String::new());
         }
 
+        // Quality filtering
+        if !self.should_store(user_message, assistant_response) {
+            tracing::debug!("Skipping low-quality interaction");
+            return Ok(String::new());
+        }
+
         // Check circuit breaker
         if !self.circuit_breaker.should_allow() {
             return Err(crate::error::CortexError::Custom(
@@ -53,6 +59,18 @@ impl CortexMemory {
         
         match self.embedder.embed(&content) {
             Ok(embedding) => {
+                // Check for duplicates (similarity > 0.95)
+                let similar = self.manager.search(&embedding, 1);
+                if let Some((_, score)) = similar.first() {
+                    if *score > 0.95 {
+                        tracing::info!(
+                            similarity = %format!("{:.3}", score),
+                            "Skipping duplicate memory"
+                        );
+                        return Ok(String::new()); // Return empty ID for duplicate
+                    }
+                }
+
                 let mut metadata = std::collections::HashMap::new();
                 metadata.insert("session_id".to_string(), serde_json::json!(session_id));
 
@@ -190,8 +208,30 @@ impl CortexMemory {
     pub fn clear(&mut self) -> Result<usize> {
         let count = self.manager.stm_len();
         // STM will be cleared when items are evicted naturally
-        // For now, just return the count
         Ok(count)
+    }
+
+    /// Check if interaction should be stored (quality filtering)
+    fn should_store(&self, user_msg: &str, assistant_msg: &str) -> bool {
+        // Too short
+        if user_msg.len() < 10 || assistant_msg.len() < 10 {
+            return false;
+        }
+
+        // Too long (likely code dumps)
+        if user_msg.len() > 10000 || assistant_msg.len() > 10000 {
+            return false;
+        }
+
+        // Error messages
+        if assistant_msg.contains("Error:") 
+            || assistant_msg.contains("Failed to")
+            || assistant_msg.contains("error[E")
+            || assistant_msg.starts_with("error:") {
+            return false;
+        }
+
+        true
     }
 
     /// Toggle memory enabled state

@@ -89,7 +89,7 @@ impl MultiSessionCoordinator {
             state_tx,
             rate_limiter,
             memory_monitor,
-            // persistence: None,
+            persistence: None,
             lock_manager: SessionLockManager::default(),
             cleanup_manager: ResourceCleanupManager::default(),
         }
