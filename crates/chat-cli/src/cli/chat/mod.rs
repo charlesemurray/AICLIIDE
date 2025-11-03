@@ -3880,6 +3880,37 @@ impl ChatSession {
             self.send_chat_telemetry(os, TelemetryResult::Succeeded, None, None, None, true)
                 .await;
 
+            // Store interaction in memory
+            if let Some(ref mut cortex) = self.cortex {
+                let verbose = os
+                    .database
+                    .settings
+                    .get_bool(Setting::MemoryVerbose)
+                    .unwrap_or(false);
+
+                // Get last interaction from history
+                let history = self.conversation.history();
+                if let Some(last_entry) = history.back() {
+                    let user_msg = &last_entry.user.content;
+                    if let Some(assistant_content) = last_entry.assistant.content() {
+                        match cortex.store_interaction(user_msg, assistant_content, self.conversation.conversation_id()) {
+                            Ok(_) => {
+                                if verbose && self.interactive {
+                                    let _ = execute!(
+                                        self.stderr,
+                                        style::Print("💾 Stored interaction in memory\n")
+                                    );
+                                }
+                                tracing::debug!("Stored interaction in memory");
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to store interaction in memory: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Run Stop hooks when the assistant finishes responding
             if let Some(cm) = self.conversation.context_manager.as_mut() {
                 let _ = cm
