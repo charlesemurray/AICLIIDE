@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-#[derive(Debug, Clone, Subcommand)]
+#[derive(Debug, Clone, PartialEq, Subcommand)]
 pub enum MemorySubcommand {
     /// Show memory configuration
     Config,
@@ -16,7 +16,20 @@ pub enum MemorySubcommand {
     Toggle(ToggleArgs),
 }
 
-#[derive(Debug, Clone, Args)]
+impl MemorySubcommand {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Config => "config",
+            Self::List(_) => "list",
+            Self::Search(_) => "search",
+            Self::Stats => "stats",
+            Self::Cleanup(_) => "cleanup",
+            Self::Toggle(_) => "toggle",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Args)]
 pub struct ListArgs {
     /// Maximum number of memories to show
     #[arg(long, default_value = "10")]
@@ -27,7 +40,7 @@ pub struct ListArgs {
     pub session: Option<String>,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Debug, Clone, PartialEq, Args)]
 pub struct SearchArgs {
     /// Search query
     pub query: String,
@@ -37,21 +50,21 @@ pub struct SearchArgs {
     pub limit: usize,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Debug, Clone, PartialEq, Args)]
 pub struct CleanupArgs {
     /// Skip confirmation prompt
     #[arg(long)]
     pub force: bool,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Debug, Clone, PartialEq, Args)]
 pub struct ToggleArgs {
     /// Disable memory
     #[arg(long)]
     pub disable: bool,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Debug, Clone, PartialEq, Args)]
 pub struct RecallArgs {
     /// Query to recall memories for
     pub query: String,

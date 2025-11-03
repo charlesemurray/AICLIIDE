@@ -212,6 +212,8 @@ impl SlashCommand {
             Self::Persist(subcommand) => subcommand.execute(os, session).await,
             Self::Sessions(subcommand) => subcommand.execute(session, os).await,
             Self::Skills(subcommand) => subcommand.execute(session, os).await,
+            Self::Memory(subcommand) => execute_memory_command(subcommand, session).await,
+            Self::Recall(args) => execute_recall_command(args, session).await,
             Self::Switch { name } => {
                 println!("🔄 Switching to: {}", name);
                 println!("✓ Switched successfully");

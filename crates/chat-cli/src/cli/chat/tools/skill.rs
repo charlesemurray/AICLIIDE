@@ -255,6 +255,48 @@ impl SkillTool {
     pub fn format_error(&self, error: &eyre::Error) -> String {
         format!("Error executing skill: {}", error)
     }
+
+    pub fn invoke_with_definition(
+        &self,
+        definition: &SkillDefinition,
+        params: HashMap<String, Value>,
+    ) -> Result<String> {
+        match &definition.implementation {
+            Some(SkillImplementation::Script { .. }) => {
+                let output = tokio::runtime::Runtime::new()?.block_on(self.execute_script_with_timeout(definition, &params, 30))?;
+                Ok(self.truncate_output(output))
+            },
+            Some(SkillImplementation::Command { .. }) => {
+                let output = tokio::runtime::Runtime::new()?.block_on(self.execute_command_with_timeout(definition, &params, 30))?;
+                Ok(self.truncate_output(output))
+            },
+            None => Err(eyre::eyre!("Skill has no implementation defined")),
+        }
+    }
+
+    pub fn definition_to_toolspec(&self, definition: &SkillDefinition) -> super::ToolSpec {
+        use super::{InputSchema, ToolOrigin};
+
+        let input_schema = definition.parameters.clone().unwrap_or(serde_json::json!({
+            "type": "object",
+            "properties": {},
+            "required": []
+        }));
+
+        super::ToolSpec {
+            name: definition.name.clone(),
+            description: definition.description.clone(),
+            input_schema: InputSchema(input_schema),
+            tool_origin: ToolOrigin::Skill(definition.name.clone()),
+        }
+    }
+
+    pub fn from_definition(definition: &SkillDefinition) -> Self {
+        Self {
+            name: definition.name.clone(),
+            description: definition.description.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -705,5 +747,45 @@ mod tests {
 
         assert!(result.contains("Error"));
         assert!(result.contains("command not found"));
+    }
+
+    #[test]
+    fn test_definition_to_toolspec() {
+        let skill = SkillTool::new("test-skill".to_string(), "Test skill".to_string());
+        let definition = SkillDefinition {
+            name: "test-skill".to_string(),
+            description: "Test skill".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"}
+                }
+            })),
+            implementation: Some(SkillImplementation::Command {
+                command: "echo {{name}}".to_string(),
+            }),
+        };
+
+        let toolspec = skill.definition_to_toolspec(&definition);
+
+        assert_eq!(toolspec.name, "test-skill");
+        assert_eq!(toolspec.description, "Test skill");
+    }
+
+    #[test]
+    fn test_from_definition() {
+        let definition = SkillDefinition {
+            name: "my-skill".to_string(),
+            description: "My skill description".to_string(),
+            skill_type: "code_inline".to_string(),
+            parameters: None,
+            implementation: None,
+        };
+
+        let skill = SkillTool::from_definition(&definition);
+
+        assert_eq!(skill.name, "my-skill");
+        assert_eq!(skill.description, "My skill description");
     }
 }
