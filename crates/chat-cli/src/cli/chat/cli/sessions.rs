@@ -240,7 +240,14 @@ impl SessionsSubcommand {
 
                 println!("🌳 Worktree Sessions:");
                 match get_current_repo_sessions() {
-                    Ok(sessions) => {
+                    Ok((sessions, errors)) => {
+                        if !errors.is_empty() {
+                            eprintln!("⚠️  Some sessions could not be loaded:");
+                            for err in errors.iter().take(3) {
+                                eprintln!("  • {}", err);
+                            }
+                        }
+                        
                         if sessions.is_empty() {
                             println!("  No worktree sessions found");
                             println!("\nUse 'q chat --worktree <name>' to create a worktree session");
