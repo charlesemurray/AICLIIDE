@@ -2424,7 +2424,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "echo-skill".to_string(),
+            orig_name: "echo-skill".to_string(),
             args: serde_json::json!({"msg": "Hello World"}),
+            orig_args: serde_json::json!({"msg": "Hello World"}),
         };
 
         // This should work end-to-end: ToolManager -> Registry -> Skill -> Execution
@@ -2465,7 +2467,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "simple-workflow".to_string(),
+            orig_name: "simple-workflow".to_string(),
             args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
         };
 
         let result = manager.get_tool_from_tool_use(tool_use).await;
@@ -2509,7 +2513,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "duplicate".to_string(),
+            orig_name: "duplicate".to_string(),
             args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
         };
 
         // Should resolve to workflow (workflows checked first in get_tool_from_tool_use)
@@ -2622,7 +2628,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "test-skill".to_string(),
+            orig_name: "test-skill".to_string(),
             args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
         };
 
         let result = manager.get_tool_from_tool_use(tool_use).await;
@@ -2655,7 +2663,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "test-workflow".to_string(),
+            orig_name: "test-workflow".to_string(),
             args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
         };
 
         let result = manager.get_tool_from_tool_use(tool_use).await;
@@ -2704,7 +2714,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "echo-skill".to_string(),
+            orig_name: "echo-skill".to_string(),
             args: serde_json::json!({"message": "Hello World"}),
+            orig_args: serde_json::json!({"message": "Hello World"}),
         };
 
         // Get tool from tool use (this is what happens when LLM invokes)
@@ -2755,7 +2767,9 @@ mod tests {
         let tool_use = AssistantToolUse {
             id: "test-id".to_string(),
             name: "simple-workflow".to_string(),
+            orig_name: "simple-workflow".to_string(),
             args: serde_json::json!({}),
+            orig_args: serde_json::json!({}),
         };
 
         let tool = manager.get_tool_from_tool_use(tool_use).await;
