@@ -278,7 +278,7 @@ impl MultiDimensionalValidator {
             .filter(|verb| prompt_lower.contains(*verb))
             .count();
         
-        let specificity_score = (verb_count as f64 * 0.1).min(0.4);
+        let specificity_score = (verb_count as f64 * 0.1).min(0.3);
         score += specificity_score;
         
         score.min(1.0)

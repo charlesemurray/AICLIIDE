@@ -282,24 +282,9 @@ impl SkillsArgs {
                 }
             },
             SkillsCommand::Info { skill_name } => {
-                match registry.get(&skill_name) {
-                    Some(skill) => {
-                        println!("Name: {}", skill.name());
-                        println!("Description: {}", skill.description());
-                        println!("Interactive: {}", skill.supports_interactive());
-
-                        let ui = skill
-                            .render_ui()
-                            .await
-                            .map_err(|e| eyre::eyre!("Failed to render UI: {}", e))?;
-                        if !ui.elements.is_empty() {
-                            println!("UI Elements: {}", ui.elements.len());
-                        }
-                    },
-                    None => {
-                        return Err(eyre::eyre!("Skill '{}' not found", skill_name));
-                    },
-                }
+                handlers::info_command(&registry, &skill_name, &mut std::io::stdout())
+                    .await
+                    .map_err(|e| eyre::eyre!(e))?;
 
                 Ok(ExitCode::SUCCESS)
             },
@@ -1247,6 +1232,32 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the info command
+    pub async fn info_command(
+        registry: &SkillRegistry,
+        skill_name: &str,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError> {
+        let skill = registry
+            .get(skill_name)
+            .ok_or_else(|| error::SkillsCliError::SkillNotFound(skill_name.to_string()))?;
+
+        writeln!(output, "Name: {}", skill.name())?;
+        writeln!(output, "Description: {}", skill.description())?;
+        writeln!(output, "Interactive: {}", skill.supports_interactive())?;
+
+        let ui = skill
+            .render_ui()
+            .await
+            .map_err(|e| error::SkillsCliError::ExecutionFailed(e.to_string()))?;
+        
+        if !ui.elements.is_empty() {
+            writeln!(output, "UI Elements: {}", ui.elements.len())?;
+        }
+
+        Ok(())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1275,6 +1286,37 @@ mod handlers {
             let output_str = String::from_utf8(output).unwrap();
             assert!(output_str.contains("Available Skills:"));
             assert!(output_str.contains("📦"));
+        }
+
+        #[tokio::test]
+        async fn test_info_skill_not_found() {
+            let registry = SkillRegistry::new();
+            let mut output = Vec::new();
+            
+            let result = info_command(&registry, "nonexistent", &mut output).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::SkillNotFound(name) => {
+                    assert_eq!(name, "nonexistent");
+                }
+                _ => panic!("Expected SkillNotFound error"),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_info_with_builtin_skill() {
+            let registry = SkillRegistry::with_builtins();
+            let mut output = Vec::new();
+            
+            // Calculator is a builtin skill
+            let result = info_command(&registry, "calculator", &mut output).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains("Name:"));
+            assert!(output_str.contains("Description:"));
+            assert!(output_str.contains("Interactive:"));
         }
     }
 }
