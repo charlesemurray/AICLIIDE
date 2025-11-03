@@ -1661,7 +1661,7 @@ mod tests {
 
         // Add some main conversation history
         conversation
-            .set_next_user_message("main conversation".to_string())
+            .set_next_user_message("main conversation".to_string(), &os)
             .await;
         conversation.push_assistant_message(
             &mut os,
@@ -1684,7 +1684,7 @@ mod tests {
 
         // Add tangent conversation
         conversation
-            .set_next_user_message("tangent conversation".to_string())
+            .set_next_user_message("tangent conversation".to_string(), &os)
             .await;
         conversation.push_assistant_message(
             &mut os,
