@@ -101,11 +101,12 @@ pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Op
     let worktree_path = if let Some(p) = path {
         p
     } else {
-        repo_root.parent().unwrap_or(repo_root).join(format!(
-            "{}-{}",
-            repo_root.file_name().unwrap().to_str().unwrap(),
-            name
-        ))
+        let parent = repo_root.parent().unwrap_or(repo_root);
+        let repo_name = repo_root
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| GitError::CommandFailed("Invalid repo path".to_string()))?;
+        parent.join(format!("{}-{}", repo_name, name))
     };
 
     // Check if worktree already exists
@@ -114,12 +115,16 @@ pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Op
     }
 
     // Create worktree
+    let worktree_path_str = worktree_path
+        .to_str()
+        .ok_or_else(|| GitError::CommandFailed("Invalid worktree path".to_string()))?;
+    
     let output = Command::new("git")
         .current_dir(repo_root)
         .args(&[
             "worktree",
             "add",
-            worktree_path.to_str().unwrap(),
+            worktree_path_str,
             "-b",
             name,
             base_branch,
