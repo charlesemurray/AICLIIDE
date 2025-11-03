@@ -59,14 +59,18 @@ impl FeedbackManager {
     pub fn record_feedback(&self, memory_id: &str, helpful: bool) -> Result<()> {
         Self::validate_memory_id(memory_id)?;
 
-        let timestamp = std::time::SystemTime::now()
+        let timestamp: i64 = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?
+            .as_secs()
+            .try_into()
+            .map_err(|_| rusqlite::Error::ToSqlConversionFailure(
+                "timestamp overflow".into()
+            ))?;
 
         self.conn.execute(
             "INSERT OR REPLACE INTO memory_feedback (memory_id, helpful, timestamp) VALUES (?1, ?2, ?3)",
-            [memory_id, &(helpful as i64).to_string(), &timestamp.to_string()],
+            rusqlite::params![memory_id, helpful as i64, timestamp],
         )?;
 
         Ok(())
@@ -171,5 +175,18 @@ mod tests {
         let long_id = "a".repeat(1000);
         let result = manager.record_feedback(&long_id, true);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_timestamp_handling() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("feedback.db");
+        let manager = FeedbackManager::new(&db_path).unwrap();
+
+        // Should handle timestamp without panicking
+        manager.record_feedback("mem1", true).unwrap();
+        
+        let feedback = manager.get_feedback("mem1").unwrap().unwrap();
+        assert!(feedback.timestamp > 0);
     }
 }
