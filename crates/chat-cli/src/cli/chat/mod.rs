@@ -458,34 +458,61 @@ impl ChatArgs {
             .await?;
         let tool_config = tool_manager.load_tools(os, &mut stderr).await?;
 
-        // Handle worktree creation if requested
-        let worktree_path = if let Some(worktree_name) = &self.worktree {
-            use crate::git::{detect_git_context, create_worktree};
-            use crate::cli::chat::branch_naming::{sanitize_branch_name, ensure_unique_branch_name};
+        // Handle worktree creation based on strategy
+        let worktree_path = if !self.no_worktree {
+            use crate::git::detect_git_context;
+            use crate::cli::chat::worktree_strategy::{resolve_worktree_strategy, WorktreeStrategy};
+            use crate::cli::chat::branch_naming::{generate_from_conversation, ensure_unique_branch_name};
             
             let current_dir = os.env.current_dir()?;
+            let git_context = detect_git_context(&current_dir).ok();
             
-            if let Ok(git_context) = detect_git_context(&current_dir) {
-                // Generate branch name
-                let branch_name = sanitize_branch_name(worktree_name);
-                let unique_branch = ensure_unique_branch_name(&git_context.repo_root, &branch_name)
-                    .unwrap_or(branch_name);
-                
-                // Create worktree
-                match create_worktree(&git_context.repo_root, &unique_branch, &git_context.branch_name, None) {
-                    Ok(path) => {
-                        eprintln!("Created worktree at: {}", path.display());
-                        eprintln!("Branch: {}", unique_branch);
-                        Some(path)
-                    },
-                    Err(e) => {
-                        eprintln!("Warning: Failed to create worktree: {}", e);
+            // Resolve strategy
+            let strategy = resolve_worktree_strategy(
+                self.worktree.as_ref(),
+                self.no_worktree,
+                git_context.as_ref()
+            );
+            
+            match strategy {
+                WorktreeStrategy::Create(name) => {
+                    if let Some(ref ctx) = git_context {
+                        use crate::git::create_worktree;
+                        use crate::cli::chat::branch_naming::sanitize_branch_name;
+                        
+                        let branch_name = sanitize_branch_name(&name);
+                        let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
+                            .unwrap_or(branch_name);
+                        
+                        match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
+                            Ok(path) => {
+                                eprintln!("✓ Created worktree at: {}", path.display());
+                                eprintln!("✓ Branch: {}", unique_branch);
+                                Some(path)
+                            },
+                            Err(e) => {
+                                eprintln!("✗ Failed to create worktree: {}", e);
+                                None
+                            }
+                        }
+                    } else {
+                        eprintln!("✗ Not in a git repository");
                         None
                     }
-                }
-            } else {
-                eprintln!("Warning: Not in a git repository, ignoring --worktree flag");
-                None
+                },
+                WorktreeStrategy::UseExisting => {
+                    if let Some(ref ctx) = git_context {
+                        if ctx.is_worktree {
+                            eprintln!("✓ Using existing worktree");
+                            ctx.worktree_path.clone()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
             }
         } else {
             None

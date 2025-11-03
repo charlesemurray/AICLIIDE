@@ -38,21 +38,36 @@ impl ConversationMode {
     }
 
     pub fn detect_from_context(input: &str) -> Self {
-        let input = input.to_lowercase();
+        // Handle empty input gracefully
+        let trimmed = input.trim();
+        if trimmed.is_empty() {
+            return ConversationMode::Interactive;
+        }
+        
+        let input_lower = trimmed.to_lowercase();
 
-        // Look for plan execution indicators
-        if input.contains("implement")
-            && (input.contains("entire") || input.contains("complete") || input.contains("full"))
-        {
+        // Look for plan execution indicators - prioritize complete implementation requests
+        if (input_lower.contains("implement") && (input_lower.contains("entire") || input_lower.contains("complete") || input_lower.contains("full"))) ||
+           input_lower.contains("build everything") ||
+           input_lower.contains("create complete") ||
+           input_lower.contains("develop full") ||
+           input_lower.contains("execute entire") {
             return ConversationMode::ExecutePlan;
         }
 
-        // Look for review indicators
-        if input.contains("review") || input.contains("analyze") || input.contains("feedback") {
+        // Look for review indicators - analysis and examination requests
+        if input_lower.contains("review") || 
+           input_lower.contains("analyze") || 
+           input_lower.contains("feedback") ||
+           input_lower.contains("examine") ||
+           input_lower.contains("check") ||
+           input_lower.contains("audit") ||
+           input_lower.contains("inspect") ||
+           input_lower.contains("evaluate") {
             return ConversationMode::Review;
         }
 
-        // Default to interactive
+        // Default to interactive mode for unclear requests
         ConversationMode::Interactive
     }
 
