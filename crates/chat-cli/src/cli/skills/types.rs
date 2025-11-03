@@ -104,6 +104,8 @@ pub struct JsonSkill {
     pub prompt_template: Option<String>,
     pub context_files: Option<ContextFiles>,
     pub parameters: Option<Vec<Parameter>>,
+    #[serde(default)]
+    pub requires_worktree: bool,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -111,6 +113,10 @@ pub struct JsonSkill {
 impl JsonSkill {
     pub fn from_json(value: serde_json::Value) -> Result<Self, serde_json::Error> {
         serde_json::from_value(value)
+    }
+
+    pub fn requires_worktree(&self) -> bool {
+        self.requires_worktree
     }
 
     pub async fn execute(&self, params: HashMap<String, String>) -> Result<String, String> {

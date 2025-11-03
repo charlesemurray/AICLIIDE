@@ -119,3 +119,11 @@ pub struct ContextItem {
     pub score: f32,
     pub metadata: std::collections::HashMap<String, serde_json::Value>,
 }
+
+/// Memory statistics
+#[derive(Debug, Clone)]
+pub struct MemoryStats {
+    pub stm_count: usize,
+    pub stm_capacity: usize,
+    pub enabled: bool,
+}

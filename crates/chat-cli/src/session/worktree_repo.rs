@@ -35,12 +35,12 @@ impl WorktreeSessionRepository {
 
         // Ensure directory exists
         if let Some(parent) = session_file.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| SessionError::IoError(e.to_string()))?;
+            std::fs::create_dir_all(parent)?;
         }
 
         save_metadata(metadata, &session_file)
             .await
-            .map_err(|e| SessionError::IoError(e.to_string()))?;
+            ?;
 
         // Also save to main repository
         self.inner.save(metadata).await
@@ -56,12 +56,12 @@ impl WorktreeSessionRepository {
 
         load_metadata(&session_file)
             .await
-            .map_err(|e| SessionError::IoError(e.to_string()))
+            
     }
 
     /// Detect if current directory is in a worktree and load session
     pub async fn load_current_worktree(&self) -> Result<Option<SessionMetadata>, SessionError> {
-        let current_dir = std::env::current_dir().map_err(|e| SessionError::IoError(e.to_string()))?;
+        let current_dir = std::env::current_dir()?;
 
         // Check if we're in a worktree by detecting git context
         match detect_git_context(&current_dir) {
