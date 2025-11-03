@@ -10,6 +10,7 @@ use crate::cli::chat::{
 };
 use crate::os::Os;
 use crate::session::{
+    FileSystemRepository,
     SessionManager,
     SessionStatus,
 };
@@ -60,7 +61,8 @@ impl SessionMgmtArgs {
     pub async fn execute(self, _session: &mut ChatSession, os: &Os) -> Result<ChatState, ChatError> {
         match self.command {
             SessionMgmtSubcommand::List => {
-                let manager = SessionManager::new(os);
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
                 let sessions = manager
                     .list_by_status(SessionStatus::Active)
                     .await
@@ -90,7 +92,8 @@ impl SessionMgmtArgs {
                 })
             },
             SessionMgmtSubcommand::History { limit, search } => {
-                let manager = SessionManager::new(os);
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
                 let mut sessions = manager
                     .list_by_status(SessionStatus::Archived)
                     .await
@@ -130,7 +133,8 @@ impl SessionMgmtArgs {
                 })
             },
             SessionMgmtSubcommand::Background { limit, search } => {
-                let manager = SessionManager::new(os);
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
                 let mut sessions = manager
                     .list_by_status(SessionStatus::Background)
                     .await
@@ -170,7 +174,8 @@ impl SessionMgmtArgs {
                 })
             },
             SessionMgmtSubcommand::Archive { session_id } => {
-                let manager = SessionManager::new(os);
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
                 manager
                     .archive_session(&session_id)
                     .await
@@ -182,7 +187,8 @@ impl SessionMgmtArgs {
                 })
             },
             SessionMgmtSubcommand::Name { session_id, name } => {
-                let manager = SessionManager::new(os);
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
                 manager
                     .name_session(&session_id, name.clone())
                     .await

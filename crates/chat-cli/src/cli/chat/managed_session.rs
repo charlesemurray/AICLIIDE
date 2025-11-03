@@ -152,6 +152,7 @@ impl ManagedSession {
         conversation_id: String,
         max_buffer_size: usize,
     ) -> Self {
+        let now = Instant::now();
         Self {
             display,
             conversation,
@@ -160,6 +161,11 @@ impl ManagedSession {
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new(max_buffer_size))),
             task_handle: None,
             last_error: None,
+            metadata: SessionMetadata {
+                created_at: now,
+                last_active: now,
+                message_count: 0,
+            },
         }
     }
 

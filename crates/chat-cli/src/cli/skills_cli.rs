@@ -1226,6 +1226,51 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the create command
+    pub async fn create_command(
+        name: &str,
+        template_name: Option<&str>,
+        description: Option<&str>,
+        skills_dir: &std::path::Path,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError> {
+        use crate::cli::skills::templates::SkillTemplate;
+
+        let template = match template_name {
+            Some(t) => match t {
+                constants::templates::COMMAND => SkillTemplate::Command,
+                constants::templates::SCRIPT => SkillTemplate::Script,
+                constants::templates::HTTP_API => SkillTemplate::HttpApi,
+                constants::templates::FILE_PROCESSOR => SkillTemplate::FileProcessor,
+                _ => {
+                    return Err(error::SkillsCliError::InvalidTemplate(t.to_string()));
+                }
+            },
+            None => {
+                writeln!(output, "⚠️  Use templates for quick creation:")?;
+                writeln!(output, "  q skills create {} --from-template command --description 'My skill'\n", name)?;
+                writeln!(output, "{}", constants::messages::AVAILABLE_TEMPLATES)?;
+                for t in SkillTemplate::all() {
+                    writeln!(output, "  {} - {}", t.name(), t.description())?;
+                }
+                return Ok(());
+            }
+        };
+
+        let desc = description.unwrap_or(&format!("{} skill", name));
+        let skill_json = template.generate(name, desc);
+
+        std::fs::create_dir_all(skills_dir)?;
+        let skill_file = skills_dir.join(format!("{}.{}", name, constants::SKILL_FILE_EXTENSION));
+        std::fs::write(&skill_file, serde_json::to_string_pretty(&skill_json)?)?;
+
+        writeln!(output, "{} {}", constants::messages::SKILL_CREATED, skill_file.display())?;
+        writeln!(output, "\nUsage:")?;
+        writeln!(output, "  {}", template.example(name))?;
+
+        Ok(())
+    }
+
     /// Handle the remove command
     pub async fn remove_command<F>(
         skill_name: &str,

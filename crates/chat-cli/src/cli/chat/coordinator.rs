@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use eyre::{
     Result,
@@ -40,6 +41,10 @@ pub struct CoordinatorConfig {
     pub buffer_size_bytes: usize,
     /// Maximum concurrent API calls
     pub max_concurrent_api_calls: usize,
+    /// Session timeout for automatic cleanup
+    pub session_timeout: Duration,
+    /// Cleanup interval
+    pub cleanup_interval: Duration,
 }
 
 impl Default for CoordinatorConfig {
@@ -48,6 +53,8 @@ impl Default for CoordinatorConfig {
             max_active_sessions: 10,
             buffer_size_bytes: 10 * 1024 * 1024, // 10 MB
             max_concurrent_api_calls: 5,
+            session_timeout: Duration::from_secs(3600), // 1 hour
+            cleanup_interval: Duration::from_secs(300), // 5 minutes
         }
     }
 }

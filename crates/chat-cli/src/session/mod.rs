@@ -1,4 +1,5 @@
 pub mod error;
+pub mod fs_repository;
 pub mod io;
 pub mod lock;
 pub mod manager;
@@ -9,6 +10,7 @@ pub mod session_id;
 pub mod worktree_repo;
 
 pub use error::SessionError;
+pub use fs_repository::FileSystemRepository;
 pub use io::{
     load_metadata,
     save_metadata,

@@ -147,4 +147,48 @@ mod quality_validator_tests {
         assert!(specific_score.component_scores["constraint_clarity"] > 
                 vague_score.component_scores["constraint_clarity"]);
     }
+
+    #[test]
+    fn test_quality_validator_checks_examples() {
+        let validator = MultiDimensionalValidator::new();
+        let with_examples = "Examples:\nInput: Review this code\nOutput: Here's my analysis...";
+        let without = "No examples provided.";
+        
+        let with_score = validator.validate(with_examples);
+        let without_score = validator.validate(without);
+        
+        assert!(with_score.component_scores.contains_key("example_quality"),
+            "Should have example_quality score");
+        assert!(with_score.component_scores["example_quality"] > 
+                without_score.component_scores["example_quality"],
+            "With examples {} should score higher than without {}",
+            with_score.component_scores["example_quality"],
+            without_score.component_scores["example_quality"]);
+    }
+
+    #[test]
+    fn test_example_quality_requires_input_output_pairs() {
+        let validator = MultiDimensionalValidator::new();
+        let complete = "Examples:\nInput: test\nOutput: result\nInput: test2\nOutput: result2";
+        let incomplete = "Examples:\nSome text here";
+        
+        let complete_score = validator.validate(complete);
+        let incomplete_score = validator.validate(incomplete);
+        
+        assert!(complete_score.component_scores["example_quality"] > 0.7);
+        assert!(incomplete_score.component_scores["example_quality"] < 0.3);
+    }
+
+    #[test]
+    fn test_example_quality_counts_pairs() {
+        let validator = MultiDimensionalValidator::new();
+        let many = "Examples:\nInput: a\nOutput: b\nInput: c\nOutput: d\nInput: e\nOutput: f";
+        let few = "Examples:\nInput: a\nOutput: b";
+        
+        let many_score = validator.validate(many);
+        let few_score = validator.validate(few);
+        
+        assert!(many_score.component_scores["example_quality"] > 
+                few_score.component_scores["example_quality"]);
+    }
 }
