@@ -7,6 +7,36 @@ pub enum SessionType {
     Planning,
     Development,
     CodeReview,
+    Feature,
+    Hotfix,
+    Refactor,
+    Experiment,
+}
+
+impl SessionType {
+    pub fn requires_worktree(&self) -> bool {
+        matches!(
+            self,
+            SessionType::Feature | SessionType::Refactor | SessionType::Experiment
+        )
+    }
+
+    pub fn is_interactive(&self) -> bool {
+        !matches!(self, SessionType::Development)
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            SessionType::Debug => "Debug",
+            SessionType::Planning => "Planning",
+            SessionType::Development => "Development",
+            SessionType::CodeReview => "Code Review",
+            SessionType::Feature => "Feature",
+            SessionType::Hotfix => "Hotfix",
+            SessionType::Refactor => "Refactor",
+            SessionType::Experiment => "Experiment",
+        }
+    }
 }
 
 /// Session display information
