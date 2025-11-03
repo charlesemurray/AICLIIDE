@@ -141,8 +141,12 @@ pub fn create_worktree(repo_root: &Path, name: &str, base_branch: &str, path: Op
 }
 
 pub fn remove_worktree(path: &Path) -> Result<()> {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| GitError::CommandFailed("Invalid worktree path".to_string()))?;
+    
     let output = Command::new("git")
-        .args(&["worktree", "remove", path.to_str().unwrap()])
+        .args(&["worktree", "remove", path_str])
         .output()?;
 
     if !output.status.success() {
