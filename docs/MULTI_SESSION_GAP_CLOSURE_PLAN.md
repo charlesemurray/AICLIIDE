@@ -9,6 +9,124 @@
 
 ---
 
+## Requirements Per Phase
+
+### Phase 1 Requirements: Make It Work
+**Goal**: Users can actually run and use the feature
+
+**Must Have**:
+1. Binary compiles and runs without errors
+2. Real ConversationState integrated (no placeholders)
+3. Sessions persist across Q CLI restarts
+4. End-to-end integration test passes
+
+**Exit Criteria**:
+- [ ] All 15 tests pass
+- [ ] Code review approved
+- [ ] Demo to stakeholders successful
+- [ ] Approval Gate 1: Proceed to Phase 2?
+
+**Blocker if not met**: Cannot proceed - feature is unusable
+
+---
+
+### Phase 2 Requirements: Make It Reliable
+**Goal**: Feature works consistently and handles errors
+
+**Must Have**:
+1. Background sessions buffer output correctly
+2. Crashed sessions can be recovered or cleaned up
+3. Resource limits enforced (max 10 sessions)
+4. Real telemetry flowing to analytics
+
+**Exit Criteria**:
+- [ ] All 13 tests pass
+- [ ] No critical bugs
+- [ ] Performance acceptable
+- [ ] Approval Gate 2: Proceed to Phase 3?
+
+**Blocker if not met**: Feature will crash and lose data
+
+---
+
+### Phase 3 Requirements: Make It Usable
+**Goal**: Good user experience, ready for beta
+
+**Must Have**:
+1. User onboarding (80% completion rate)
+2. Visual feedback (users know which session they're in)
+3. Session preview (can see state before switching)
+4. Keyboard shortcuts for power users
+5. Helpful error messages (users can self-recover)
+6. User testing successful (4/5 users complete tasks)
+
+**Exit Criteria**:
+- [ ] All 18 tests pass
+- [ ] User testing: 4/5 users successful
+- [ ] UX designer approval
+- [ ] Approval Gate 3: Ship to beta OR proceed to Phase 4?
+
+**Can ship without**: Yes, but UX will be bare-bones
+
+---
+
+### Phase 4 Requirements: Production Ready
+**Goal**: Ready for general availability
+
+**Must Have**:
+1. Performance targets met (<500ms switch, <125MB memory)
+2. Security review approved
+3. Documentation complete (docs, video, blog)
+4. Monitoring operational (dashboards, alerts)
+5. Rollout plan approved
+
+**Exit Criteria**:
+- [ ] All 12 tests pass
+- [ ] Performance benchmarks met
+- [ ] Security team approval
+- [ ] PM approval for GA
+- [ ] Approval Gate 4: Ship to production?
+
+**Can defer**: Yes, can ship Phase 3 to beta and add Phase 4 later
+
+---
+
+## Critical Success Factors
+
+### Blockers (Cannot ship without):
+- **Phase 1**: Binary compilation, real ConversationState, persistence
+- **Phase 2**: Output buffering, error recovery
+
+### Important (Should have):
+- **Phase 3**: User testing success (4/5), visual feedback
+
+### Nice to Have (Can add later):
+- **Phase 4**: Performance optimization, full monitoring
+
+---
+
+## Shipping Options
+
+### Option 1: Fast MVP (1 week)
+- Ship after Phase 1 + Phase 3.1-3.2
+- **Has**: Working feature with basic UX
+- **Missing**: Output buffering, advanced features
+- **Risk**: Less reliable, but usable
+
+### Option 2: Beta Release (1.5 weeks)
+- Ship after Phase 1-3
+- **Has**: Working, reliable, usable feature
+- **Missing**: Production hardening
+- **Risk**: Low, good for beta users
+
+### Option 3: Production Release (2 weeks)
+- Ship after Phase 1-4
+- **Has**: Everything
+- **Missing**: Nothing
+- **Risk**: Minimal, ready for GA
+
+---
+
 ## Phase 1: Make It Work (2-3 days)
 **Goal**: Users can actually run and use the feature
 

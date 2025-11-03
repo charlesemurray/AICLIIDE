@@ -109,6 +109,8 @@ pub enum Setting {
     MemoryAutoPromote,
     #[strum(message = "Warn when memory usage reaches percentage (number, 0-100)")]
     MemoryWarnThreshold,
+    #[strum(message = "Track if memory welcome message has been shown (boolean)")]
+    MemoryWelcomeShown,
 }
 
 impl AsRef<str> for Setting {
@@ -160,6 +162,7 @@ impl AsRef<str> for Setting {
             Self::MemoryCrossSession => "memory.crossSession",
             Self::MemoryAutoPromote => "memory.autoPromote",
             Self::MemoryWarnThreshold => "memory.warnThreshold",
+            Self::MemoryWelcomeShown => "memory.welcomeShown",
         }
     }
 }
@@ -220,6 +223,7 @@ impl TryFrom<&str> for Setting {
             "memory.crossSession" => Ok(Self::MemoryCrossSession),
             "memory.autoPromote" => Ok(Self::MemoryAutoPromote),
             "memory.warnThreshold" => Ok(Self::MemoryWarnThreshold),
+            "memory.welcomeShown" => Ok(Self::MemoryWelcomeShown),
             _ => Err(DatabaseError::InvalidSetting(value.to_string())),
         }
     }
