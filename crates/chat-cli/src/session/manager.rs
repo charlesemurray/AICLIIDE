@@ -62,6 +62,28 @@ impl<R: SessionRepository> SessionManager<R> {
         Ok(metadata)
     }
 
+    /// Archive an active session with workspace data
+    #[instrument(skip(self, workspace_data))]
+    pub async fn archive_active_session(
+        &self, 
+        session_id: &str, 
+        workspace_data: Option<Vec<u8>>
+    ) -> Result<(), SessionError> {
+        info!(session_id, "Archiving active session with workspace data");
+        
+        // Create metadata for the active session
+        let mut metadata = SessionMetadata::new(session_id, "");
+        metadata.archive();
+        
+        // TODO: Store workspace_data in session directory
+        // This would include conversation history, generated files, etc.
+        
+        self.repository.save(&metadata).await?;
+        self.metrics.record_archive();
+        info!(session_id, "Active session archived successfully");
+        Ok(())
+    }
+
     /// Archive a session
     #[instrument(skip(self))]
     pub async fn archive_session(&self, session_id: &str) -> Result<(), SessionError> {
@@ -95,16 +117,16 @@ mod tests {
     use crate::session::InMemoryRepository;
 
     #[tokio::test]
-    async fn test_list_sessions_empty() {
+    async fn test_list_archived_sessions_empty() {
         let repo = InMemoryRepository::new();
         let manager = SessionManager::new(repo);
 
-        let sessions = manager.list_sessions().await.unwrap();
+        let sessions = manager.list_archived_sessions().await.unwrap();
         assert!(sessions.is_empty());
     }
 
     #[tokio::test]
-    async fn test_list_sessions_with_data() {
+    async fn test_list_archived_sessions_with_data() {
         let repo = InMemoryRepository::new();
         let metadata1 = SessionMetadata::new("session-1", "First session");
         let metadata2 = SessionMetadata::new("session-2", "Second session");
@@ -112,13 +134,13 @@ mod tests {
         repo.save(&metadata2).await.unwrap();
 
         let manager = SessionManager::new(repo);
-        let sessions = manager.list_sessions().await.unwrap();
+        let sessions = manager.list_archived_sessions().await.unwrap();
 
         assert_eq!(sessions.len(), 2);
     }
 
     #[tokio::test]
-    async fn test_list_sessions_sorted_by_last_active() {
+    async fn test_list_archived_sessions_sorted_by_last_active() {
         let repo = InMemoryRepository::new();
         
         let mut old_meta = SessionMetadata::new("old", "Old session");
@@ -129,7 +151,7 @@ mod tests {
         repo.save(&new_meta).await.unwrap();
 
         let manager = SessionManager::new(repo);
-        let sessions = manager.list_sessions().await.unwrap();
+        let sessions = manager.list_archived_sessions().await.unwrap();
 
         assert_eq!(sessions.len(), 2);
         assert_eq!(sessions[0].id, "new");
