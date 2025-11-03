@@ -656,7 +656,11 @@ impl ChatArgs {
                                             is_temporary: false,
                                             merge_target: ctx.branch_name.clone(),
                                         };
-                                        let _ = persist_to_worktree(&path, &conversation_id, &wt_info);
+                                        
+                                        // TODO: Get first_message from user input
+                                        let metadata = SessionMetadata::new(&conversation_id, "")
+                                            .with_worktree(wt_info);
+                                        let _ = persist_to_worktree(&path, &metadata);
 
                                         if std::env::set_current_dir(&path).is_ok() {
                                             eprintln!("✓ Changed to worktree directory");
