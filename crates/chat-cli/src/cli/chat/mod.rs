@@ -318,6 +318,21 @@ impl ChatArgs {
             }
         }
 
+        // Handle session commands if coordinator is enabled and input is a session command
+        if let (Some(ref mut coord), Some(ref inp)) = (&mut coordinator, &input) {
+            if inp.starts_with("/sessions") || inp.starts_with("/switch") || inp.starts_with("/s ") {
+                let mut stderr = std::io::stderr();
+                match session_integration::handle_session_command(inp, coord, &mut stderr).await {
+                    Ok(true) => return Ok(ExitCode::SUCCESS), // Command handled
+                    Ok(false) => {}, // Not a session command, continue
+                    Err(e) => {
+                        eprintln!("Session command error: {}", e);
+                        return Ok(ExitCode::FAILURE);
+                    }
+                }
+            }
+        }
+
         let mut stderr = std::io::stderr();
 
         let args: Vec<String> = std::env::args().collect();
@@ -2516,6 +2531,20 @@ impl ChatSession {
             Some(input) => input,
             None => return Ok(ChatState::Exit),
         };
+
+        // Check for session commands (if multi-session is enabled)
+        if user_input.starts_with("/sessions") || user_input.starts_with("/switch") || 
+           user_input.starts_with("/s ") || user_input.starts_with("/new") || 
+           user_input.starts_with("/close") || user_input.starts_with("/rename") ||
+           user_input.starts_with("/session-name") {
+            // Session commands are handled externally by the coordinator
+            // For now, just show a message
+            execute!(
+                self.stderr,
+                style::Print("ℹ Session commands require Q_MULTI_SESSION=1 environment variable\n")
+            )?;
+            return Ok(ChatState::PromptUser);
+        }
 
         // Check if there's a pending clipboard paste from Ctrl+V
         let pasted_paths = self.input_source.take_clipboard_pastes();

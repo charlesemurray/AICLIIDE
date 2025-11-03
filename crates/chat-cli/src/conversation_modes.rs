@@ -107,13 +107,16 @@ impl ConversationMode {
     }
 
     /// Get a notification message for mode transitions
-    pub fn get_transition_notification(&self, trigger: &ConversationModeTrigger) -> String {
+    pub fn get_transition_notification(&self, trigger: &crate::analytics::ModeTransitionTrigger) -> String {
         match trigger {
-            ConversationModeTrigger::Auto => {
+            crate::analytics::ModeTransitionTrigger::Auto => {
                 format!("🔄 Automatically switched to {} mode", self.get_mode_name())
             },
-            ConversationModeTrigger::UserCommand => {
+            crate::analytics::ModeTransitionTrigger::UserCommand => {
                 format!("✅ Switched to {} mode", self.get_mode_name())
+            },
+            crate::analytics::ModeTransitionTrigger::LLMDecision => {
+                format!("🤖 AI switched to {} mode", self.get_mode_name())
             },
         }
     }
@@ -124,6 +127,29 @@ impl ConversationMode {
             ConversationMode::ExecutePlan => "ExecutePlan", 
             ConversationMode::Review => "Review",
         }
+    }
+
+    /// Get comprehensive help text for conversation modes
+    pub fn get_help_text() -> String {
+        r#"Conversation Modes Help
+
+Available Modes:
+• Interactive - Default mode with step-by-step confirmations
+• ExecutePlan - Execute entire plan without confirmation prompts  
+• Review - Analyze and provide analysis without making changes
+
+Manual Commands:
+• /execute - Switch to ExecutePlan mode
+• /review - Switch to Review mode
+• /interactive - Switch to Interactive mode
+• /mode or /status - Show current mode and history
+
+Auto-Detection Examples:
+• "implement complete solution" → ExecutePlan mode
+• "review this code" → Review mode
+• "analyze the architecture" → Review mode
+
+Use /help for general help."#.to_string()
     }
 }
 
@@ -293,6 +319,11 @@ impl TransitionManager {
     
     pub fn get_transition_count(&self) -> usize {
         self.transition_count
+    }
+    
+    pub fn transition_with_confirmation(&mut self, _from: ConversationMode, _to: ConversationMode, _trigger: crate::analytics::ModeTransitionTrigger) -> Result<bool, String> {
+        self.transition_count += 1;
+        Ok(true)
     }
     
     pub fn show_transition_preview(&self, from: ConversationMode, to: ConversationMode) -> String {
