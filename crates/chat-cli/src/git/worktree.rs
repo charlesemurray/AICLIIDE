@@ -10,13 +10,13 @@ use super::error::{
 };
 
 #[derive(Debug, Clone)]
-pub struct WorktreeInfo {
+pub struct GitWorktreeInfo {
     pub path: PathBuf,
     pub branch: String,
     pub commit: String,
 }
 
-pub fn list_worktrees(repo_root: &Path) -> Result<Vec<WorktreeInfo>> {
+pub fn list_worktrees(repo_root: &Path) -> Result<Vec<GitWorktreeInfo>> {
     let output = Command::new("git")
         .current_dir(repo_root)
         .args(&["worktree", "list", "--porcelain"])
@@ -31,7 +31,7 @@ pub fn list_worktrees(repo_root: &Path) -> Result<Vec<WorktreeInfo>> {
     parse_worktree_list(&String::from_utf8_lossy(&output.stdout))
 }
 
-fn parse_worktree_list(output: &str) -> Result<Vec<WorktreeInfo>> {
+fn parse_worktree_list(output: &str) -> Result<Vec<GitWorktreeInfo>> {
     let mut worktrees = Vec::new();
     let mut current_path = None;
     let mut current_commit = None;
@@ -54,7 +54,7 @@ fn parse_worktree_list(output: &str) -> Result<Vec<WorktreeInfo>> {
             if let (Some(path), Some(commit), Some(branch)) =
                 (current_path.take(), current_commit.take(), current_branch.take())
             {
-                worktrees.push(WorktreeInfo {
+                worktrees.push(GitWorktreeInfo {
                     path: PathBuf::from(path),
                     branch,
                     commit,
@@ -65,7 +65,7 @@ fn parse_worktree_list(output: &str) -> Result<Vec<WorktreeInfo>> {
 
     // Handle last entry if no trailing newline
     if let (Some(path), Some(commit), Some(branch)) = (current_path, current_commit, current_branch) {
-        worktrees.push(WorktreeInfo {
+        worktrees.push(GitWorktreeInfo {
             path: PathBuf::from(path),
             branch,
             commit,

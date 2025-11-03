@@ -9,7 +9,7 @@ pub use context::{
 };
 pub use error::GitError;
 pub use worktree::{
-    WorktreeInfo,
+    GitWorktreeInfo,
     create_worktree,
     list_worktrees,
     remove_worktree,
