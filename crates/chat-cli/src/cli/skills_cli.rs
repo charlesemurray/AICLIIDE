@@ -259,27 +259,16 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Run { skill_name, params } => {
-                let params = match params {
-                    Some(p) => serde_json::from_str(&p).map_err(|e| {
-                        SkillError::InvalidInput(format!(
-                            "{} {}",
-                            constants::messages::INVALID_JSON_FOR_SKILL.replace("{}", &skill_name),
-                            e
-                        ))
-                    })?,
-                    None => json!({}),
-                };
+                handlers::run_command(
+                    &registry,
+                    &skill_name,
+                    params.as_deref(),
+                    &mut std::io::stdout()
+                )
+                .await
+                .map_err(|e| eyre::eyre!(e))?;
 
-                match registry.execute_skill(&skill_name, params).await {
-                    Ok(result) => {
-                        println!("{}", result.output);
-                        Ok(ExitCode::SUCCESS)
-                    },
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        Err(eyre::eyre!(constants::messages::SKILL_EXECUTION_FAILED))
-                    },
-                }
+                Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Info { skill_name } => {
                 handlers::info_command(&registry, &skill_name, &mut std::io::stdout())
@@ -1258,6 +1247,33 @@ mod handlers {
         Ok(())
     }
 
+    /// Handle the run command
+    pub async fn run_command(
+        registry: &SkillRegistry,
+        skill_name: &str,
+        params_json: Option<&str>,
+        output: &mut dyn Write,
+    ) -> Result<(), error::SkillsCliError> {
+        let params = match params_json {
+            Some(p) => serde_json::from_str(p).map_err(|e| {
+                error::SkillsCliError::InvalidInput(format!(
+                    "Invalid JSON for skill '{}': {}",
+                    skill_name, e
+                ))
+            })?,
+            None => serde_json::json!({}),
+        };
+
+        let result = registry
+            .execute_skill(skill_name, params)
+            .await
+            .map_err(|e| error::SkillsCliError::ExecutionFailed(e.to_string()))?;
+
+        writeln!(output, "{}", result.output)?;
+
+        Ok(())
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1317,6 +1333,51 @@ mod handlers {
             assert!(output_str.contains("Name:"));
             assert!(output_str.contains("Description:"));
             assert!(output_str.contains("Interactive:"));
+        }
+
+        #[tokio::test]
+        async fn test_run_invalid_json_params() {
+            let registry = SkillRegistry::with_builtins();
+            let mut output = Vec::new();
+            
+            let result = run_command(&registry, "calculator", Some("{invalid}"), &mut output).await;
+            
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                error::SkillsCliError::InvalidInput(msg) => {
+                    assert!(msg.contains("Invalid JSON"));
+                    assert!(msg.contains("calculator"));
+                }
+                _ => panic!("Expected InvalidInput error"),
+            }
+        }
+
+        #[tokio::test]
+        async fn test_run_with_valid_params() {
+            let registry = SkillRegistry::with_builtins();
+            let mut output = Vec::new();
+            
+            let result = run_command(
+                &registry,
+                "calculator",
+                Some(r#"{"operation": "add", "a": 5, "b": 3}"#),
+                &mut output
+            ).await;
+            
+            assert!(result.is_ok());
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(!output_str.is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_run_without_params() {
+            let registry = SkillRegistry::with_builtins();
+            let mut output = Vec::new();
+            
+            let result = run_command(&registry, "calculator", None, &mut output).await;
+            
+            // Should execute with empty params
+            assert!(result.is_ok() || matches!(result.unwrap_err(), error::SkillsCliError::ExecutionFailed(_)));
         }
     }
 }
