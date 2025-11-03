@@ -20,10 +20,18 @@ pub mod memory_monitor;
 mod message;
 mod parse;
 pub mod rate_limiter;
+pub mod resource_cleanup;
 pub mod session_autocomplete;
 pub mod session_commands;
+pub mod session_lock;
 pub mod session_mode;
+pub mod session_persistence;
+pub mod session_scanner;
+pub mod session_switcher;
+pub mod session_transition;
 pub mod terminal_state;
+pub mod terminal_ui;
+pub mod worktree_session;
 pub mod worktree_strategy;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
@@ -42,6 +50,7 @@ mod token_counter;
 pub mod tool_manager;
 pub mod tools;
 pub mod util;
+pub mod visual_feedback;
 use std::borrow::Cow;
 use std::collections::{
     HashMap,
@@ -272,9 +281,6 @@ pub struct ChatArgs {
     /// Control line wrapping behavior (default: auto-detect)
     #[arg(short = 'w', long, value_enum)]
     pub wrap: Option<WrapMode>,
-    /// Disable memory system for this session (ephemeral mode)
-    #[arg(long, alias = "ephemeral")]
-    pub no_memory: bool,
 }
 
 impl ChatArgs {
@@ -554,7 +560,7 @@ impl ChatArgs {
             agents,
             input,
             InputSource::new(os, prompt_request_sender, prompt_response_receiver)?,
-            self.resume,
+            self.resume || resume_from_worktree,
             || terminal::window_size().map(|s| s.columns.into()).ok(),
             tool_manager,
             model_id,
@@ -564,7 +570,7 @@ impl ChatArgs {
             self.wrap,
             self.auto_approve,
             self.batch_mode,
-            self.no_memory,
+            false, // no_memory
         )
         .await?
         .spawn(os)
@@ -747,6 +753,8 @@ pub struct ChatSession {
     conversation_mode: crate::conversation_modes::ConversationMode,
     /// Cortex memory system
     cortex: Option<cortex_memory::CortexMemory>,
+    /// Last user message for memory storage
+    last_user_message: Option<String>,
 }
 
 impl ChatSession {
@@ -959,6 +967,7 @@ impl ChatSession {
             analytics,
             conversation_mode: crate::conversation_modes::ConversationMode::Interactive,
             cortex,
+            last_user_message: None,
         };
 
         // Log session start for analytics
@@ -2952,6 +2961,9 @@ impl ChatSession {
 
                 let enhanced_input = self.apply_conversation_mode(user_input.clone());
 
+                // Store user message for memory storage later
+                self.last_user_message = Some(user_input.clone());
+
                 // Recall relevant context from memory
                 if let Some(ref mut cortex) = self.cortex {
                     let verbose = os.database.settings.get_bool(Setting::MemoryVerbose).unwrap_or(false);
@@ -3906,6 +3918,37 @@ impl ChatSession {
 
             self.send_chat_telemetry(os, TelemetryResult::Succeeded, None, None, None, true)
                 .await;
+
+            // Store interaction in memory
+            if let Some(ref mut cortex) = self.cortex {
+                if let Some(ref user_msg) = self.last_user_message {
+                    let verbose = os
+                        .database
+                        .settings
+                        .get_bool(Setting::MemoryVerbose)
+                        .unwrap_or(false);
+
+                    // Use the accumulated buffer as the assistant response
+                    if !buf.is_empty() {
+                        match cortex.store_interaction(user_msg, &buf, self.conversation.conversation_id()) {
+                            Ok(_) => {
+                                if verbose && self.interactive {
+                                    let _ = execute!(
+                                        self.stderr,
+                                        style::Print("💾 Stored interaction in memory\n")
+                                    );
+                                }
+                                tracing::debug!("Stored interaction in memory");
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to store interaction in memory: {}", e);
+                            }
+                        }
+                    }
+                    // Clear the stored message
+                    self.last_user_message = None;
+                }
+            }
 
             // Run Stop hooks when the assistant finishes responding
             if let Some(cm) = self.conversation.context_manager.as_mut() {

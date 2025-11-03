@@ -136,6 +136,37 @@
       ]
     }
   },
+  "code_search": {
+    "name": "code_search",
+    "description": "Search through code and documentation files in the workspace. Provides fast text search with automatic indexing for improved performance over time.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query or pattern to find in files"
+        },
+        "path": {
+          "type": "string",
+          "description": "Optional: Limit search to specific directory path"
+        },
+        "file_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional: File extensions to search (without dots, e.g. ['rs', 'py'])"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Optional: Maximum number of results to return (default: 20)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
   "fs_write": {
     "name": "fs_write",
     "description": "A tool for creating and editing files\n * The `create` command will override the file at `path` if it already exists as a file, and otherwise create a new file\n * The `append` command will add content to the end of an existing file, automatically adding a newline if the file doesn't end with one. The file must exist.\n Notes for using the `str_replace` command:\n * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!\n * If the `old_str` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in `old_str` to make it unique\n * The `new_str` parameter should contain the edited lines that should replace the `old_str`.",

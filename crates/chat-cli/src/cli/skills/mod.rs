@@ -11,12 +11,15 @@ use crate::cli::chat::tools::ToolSpec;
 
 pub mod builtin;
 pub mod creation_assistant;
+pub mod error_recovery;
+pub mod onboarding;
 pub mod platform;
 pub mod registry;
 pub mod security;
 pub mod security_logging;
 pub mod security_testing;
 pub mod security_tools;
+pub mod templates;
 pub mod tests;
 pub mod toolspec_conversion;
 pub mod types;

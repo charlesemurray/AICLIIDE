@@ -71,6 +71,7 @@ use crate::cli::chat::server_messenger::{
     UpdateEventMessage,
 };
 use crate::cli::chat::tools::custom_tool::CustomTool;
+use crate::cli::chat::tools::code_search::CodeSearch;
 use crate::cli::chat::tools::delegate::Delegate;
 use crate::cli::chat::tools::execute::ExecuteCommand;
 use crate::cli::chat::tools::fs_read::FsRead;
@@ -924,6 +925,7 @@ impl ToolManager {
             "todo_list" => Tool::Todo(serde_json::from_value::<TodoList>(value.args).map_err(map_err)?),
             // Note that this name is NO LONGER namespaced with server_name{DELIMITER}tool_name
             "delegate" => Tool::Delegate(serde_json::from_value::<Delegate>(value.args).map_err(map_err)?),
+            "code_search" => Tool::CodeSearch(serde_json::from_value::<CodeSearch>(value.args).map_err(map_err)?),
             name => {
                 // Check if it's a skill
                 if let Some(definition) = self.skill_registry.get(name) {

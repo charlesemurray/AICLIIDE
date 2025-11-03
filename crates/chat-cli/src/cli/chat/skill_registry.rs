@@ -1,6 +1,7 @@
 //! Skill registry for managing skill definitions
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::Path;
 
 use eyre::Result;
@@ -12,23 +13,92 @@ pub struct SkillRegistry {
     skills: HashMap<String, SkillDefinition>,
 }
 
+#[derive(Debug)]
+pub struct LoadingSummary {
+    pub loaded: Vec<String>,
+    pub failed: Vec<(String, String)>,
+}
+
+impl LoadingSummary {
+    pub fn new() -> Self {
+        Self {
+            loaded: Vec::new(),
+            failed: Vec::new(),
+        }
+    }
+
+    pub fn print(&self, output: &mut impl Write) -> Result<()> {
+        if !self.loaded.is_empty() {
+            for name in &self.loaded {
+                writeln!(output, "✓ Loaded skill: {}", name)?;
+            }
+        }
+
+        if !self.failed.is_empty() {
+            for (file, error) in &self.failed {
+                writeln!(output, "✗ Failed to load {}: {}", file, error)?;
+            }
+        }
+
+        if !self.loaded.is_empty() || !self.failed.is_empty() {
+            writeln!(
+                output,
+                "\nLoaded {} skill(s), {} failed",
+                self.loaded.len(),
+                self.failed.len()
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
 impl SkillRegistry {
     pub fn new() -> Self {
         Self { skills: HashMap::new() }
     }
 
     pub async fn load_from_directory(&mut self, path: &Path) -> Result<()> {
+        self.load_from_directory_with_feedback(path, &mut std::io::sink())
+            .await
+    }
+
+    pub async fn load_from_directory_with_feedback(
+        &mut self,
+        path: &Path,
+        output: &mut impl Write,
+    ) -> Result<()> {
+        let mut summary = LoadingSummary::new();
         let mut entries = tokio::fs::read_dir(path).await?;
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                let content = tokio::fs::read_to_string(&path).await?;
-                let skill: SkillDefinition = serde_json::from_str(&content)?;
-                self.skills.insert(skill.name.clone(), skill);
+                let filename = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+
+                match tokio::fs::read_to_string(&path).await {
+                    Ok(content) => match serde_json::from_str::<SkillDefinition>(&content) {
+                        Ok(skill) => {
+                            let name = skill.name.clone();
+                            self.skills.insert(name.clone(), skill);
+                            summary.loaded.push(name);
+                        }
+                        Err(e) => {
+                            summary.failed.push((filename, e.to_string()));
+                        }
+                    },
+                    Err(e) => {
+                        summary.failed.push((filename, e.to_string()));
+                    }
+                }
             }
         }
 
+        summary.print(output)?;
         Ok(())
     }
 
@@ -248,5 +318,38 @@ mod tests {
         // Should load only the valid skill
         assert_eq!(registry.len(), 1);
         assert!(registry.get("valid").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_loading_feedback() {
+        use std::fs;
+
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+
+        // Valid skill
+        let valid_path = dir.path().join("valid.json");
+        fs::write(
+            &valid_path,
+            r#"{"name": "test-skill", "description": "Test", "skill_type": "code_inline"}"#,
+        )
+        .unwrap();
+
+        // Invalid JSON
+        let invalid_path = dir.path().join("invalid.json");
+        fs::write(&invalid_path, "not json").unwrap();
+
+        let mut registry = SkillRegistry::new();
+        let mut output = Vec::new();
+        registry
+            .load_from_directory_with_feedback(dir.path(), &mut output)
+            .await
+            .unwrap();
+
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("✓ Loaded skill: test-skill"));
+        assert!(output_str.contains("✗ Failed to load invalid.json"));
+        assert!(output_str.contains("Loaded 1 skill(s), 1 failed"));
     }
 }

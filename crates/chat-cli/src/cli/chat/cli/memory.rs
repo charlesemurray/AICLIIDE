@@ -19,6 +19,8 @@ pub enum MemorySubcommand {
     Cleanup(CleanupArgs),
     /// Toggle memory on/off
     Toggle(ToggleArgs),
+    /// Provide feedback on a memory
+    Feedback(FeedbackArgs),
 }
 
 impl MemorySubcommand {
@@ -31,6 +33,7 @@ impl MemorySubcommand {
             Self::Stats => "stats",
             Self::Cleanup(_) => "cleanup",
             Self::Toggle(_) => "toggle",
+            Self::Feedback(_) => "feedback",
         }
     }
 }
@@ -84,6 +87,20 @@ pub struct ToggleArgs {
     /// Disable memory
     #[arg(long)]
     pub disable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Args)]
+pub struct FeedbackArgs {
+    /// Memory ID to provide feedback on
+    pub memory_id: String,
+
+    /// Mark as helpful
+    #[arg(long)]
+    pub helpful: bool,
+
+    /// Mark as not helpful
+    #[arg(long)]
+    pub not_helpful: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Args)]

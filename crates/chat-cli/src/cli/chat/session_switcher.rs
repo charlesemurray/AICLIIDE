@@ -83,7 +83,14 @@ impl SessionSwitcher {
         coordinator: &MultiSessionCoordinator,
         writer: &mut W,
     ) -> Result<()> {
-        let session_info = coordinator.get_session_info().await;
+        let sessions = coordinator.list_sessions().await;
+
+        let mut session_info = Vec::new();
+        for name in sessions {
+            // Simplified - all sessions shown as Development type
+            session_info.push((name, crate::theme::session::SessionType::Development, false));
+        }
+
         self.ui.show_session_list(writer, &session_info)?;
         Ok(())
     }

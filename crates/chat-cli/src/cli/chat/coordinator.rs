@@ -1,6 +1,7 @@
 //! Multi-session coordinator for managing concurrent chat sessions
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use eyre::{
@@ -18,7 +19,10 @@ use crate::cli::chat::managed_session::{
 };
 use crate::cli::chat::memory_monitor::MemoryMonitor;
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
+use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
+use crate::cli::chat::session_lock::SessionLockManager;
 use crate::cli::chat::session_mode::SessionStateChange;
+use crate::cli::chat::session_persistence::{PersistedSession, SessionPersistence};
 use crate::theme::session::{
     SessionDisplay,
     SessionStatus,
@@ -49,7 +53,7 @@ impl Default for CoordinatorConfig {
 /// Coordinates multiple chat sessions
 pub struct MultiSessionCoordinator {
     /// All managed sessions by conversation_id
-    sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
+    pub(crate) sessions: Arc<Mutex<HashMap<String, ManagedSession>>>,
     /// Currently active session ID
     active_session_id: Arc<Mutex<Option<String>>>,
     /// Configuration
@@ -62,6 +66,12 @@ pub struct MultiSessionCoordinator {
     rate_limiter: ApiRateLimiter,
     /// Memory monitor
     memory_monitor: MemoryMonitor,
+    /// Session persistence with error handling
+    persistence: Option<SessionPersistence>,
+    /// Lock manager for race condition protection
+    lock_manager: SessionLockManager,
+    /// Resource cleanup manager
+    cleanup_manager: ResourceCleanupManager,
 }
 
 impl MultiSessionCoordinator {
@@ -79,6 +89,9 @@ impl MultiSessionCoordinator {
             state_tx,
             rate_limiter,
             memory_monitor,
+            persistence: None,
+            lock_manager: SessionLockManager::default(),
+            cleanup_manager: ResourceCleanupManager::default(),
         }
     }
 
@@ -88,6 +101,11 @@ impl MultiSessionCoordinator {
         conversation_id: String,
         session_type: SessionType,
         name: Option<String>,
+        os: &crate::os::Os,
+        agents: crate::cli::agent::Agents,
+        tool_config: std::collections::HashMap<String, crate::cli::chat::tools::ToolSpec>,
+        tool_manager: crate::cli::chat::tool_manager::ToolManager,
+        model_id: Option<String>,
     ) -> Result<String> {
         let mut sessions = self.sessions.lock().await;
 
@@ -110,11 +128,21 @@ impl MultiSessionCoordinator {
         // Create output buffer
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(self.config.buffer_size_bytes)));
 
-        // Create managed session (without ConversationState for now)
-        // TODO: Integrate with actual ConversationState in next step
+        // Create real ConversationState
+        let conversation = crate::cli::chat::conversation::ConversationState::new(
+            &conversation_id,
+            agents,
+            tool_config,
+            tool_manager,
+            model_id,
+            os,
+            true, // mcp_enabled
+        ).await;
+
+        // Create managed session with real ConversationState
         let session = ManagedSession {
             display,
-            conversation: unsafe { std::mem::zeroed() }, // Placeholder
+            conversation,
             conversation_id: conversation_id.clone(),
             state: crate::cli::chat::managed_session::SessionState::Active,
             output_buffer: buffer,
@@ -148,6 +176,81 @@ impl MultiSessionCoordinator {
         let mut active_id = self.active_session_id.lock().await;
         *active_id = Some(target_id);
 
+        Ok(())
+    }
+
+    /// Acquire lock for session (prevents concurrent access)
+    pub async fn lock_session(&self, session_id: &str, holder: &str) -> Result<crate::cli::chat::session_lock::SessionLockGuard> {
+        self.lock_manager.try_lock(session_id, holder).await
+    }
+
+    /// Check if session is currently locked
+    pub async fn is_session_locked(&self, session_id: &str) -> bool {
+        self.lock_manager.is_locked(session_id).await
+    }
+
+    /// Get all locked sessions
+    pub async fn get_locked_sessions(&self) -> Vec<String> {
+        self.lock_manager.locked_sessions().await
+    }
+
+    /// Clean up stale locks
+    pub async fn cleanup_stale_locks(&self) -> usize {
+        self.lock_manager.cleanup_stale_locks().await
+    }
+
+    /// Update resource statistics
+    pub async fn update_resource_stats(&self) {
+        let sessions = self.sessions.lock().await;
+        let active_count = sessions.len();
+        
+        // Calculate total buffer usage
+        let mut total_bytes = 0;
+        for session in sessions.values() {
+            let buffer = session.output_buffer.lock().await;
+            total_bytes += buffer.current_size();
+        }
+        
+        self.cleanup_manager.update_stats(active_count, total_bytes).await;
+    }
+
+    /// Get resource statistics
+    pub async fn get_resource_stats(&self) -> crate::cli::chat::resource_cleanup::ResourceStats {
+        self.cleanup_manager.get_stats().await
+    }
+
+    /// Check for resource leaks
+    pub async fn check_resource_leaks(&self) -> Vec<String> {
+        self.cleanup_manager.check_for_leaks().await
+    }
+
+    /// Get cleanup recommendations
+    pub async fn get_cleanup_recommendations(&self) -> Vec<String> {
+        self.cleanup_manager.get_recommendations().await
+    }
+
+    /// Perform periodic cleanup
+    pub async fn perform_cleanup(&self) -> eyre::Result<()> {
+        if !self.cleanup_manager.needs_cleanup().await {
+            return Ok(());
+        }
+
+        // Update stats
+        self.update_resource_stats().await;
+
+        // Clean up stale locks
+        let stale_locks = self.cleanup_stale_locks().await;
+        if stale_locks > 0 {
+            eprintln!("Cleaned up {} stale locks", stale_locks);
+        }
+
+        // Check for leaks
+        let warnings = self.check_resource_leaks().await;
+        for warning in warnings {
+            eprintln!("Resource warning: {}", warning);
+        }
+
+        self.cleanup_manager.mark_cleanup_done().await;
         Ok(())
     }
 
@@ -439,5 +542,88 @@ mod tests {
         let waiting = coordinator.get_waiting_sessions().await;
         assert_eq!(waiting.len(), 1);
         assert_eq!(waiting[0], "session-1");
+    }
+
+    #[tokio::test]
+    async fn test_lock_session() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let guard = coordinator.lock_session("test-1", "user-1").await;
+        assert!(guard.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_lock_fails() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        let result = coordinator.lock_session("test-1", "user-2").await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("locked"));
+    }
+
+    #[tokio::test]
+    async fn test_is_session_locked() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        assert!(!coordinator.is_session_locked("test-1").await);
+        
+        let _guard = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        assert!(coordinator.is_session_locked("test-1").await);
+    }
+
+    #[tokio::test]
+    async fn test_get_locked_sessions() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let _guard1 = coordinator.lock_session("test-1", "user-1").await.unwrap();
+        let _guard2 = coordinator.lock_session("test-2", "user-2").await.unwrap();
+        
+        let locked = coordinator.get_locked_sessions().await;
+        assert_eq!(locked.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_stale_locks() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        // This test just verifies the method exists and runs
+        let count = coordinator.cleanup_stale_locks().await;
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_update_resource_stats() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        coordinator.update_resource_stats().await;
+        
+        let stats = coordinator.get_resource_stats().await;
+        assert_eq!(stats.active_sessions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_check_resource_leaks_empty() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let warnings = coordinator.check_resource_leaks().await;
+        assert_eq!(warnings.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_cleanup_recommendations() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let recommendations = coordinator.get_cleanup_recommendations().await;
+        assert_eq!(recommendations.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_perform_cleanup() {
+        let coordinator = MultiSessionCoordinator::new(CoordinatorConfig::default());
+        
+        let result = coordinator.perform_cleanup().await;
+        assert!(result.is_ok());
     }
 }

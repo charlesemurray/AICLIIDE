@@ -1,3 +1,4 @@
+pub mod code_search;
 pub mod custom_tool;
 pub mod delegate;
 pub mod execute;
@@ -37,6 +38,7 @@ use crossterm::queue;
 use crossterm::style::{
     self,
 };
+use code_search::CodeSearch;
 use custom_tool::CustomTool;
 use delegate::Delegate;
 use execute::ExecuteCommand;
@@ -75,7 +77,7 @@ use crate::theme::{
 };
 
 pub const DEFAULT_APPROVE: [&str; 0] = [];
-pub const NATIVE_TOOLS: [&str; 10] = [
+pub const NATIVE_TOOLS: [&str; 11] = [
     "fs_read",
     "fs_write",
     #[cfg(windows)]
@@ -90,6 +92,7 @@ pub const NATIVE_TOOLS: [&str; 10] = [
     "thinking",
     "todo_list",
     "delegate",
+    "code_search",
 ];
 
 /// Represents an executable tool use.
@@ -107,6 +110,7 @@ pub enum Tool {
     Thinking(Thinking),
     Todo(TodoList),
     Delegate(Delegate),
+    CodeSearch(CodeSearch),
     Skill(skill_tool::SkillTool),
     Workflow(workflow_tool::WorkflowTool),
     SkillNew(skill::SkillTool),
@@ -131,6 +135,7 @@ impl Tool {
             Tool::Thinking(_) => "thinking (prerelease)",
             Tool::Todo(_) => "todo_list",
             Tool::Delegate(_) => "delegate",
+            Tool::CodeSearch(_) => "code_search",
             Tool::Skill(skill_tool) => &skill_tool.skill_name,
             Tool::Workflow(workflow_tool) => &workflow_tool.workflow.name,
             Tool::SkillNew(skill) => &skill.name,
@@ -153,6 +158,7 @@ impl Tool {
             Tool::Todo(_) => PermissionEvalResult::Allow,
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
             Tool::Delegate(_) => PermissionEvalResult::Allow,
+            Tool::CodeSearch(code_search) => code_search.eval_perm(os, agent),
             Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
             Tool::Workflow(_) => PermissionEvalResult::Allow, // Workflows have their own security
             Tool::SkillNew(skill) => skill.eval_perm(os, agent),
@@ -181,6 +187,12 @@ impl Tool {
             Tool::Thinking(think) => think.invoke(stdout).await,
             Tool::Todo(todo) => todo.invoke(os, stdout).await,
             Tool::Delegate(delegate) => delegate.invoke(os, stdout, agents).await,
+            Tool::CodeSearch(_code_search) => {
+                // Stub implementation - will be completed in next step
+                Ok(InvokeOutput {
+                    output: OutputKind::Text("CodeSearch not yet implemented".to_string()),
+                })
+            },
             Tool::Skill(skill_tool) => {
                 let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
                     .await

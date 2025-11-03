@@ -415,6 +415,11 @@ impl ConversationState {
         if let Ok(cwd) = std::env::current_dir() {
             os.database.set_conversation_by_path(cwd, self).ok();
         }
+
+        // Update session metadata with current stats
+        if let Err(e) = self.update_session_metadata(os).await {
+            tracing::warn!("Failed to update session metadata: {}", e);
+        }
     }
 
     /// Returns the conversation id.

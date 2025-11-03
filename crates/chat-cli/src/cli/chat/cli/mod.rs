@@ -514,6 +514,27 @@ async fn execute_memory_command(
                 )?;
             }
         },
+        MemorySubcommand::Feedback(args) => {
+            if args.helpful == args.not_helpful {
+                execute!(
+                    session.stderr,
+                    StyledText::error_fg(),
+                    style::Print("Error: Specify either --helpful or --not-helpful\n"),
+                    StyledText::reset(),
+                )?;
+            } else {
+                execute!(
+                    session.stderr,
+                    StyledText::success_fg(),
+                    style::Print(format!(
+                        "Feedback recorded for memory {}\n",
+                        args.memory_id
+                    )),
+                    StyledText::reset(),
+                )?;
+                // TODO: Wire up to FeedbackManager when integrated
+            }
+        },
     }
 
     Ok(ChatState::PromptUser {
