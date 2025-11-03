@@ -110,6 +110,10 @@ impl SessionType {
             SessionType::Planning => colors.planning,
             SessionType::Development => colors.development,
             SessionType::CodeReview => colors.code_review,
+            SessionType::Feature => colors.development,
+            SessionType::Hotfix => colors.debug,
+            SessionType::Refactor => colors.code_review,
+            SessionType::Experiment => colors.planning,
         }
     }
 
@@ -120,6 +124,10 @@ impl SessionType {
             SessionType::Planning => "plan",
             SessionType::Development => "dev",
             SessionType::CodeReview => "review",
+            SessionType::Feature => "feature",
+            SessionType::Hotfix => "hotfix",
+            SessionType::Refactor => "refactor",
+            SessionType::Experiment => "experiment",
         }
     }
 }
