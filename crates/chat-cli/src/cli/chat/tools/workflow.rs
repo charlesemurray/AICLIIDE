@@ -1,10 +1,13 @@
 //! Workflow tool implementation
 
+use std::collections::HashMap;
+
 use eyre::Result;
 use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::Value;
 
 use crate::cli::agent::{
     Agent,
@@ -35,6 +38,81 @@ pub struct WorkflowDefinition {
     pub context: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Clone)]
+pub struct StepResult {
+    pub output: String,
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum WorkflowState {
+    Running,
+    Completed,
+    Failed,
+}
+
+pub struct StepExecutor;
+
+impl StepExecutor {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn execute_step(&self, _step: &WorkflowStep) -> Result<StepResult> {
+        Ok(StepResult {
+            output: "step executed".to_string(),
+            success: true,
+        })
+    }
+
+    pub fn resolve_tool_name(&self, step: &WorkflowStep) -> Result<String> {
+        if step.tool.is_empty() {
+            return Err(eyre::eyre!("Step tool name cannot be empty"));
+        }
+
+        let known_tools = ["echo", "calculator"];
+        if !known_tools.contains(&step.tool.as_str()) {
+            return Err(eyre::eyre!("Unknown tool '{}' in step '{}'", step.tool, step.name));
+        }
+
+        Ok(step.tool.clone())
+    }
+
+    pub fn build_step_params(&self, step: &WorkflowStep, _context: &Value) -> Result<HashMap<String, Value>> {
+        match &step.parameters {
+            Value::Object(map) => {
+                let mut params = HashMap::new();
+                for (key, value) in map {
+                    params.insert(key.clone(), value.clone());
+                }
+                Ok(params)
+            },
+            _ => Ok(HashMap::new()),
+        }
+    }
+
+    pub fn execute_step_with_context(&self, step: &WorkflowStep, context: &Value) -> Result<StepResult> {
+        let tool_name = self.resolve_tool_name(step)?;
+        let _params = self.build_step_params(step, context)?;
+
+        Ok(StepResult {
+            output: format!("Executed step '{}' with tool '{}'", step.name, tool_name),
+            success: true,
+        })
+    }
+
+    pub fn add_step_output_to_context(&self, mut context: Value, step_name: &str, output: &str) -> Value {
+        if let Value::Object(ref mut map) = context {
+            let steps = map.entry("steps").or_insert_with(|| Value::Object(Default::default()));
+
+            if let Value::Object(steps_map) = steps {
+                steps_map.insert(step_name.to_string(), serde_json::json!({"output": output}));
+            }
+        }
+        context
+    }
+}
+
 impl WorkflowTool {
     pub fn new(name: String, description: String) -> Self {
         Self { name, description }
@@ -59,42 +137,59 @@ impl WorkflowTool {
         format!("Workflow failed at step {} ('{}'): {}", step_num, step_name, error)
     }
 
+    fn format_results(&self, step_results: Vec<String>) -> String {
+        if step_results.is_empty() {
+            return "Workflow completed with no steps".to_string();
+        }
+
+        let summary = format!("Workflow completed successfully ({} steps)", step_results.len());
+        let details = step_results.join("\n");
+        format!("{}\n\n{}", summary, details)
+    }
+
     pub fn invoke_with_definition(
         &self,
         definition: &WorkflowDefinition,
-        _params: std::collections::HashMap<String, serde_json::Value>,
+        _params: HashMap<String, Value>,
     ) -> Result<String> {
         use std::time::Instant;
 
+        let executor = StepExecutor::new();
+        let mut context = definition.context.clone().unwrap_or(Value::Object(Default::default()));
+        let mut results = Vec::new();
+        let mut state = WorkflowState::Running;
         let workflow_start = Instant::now();
         let mut current_step = 0;
-        let mut step_timings = Vec::new();
 
         for step in &definition.steps {
             current_step += 1;
             let step_start = Instant::now();
 
-            // Validate tool exists
-            let known_tools = ["echo", "calculator"];
-            if !known_tools.contains(&step.tool.as_str()) {
-                let error = eyre::eyre!("Unknown tool '{}'", step.tool);
-                return Err(eyre::eyre!(self.format_error(current_step, &step.name, &error)));
+            match executor.execute_step_with_context(step, &context) {
+                Ok(step_result) => {
+                    let step_duration = step_start.elapsed();
+                    results.push(format!(
+                        "Step '{}': {} (completed in {:.2}ms)",
+                        step.name,
+                        step_result.output,
+                        step_duration.as_secs_f64() * 1000.0
+                    ));
+                    context = executor.add_step_output_to_context(context, &step.name, &step_result.output);
+                },
+                Err(e) => {
+                    state = WorkflowState::Failed;
+                    return Err(eyre::eyre!(self.format_error(current_step, &step.name, &e)));
+                },
             }
-
-            let step_duration = step_start.elapsed();
-            step_timings.push(format!(
-                "Step '{}': completed in {:.2}ms",
-                step.name,
-                step_duration.as_secs_f64() * 1000.0
-            ));
         }
 
+        state = WorkflowState::Completed;
         let total_duration = workflow_start.elapsed();
         Ok(format!(
             "Executed {} steps successfully in {:.2}ms\n\n{}",
             definition.steps.len(),
             total_duration.as_secs_f64() * 1000.0,
-            step_timings.join("\n")
+            self.format_results(results)
         ))
     }
 }
@@ -378,5 +473,78 @@ mod tests {
         let result = workflow.invoke(params);
         assert!(result.is_ok());
         assert!(result.unwrap().contains("not implemented"));
+    }
+
+    #[test]
+    fn test_step_executor_creation() {
+        let executor = StepExecutor::new();
+        let step = WorkflowStep {
+            name: "test".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({}),
+        };
+
+        let result = executor.execute_step(&step);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_resolve_tool_name() {
+        let executor = StepExecutor::new();
+        let step = WorkflowStep {
+            name: "test".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({}),
+        };
+
+        let result = executor.resolve_tool_name(&step);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "echo");
+    }
+
+    #[test]
+    fn test_build_step_params() {
+        let executor = StepExecutor::new();
+        let step = WorkflowStep {
+            name: "test".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({"key": "value"}),
+        };
+
+        let context = serde_json::json!({});
+        let result = executor.build_step_params(&step, &context);
+
+        assert!(result.is_ok());
+        let params = result.unwrap();
+        assert_eq!(params.get("key").unwrap(), "value");
+    }
+
+    #[test]
+    fn test_execute_step_with_context() {
+        let executor = StepExecutor::new();
+        let step = WorkflowStep {
+            name: "test".to_string(),
+            tool: "echo".to_string(),
+            parameters: serde_json::json!({}),
+        };
+
+        let context = serde_json::json!({});
+        let result = executor.execute_step_with_context(&step, &context);
+
+        assert!(result.is_ok());
+        let step_result = result.unwrap();
+        assert!(step_result.success);
+        assert!(step_result.output.contains("test"));
+    }
+
+    #[test]
+    fn test_add_step_output_to_context() {
+        let executor = StepExecutor::new();
+        let context = serde_json::json!({});
+
+        let updated = executor.add_step_output_to_context(context, "step1", "output1");
+
+        assert!(updated.get("steps").is_some());
+        assert!(updated["steps"]["step1"]["output"].as_str().unwrap() == "output1");
     }
 }
