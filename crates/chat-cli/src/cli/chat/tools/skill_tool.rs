@@ -7,7 +7,7 @@ use super::{
     InvokeOutput,
     OutputKind,
 };
-use crate::cli::skills::SkillRegistry;
+use crate::cli::skills::{SkillError, SkillRegistry};
 
 #[derive(Debug, Clone)]
 pub struct SkillTool {
@@ -38,7 +38,7 @@ impl SkillTool {
 
         let skill = registry
             .get(&self.skill_name)
-            .ok_or_else(|| eyre::eyre!("Skill not found: {}", self.skill_name))?;
+            .ok_or_else(|| SkillError::NotFound(self.skill_name.clone()))?;
 
         let result = skill.execute(self.params.clone()).await;
         let duration = start.elapsed();
@@ -58,7 +58,7 @@ impl SkillTool {
                 if show_feedback {
                     writeln!(stdout, "✗ Skill failed after {:.2}s", duration.as_secs_f64())?;
                 }
-                Err(eyre::eyre!("Skill execution failed: {}", e))
+                Err(e.into())
             }
         }
     }
