@@ -166,7 +166,7 @@ impl SkillRegistry {
     pub async fn execute_skill(&self, name: &str, params: serde_json::Value) -> Result<SkillResult, SkillError> {
         match self.get(name) {
             Some(skill) => skill.execute(params).await,
-            None => Err(SkillError::NotFound),
+            None => Err(SkillError::NotFound(name.to_string())),
         }
     }
 

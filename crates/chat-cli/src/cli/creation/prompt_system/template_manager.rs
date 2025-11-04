@@ -310,7 +310,7 @@ impl MultiDimensionalValidator {
     }
 
     fn calculate_example_quality(&self, prompt: &str) -> f64 {
-        let mut score = 0.0;
+        let mut score: f64 = 0.0;
         let prompt_lower = prompt.to_lowercase();
         if !prompt_lower.contains("example") { return 0.0; }
         
@@ -330,7 +330,7 @@ impl MultiDimensionalValidator {
             }
         }
         
-        score.min(1.0)
+        score.min(1.0_f64)
     }
 
     fn generate_feedback(

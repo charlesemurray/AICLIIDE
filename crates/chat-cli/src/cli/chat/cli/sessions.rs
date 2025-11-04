@@ -318,7 +318,7 @@ impl SessionsSubcommand {
                 println!("🔀 Preparing to merge worktree session...");
 
                 // Find session to merge
-                let sessions = match get_current_repo_sessions() {
+                let (sessions, _errors) = match get_current_repo_sessions() {
                     Ok(s) => s,
                     Err(e) => {
                         println!("❌ Failed to find sessions: {}", e);

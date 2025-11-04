@@ -305,7 +305,7 @@ impl SkillsArgs {
                 Ok(ExitCode::SUCCESS)
             },
             SkillsCommand::Validate { file } => {
-                handlers::validate_command(&file, &mut std::io::stdout())
+                handlers::validate_command(file.to_str().unwrap(), &mut std::io::stdout())
                     .await
                     .map_err(|e| eyre::eyre!(e))?;
 
@@ -1272,7 +1272,8 @@ mod handlers {
             }
         };
 
-        let desc = description.unwrap_or(&format!("{} skill", name));
+        let default_desc = format!("{} skill", name);
+        let desc = description.unwrap_or(&default_desc);
         let skill_json = template.generate(name, desc);
 
         std::fs::create_dir_all(skills_dir)?;

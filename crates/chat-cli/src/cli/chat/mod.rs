@@ -7,6 +7,7 @@ use spinners::{
 
 use crate::theme::StyledText;
 use crate::util::ui::should_send_structured_message;
+use crate::session::metadata::SessionMetadata;
 pub mod branch_naming;
 pub mod cli;
 mod consts;
@@ -567,7 +568,7 @@ impl ChatArgs {
                             Ok(name) => name,
                             Err(e) => {
                                 eprintln!("✗ Invalid branch name: {}", e);
-                                return None;
+                                return Err(eyre::eyre!("Invalid branch name: {}", e));
                             }
                         };
                         let unique_branch =
@@ -648,7 +649,7 @@ impl ChatArgs {
                                         Ok(name) => name,
                                         Err(e) => {
                                             eprintln!("✗ Invalid branch name: {}", e);
-                                            return None;
+                                            return Err(eyre::eyre!("Invalid branch name: {}", e));
                                         }
                                     }
                                 };
