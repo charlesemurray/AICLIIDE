@@ -95,16 +95,10 @@ impl SessionRepository for FileSystemRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
-
-    fn create_test_os(temp_dir: &TempDir) -> Os {
-        Os::test_with_root(temp_dir.path())
-    }
 
     #[tokio::test]
     async fn test_save_and_get() {
-        let temp_dir = TempDir::new().unwrap();
-        let os = create_test_os(&temp_dir);
+        let os = Os::new().await.unwrap();
         let repo = FileSystemRepository::new(os);
 
         let metadata = SessionMetadata::new("test-1", "Test session");
@@ -117,8 +111,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_with_filter() {
-        let temp_dir = TempDir::new().unwrap();
-        let os = create_test_os(&temp_dir);
+        let os = Os::new().await.unwrap();
         let repo = FileSystemRepository::new(os);
 
         let meta1 = SessionMetadata::new("id-1", "Active session");
