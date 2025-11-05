@@ -18,6 +18,12 @@ pub async fn handle_session_command<W: Write>(
     coordinator: &mut MultiSessionCoordinator,
     writer: &mut W,
 ) -> Result<bool> {
+    // Check for help
+    if input.contains("help") || input.contains("--help") || input.contains("-h") {
+        show_help(writer)?;
+        return Ok(true);
+    }
+
     // Parse command
     let cmd = match InputRouter::parse(input)? {
         Some(cmd) => cmd,
@@ -72,4 +78,23 @@ pub async fn handle_session_command<W: Write>(
     }
 
     Ok(true) // Command was handled
+}
+
+fn show_help<W: Write>(writer: &mut W) -> Result<()> {
+    writeln!(writer, "\n📋 Session Commands:")?;
+    writeln!(writer, "\n  /sessions              List active sessions")?;
+    writeln!(writer, "  /sessions --waiting    List sessions waiting for input")?;
+    writeln!(writer, "  /sessions --all        List all sessions (including completed)")?;
+    writeln!(writer, "\n  /switch <name>         Switch to a session by name")?;
+    writeln!(writer, "  /s <name>              Short alias for /switch")?;
+    writeln!(writer, "\n  /new [name]            Create a new session")?;
+    writeln!(writer, "  /close [name]          Close a session (current if no name)")?;
+    writeln!(writer, "  /rename <name>         Rename current session")?;
+    writeln!(writer, "\nExamples:")?;
+    writeln!(writer, "  /sessions              # List all active sessions")?;
+    writeln!(writer, "  /sessions --waiting    # Show sessions needing input")?;
+    writeln!(writer, "  /switch my-feature     # Switch to 'my-feature' session")?;
+    writeln!(writer, "  /new auth-work         # Create new session named 'auth-work'")?;
+    writeln!(writer)?;
+    Ok(())
 }
