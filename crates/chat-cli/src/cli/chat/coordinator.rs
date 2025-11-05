@@ -101,6 +101,31 @@ impl Default for CoordinatorConfig {
     }
 }
 
+/// Configuration for creating a new session
+#[derive(Debug, Clone)]
+pub struct SessionConfig {
+    /// Session name
+    pub name: String,
+    /// Session type
+    pub session_type: SessionType,
+}
+
+/// Context required for session creation
+pub struct SessionContext {
+    /// Conversation ID
+    pub conversation_id: String,
+    /// Operating system interface
+    pub os: crate::os::Os,
+    /// Agent configuration
+    pub agents: crate::cli::agent::Agents,
+    /// Tool configuration
+    pub tool_config: std::collections::HashMap<String, crate::cli::chat::tools::ToolSpec>,
+    /// Tool manager
+    pub tool_manager: crate::cli::chat::tool_manager::ToolManager,
+    /// Optional model ID
+    pub model_id: Option<String>,
+}
+
 /// Combined session state to prevent race conditions
 /// All session-related data is protected by a single lock
 pub(crate) struct SessionState {
@@ -208,17 +233,12 @@ impl MultiSessionCoordinator {
     /// Create a new session
     pub async fn create_session(
         &mut self,
-        conversation_id: String,
-        session_type: SessionType,
-        name: Option<String>,
-        os: &crate::os::Os,
-        agents: crate::cli::agent::Agents,
-        tool_config: std::collections::HashMap<String, crate::cli::chat::tools::ToolSpec>,
-        tool_manager: crate::cli::chat::tool_manager::ToolManager,
-        model_id: Option<String>,
+        config: SessionConfig,
+        context: SessionContext,
     ) -> Result<String> {
         // Validate inputs
-        validate_conversation_id(&conversation_id)?;
+        validate_conversation_id(&context.conversation_id)?;
+        validate_session_name(&config.name)?;
         
         let mut state = self.state.lock().await;
 
@@ -227,31 +247,25 @@ impl MultiSessionCoordinator {
             bail!("Maximum active sessions ({}) reached", self.config.max_active_sessions);
         }
 
-        // Generate name if not provided
-        let session_name = name.unwrap_or_else(|| format!("session-{}", state.sessions.len() + 1));
-        
-        // Validate session name
-        validate_session_name(&session_name)?;
-
         // Check for duplicate names
-        if state.sessions.values().any(|s| s.display.name == session_name) {
-            bail!("Session with name '{}' already exists", session_name);
+        if state.sessions.values().any(|s| s.display.name == config.name) {
+            bail!("Session with name '{}' already exists", config.name);
         }
 
         // Create session display
-        let display = SessionDisplay::new(session_type, session_name);
+        let display = SessionDisplay::new(config.session_type, config.name);
 
         // Create output buffer
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(self.config.buffer_size_bytes)));
 
         // Create real ConversationState
         let conversation = crate::cli::chat::conversation::ConversationState::new(
-            &conversation_id,
-            agents,
-            tool_config,
-            tool_manager,
-            model_id,
-            os,
+            &context.conversation_id,
+            context.agents,
+            context.tool_config,
+            context.tool_manager,
+            context.model_id,
+            &context.os,
             true, // mcp_enabled
         )
         .await;
@@ -261,7 +275,7 @@ impl MultiSessionCoordinator {
         let session = ManagedSession {
             display,
             conversation,
-            conversation_id: conversation_id.clone(),
+            conversation_id: context.conversation_id.clone(),
             state: crate::cli::chat::managed_session::SessionState::Active,
             output_buffer: buffer,
             task_handle: None,
@@ -273,14 +287,14 @@ impl MultiSessionCoordinator {
             },
         };
 
-        state.sessions.insert(conversation_id.clone(), session);
+        state.sessions.insert(context.conversation_id.clone(), session);
 
         // Set as active if first session
         if state.active_session_id.is_none() {
-            state.active_session_id = Some(conversation_id.clone());
+            state.active_session_id = Some(context.conversation_id.clone());
         }
 
-        Ok(conversation_id)
+        Ok(context.conversation_id)
     }
 
     /// Switch to a different session

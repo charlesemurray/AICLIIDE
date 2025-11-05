@@ -749,7 +749,33 @@ impl ChatArgs {
 
         // Set coordinator if multi-session is enabled
         if let Some(coord) = coordinator {
-            session.coordinator = Some(Arc::new(Mutex::new(coord)));
+            let coord_arc = Arc::new(Mutex::new(coord));
+            session.coordinator = Some(coord_arc.clone());
+            
+            // Create initial session for current conversation
+            let conversation_id = session.conversation.conversation_id().to_string();
+            let mut coord_lock = coord_arc.lock().await;
+            
+            // Get tool config from conversation
+            // TODO: Properly extract tool specs from conversation.tools
+            let tool_config = std::collections::HashMap::new();
+            
+            if let Err(e) = coord_lock.create_session(
+                coordinator::SessionConfig {
+                    name: "main".to_string(),
+                    session_type: crate::theme::session::SessionType::Development,
+                },
+                coordinator::SessionContext {
+                    conversation_id: conversation_id.clone(),
+                    os: os.clone(),
+                    agents: session.conversation.agents.clone(),
+                    tool_config,
+                    tool_manager: session.conversation.tool_manager.clone(),
+                    model_id: None,
+                }
+            ).await {
+                eprintln!("Warning: Failed to create initial session: {}", e);
+            }
         }
 
         session.spawn(os).await.map(|_| ExitCode::SUCCESS)
@@ -2717,7 +2743,52 @@ impl ChatSession {
             || user_input.starts_with("/rename")
             || user_input.starts_with("/session-name")
         {
-            // Handle session command with coordinator
+            // Handle /new specially since it needs full context
+            if user_input.starts_with("/new") {
+                if let Some(ref coord) = self.coordinator {
+                    let parts: Vec<&str> = user_input.split_whitespace().collect();
+                    let name = if parts.len() > 1 {
+                        parts[1].to_string()
+                    } else {
+                        format!("session-{}", uuid::Uuid::new_v4().to_string()[..8].to_string())
+                    };
+                    
+                    let new_conv_id = uuid::Uuid::new_v4().to_string();
+                    let mut coord_lock = coord.lock().await;
+                    
+                    // Get tool config from conversation
+                    // TODO: Properly extract tool specs from conversation.tools
+                    let tool_config = std::collections::HashMap::new();
+                    
+                    match coord_lock.create_session(
+                        coordinator::SessionConfig {
+                            name: name.clone(),
+                            session_type: crate::theme::session::SessionType::Development,
+                        },
+                        coordinator::SessionContext {
+                            conversation_id: new_conv_id.clone(),
+                            os: os.clone(),
+                            agents: self.conversation.agents.clone(),
+                            tool_config,
+                            tool_manager: self.conversation.tool_manager.clone(),
+                            model_id: None,
+                        }
+                    ).await {
+                        Ok(_) => {
+                            execute!(self.stderr, style::Print(format!("✓ Created session '{}' ({})\n", name, &new_conv_id[..8])))?;
+                        },
+                        Err(e) => {
+                            execute!(self.stderr, style::Print(format!("✗ Failed to create session: {}\n", e)))?;
+                        }
+                    }
+                }
+                
+                return Ok(ChatState::PromptUser {
+                    skip_printing_tools: false,
+                });
+            }
+            
+            // Handle other session commands with coordinator
             if let Some(ref coord) = self.coordinator {
                 let mut coord_lock = coord.lock().await;
                 match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr)

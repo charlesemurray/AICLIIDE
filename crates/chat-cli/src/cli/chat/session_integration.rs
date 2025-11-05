@@ -49,16 +49,10 @@ pub async fn handle_session_command<W: Write>(
             }
         },
         SessionCommand::New { session_type, name } => {
-            VisualFeedback::info(
+            VisualFeedback::warning(
                 writer,
-                &format!(
-                    "Creating new {:?} session{}",
-                    session_type,
-                    name.as_ref().map(|n| format!(" '{}'", n)).unwrap_or_default()
-                ),
+                "Session creation requires full chat context. Use 'q chat' to start a new session.",
             )?;
-            // Note: Actual creation requires more parameters from chat context
-            VisualFeedback::warning(writer, "Session creation not yet fully integrated")?;
         },
         SessionCommand::Close(name_opt) => {
             let name = name_opt.as_ref().ok_or_else(|| eyre::eyre!("Session name required"))?;
