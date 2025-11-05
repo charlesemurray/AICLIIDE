@@ -25,6 +25,7 @@ pub mod tangent;
 pub mod todos;
 pub mod tools;
 pub mod usage;
+pub mod workflows;
 
 use changelog::ChangelogArgs;
 use clap::Parser;
@@ -53,6 +54,7 @@ use skills::SkillsSubcommand;
 use tangent::TangentArgs;
 use todos::TodoSubcommand;
 use tools::ToolsArgs;
+use workflows::WorkflowsSubcommand;
 
 use crate::cli::chat::cli::checkpoint::CheckpointSubcommand;
 use crate::cli::chat::cli::subscribe::SubscribeArgs;
@@ -66,6 +68,93 @@ use crate::cli::chat::{
 use crate::cli::issue;
 use crate::constants::ui_text;
 use crate::os::Os;
+
+/// Sessions subcommand for managing multiple chat sessions
+#[derive(Debug, PartialEq, Parser)]
+pub enum SessionsSubcommand {
+    /// List sessions
+    List {
+        /// Show all sessions including completed
+        #[arg(long)]
+        all: bool,
+        /// Show only sessions waiting for input
+        #[arg(long)]
+        waiting: bool,
+    },
+    /// Create a new session
+    New {
+        /// Name for the new session
+        name: Option<String>,
+        /// Type of session to create
+        #[arg(long, value_enum)]
+        session_type: Option<crate::theme::session::SessionType>,
+    },
+    /// Close a session
+    Close {
+        /// Name of session to close (current if not specified)
+        name: Option<String>,
+    },
+    /// Rename current session
+    Rename {
+        /// New name for the session
+        new_name: String,
+    },
+}
+
+impl SessionsSubcommand {
+    pub async fn execute(self, session: &mut ChatSession, os: &Os) -> Result<ChatState, ChatError> {
+        use crate::cli::chat::session_integration;
+        
+        if let Some(ref coord) = session.coordinator {
+            let mut coord_lock = coord.lock().await;
+            
+            // Build context once to avoid borrow issues
+            let context = session.build_session_context(os);
+            let context_factory = move || context.clone();
+            
+            // Convert to command string for session_integration
+            let command_str = match &self {
+                Self::List { all, waiting } => {
+                    let mut cmd = "/sessions".to_string();
+                    if *all { cmd.push_str(" --all"); }
+                    if *waiting { cmd.push_str(" --waiting"); }
+                    cmd
+                },
+                Self::New { name, session_type } => {
+                    let mut cmd = "/new".to_string();
+                    if let Some(n) = name {
+                        cmd.push_str(" ");
+                        cmd.push_str(n);
+                    }
+                    cmd
+                },
+                Self::Close { name } => {
+                    let mut cmd = "/close".to_string();
+                    if let Some(n) = name {
+                        cmd.push_str(" ");
+                        cmd.push_str(n);
+                    }
+                    cmd
+                },
+                Self::Rename { new_name } => {
+                    format!("/rename {}", new_name)
+                },
+            };
+            
+            match session_integration::handle_session_command(
+                &command_str,
+                &mut coord_lock,
+                &mut session.stderr,
+                context_factory,
+            ).await {
+                Ok(_) => Ok(ChatState::PromptUser { skip_printing_tools: false }),
+                Err(e) => Err(ChatError::Custom(e.to_string().into())),
+            }
+        } else {
+            Err(ChatError::Custom("Session coordinator not available".into()))
+        }
+    }
+}
 
 /// q (Amazon Q Chat)
 #[derive(Debug, PartialEq, Parser)]
@@ -128,6 +217,9 @@ pub enum SlashCommand {
     /// Manage conversation session metadata
     #[command(name = "session")]
     SessionMgmt(SessionMgmtArgs),
+    /// Manage multiple chat sessions
+    #[command(subcommand)]
+    Sessions(SessionsSubcommand),
     /// Manage skills system
     #[command(subcommand)]
     Skills(SkillsSubcommand),
@@ -156,6 +248,9 @@ pub enum SlashCommand {
     // Status(StatusArgs),
     /// Paste an image from clipboard
     Paste(PasteArgs),
+    /// Manage workflows
+    #[command(subcommand)]
+    Workflows(WorkflowsSubcommand),
 }
 
 impl SlashCommand {
@@ -214,15 +309,31 @@ impl SlashCommand {
             Self::Tangent(args) => args.execute(os, session).await,
             Self::Persist(subcommand) => subcommand.execute(os, session).await,
             Self::SessionMgmt(args) => args.execute(session, os).await,
+            Self::Sessions(subcommand) => subcommand.execute(session, os).await,
             Self::Skills(subcommand) => subcommand.execute(session, os).await,
+            Self::Workflows(subcommand) => subcommand.execute(session, os).await,
             Self::Memory(subcommand) => execute_memory_command(subcommand, session).await,
             Self::Recall(args) => execute_recall_command(args, session).await,
             Self::Switch { name } => {
-                println!("🔄 Switching to: {}", name);
-                println!("✓ Switched successfully");
-                Ok(ChatState::PromptUser {
-                    skip_printing_tools: true,
-                })
+                use crate::cli::chat::session_integration;
+                
+                if let Some(ref coord) = session.coordinator {
+                    let mut coord_lock = coord.lock().await;
+                    let context = session.build_session_context(os);
+                    let context_factory = move || context.clone();
+                    
+                    match session_integration::handle_session_command(
+                        &format!("/switch {}", name),
+                        &mut coord_lock,
+                        &mut session.stderr,
+                        context_factory,
+                    ).await {
+                        Ok(_) => Ok(ChatState::PromptUser { skip_printing_tools: false }),
+                        Err(e) => Err(ChatError::Custom(e.to_string().into())),
+                    }
+                } else {
+                    Err(ChatError::Custom("Session coordinator not available".into()))
+                }
             },
             // Self::Root(subcommand) => {
             //     if let Err(err) = subcommand.execute(os, database, telemetry).await {
@@ -275,7 +386,9 @@ impl SlashCommand {
             Self::Checkpoint(_) => "checkpoint",
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
+            Self::Workflows(_) => "workflows",
             Self::SessionMgmt(_) => "session",
+            Self::Sessions(_) => "sessions",
             Self::Memory(_) => "memory",
             Self::Recall(_) => "recall",
             Self::Switch { .. } => "switch",
@@ -296,7 +409,14 @@ impl SlashCommand {
                 session_mgmt::SessionMgmtSubcommand::Archive { .. } => "archive",
                 session_mgmt::SessionMgmtSubcommand::Name { .. } => "name",
             }),
+            SlashCommand::Sessions(sub) => Some(match sub {
+                SessionsSubcommand::List { .. } => "list",
+                SessionsSubcommand::New { .. } => "new",
+                SessionsSubcommand::Close { .. } => "close",
+                SessionsSubcommand::Rename { .. } => "rename",
+            }),
             SlashCommand::Skills(sub) => Some(sub.name()),
+            SlashCommand::Workflows(sub) => Some(sub.name()),
             SlashCommand::Memory(sub) => Some(sub.name()),
             SlashCommand::Tools(arg) => arg.subcommand_name(),
             SlashCommand::Prompts(arg) => arg.subcommand_name(),

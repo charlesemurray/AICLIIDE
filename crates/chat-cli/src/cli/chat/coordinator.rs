@@ -111,6 +111,7 @@ pub struct SessionConfig {
 }
 
 /// Context required for session creation
+#[derive(Clone)]
 pub struct SessionContext {
     /// Conversation ID
     pub conversation_id: String,

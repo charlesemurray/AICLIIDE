@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use crossterm::style::Color;
 use serde::{
     Deserialize,
@@ -5,7 +6,7 @@ use serde::{
 };
 
 /// Types of sessions in Q CLI
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ValueEnum)]
 pub enum SessionType {
     Debug,
     Planning,

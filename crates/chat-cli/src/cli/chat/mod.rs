@@ -1223,6 +1223,18 @@ impl ChatSession {
         Ok(session)
     }
 
+    /// Build SessionContext for creating new sessions
+    pub fn build_session_context(&self, os: &Os) -> coordinator::SessionContext {
+        coordinator::SessionContext {
+            conversation_id: uuid::Uuid::new_v4().to_string(),
+            os: os.clone(),
+            agents: self.conversation.agents.clone(),
+            tool_config: std::collections::HashMap::new(), // TODO: Extract from conversation.tools
+            tool_manager: self.conversation.tool_manager.clone(),
+            model_id: None,
+        }
+    }
+
     /// Pause the session (for background execution)
     pub async fn pause(&mut self) -> Result<()> {
         // Signal that session is paused
@@ -2740,6 +2752,9 @@ impl ChatSession {
             None => return Ok(ChatState::Exit),
         };
 
+        // OLD SYSTEM - COMMENTED OUT FOR REFERENCE
+        // Session commands now handled by SlashCommand system below
+        /*
         // Check for session commands
         if user_input.starts_with("/sessions")
             || user_input.starts_with("/switch")
@@ -2783,6 +2798,7 @@ impl ChatSession {
                 skip_printing_tools: false,
             });
         }
+        */
 
         // Handle /worktree create command
         if user_input.starts_with("/worktree create") || user_input == "/worktree" {
