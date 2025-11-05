@@ -2746,6 +2746,74 @@ impl ChatSession {
             });
         }
 
+        // Handle /worktree create command
+        if user_input.starts_with("/worktree create") || user_input == "/worktree" {
+            use crate::cli::chat::branch_naming::{ensure_unique_branch_name, sanitize_branch_name};
+            use crate::cli::chat::worktree_session::persist_to_worktree;
+            use crate::git::{create_worktree, detect_git_context};
+            use crate::session::metadata::{SessionMetadata, WorktreeInfo};
+
+            let current_dir = os.env.current_dir()?;
+            match detect_git_context(&current_dir) {
+                Ok(ctx) if !ctx.is_worktree => {
+                    execute!(self.stderr, style::Print("📝 Enter worktree name (or 'auto' for auto-generated): "))?;
+                    
+                    if let Some(branch_input) = self.read_user_input("", false) {
+                        let branch_name = if branch_input.trim().to_lowercase() == "auto" {
+                            format!("session-{}", &self.conversation.conversation_id()[..8])
+                        } else {
+                            match sanitize_branch_name(branch_input.trim()) {
+                                Ok(name) => name,
+                                Err(e) => {
+                                    execute!(self.stderr, style::Print(format!("✗ Invalid branch name: {}\n", e)))?;
+                                    return Ok(ChatState::PromptUser { skip_printing_tools: false });
+                                }
+                            }
+                        };
+
+                        let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
+                            .unwrap_or(branch_name);
+
+                        match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
+                            Ok(path) => {
+                                execute!(self.stderr, style::Print(format!("✓ Created worktree at: {}\n", path.display())))?;
+                                execute!(self.stderr, style::Print(format!("✓ Branch: {}\n", unique_branch)))?;
+
+                                let wt_info = WorktreeInfo {
+                                    path: path.clone(),
+                                    branch: unique_branch.clone(),
+                                    repo_root: ctx.repo_root.clone(),
+                                    is_temporary: false,
+                                    merge_target: ctx.branch_name.clone(),
+                                };
+
+                                let metadata = SessionMetadata::new(self.conversation.conversation_id(), "")
+                                    .with_worktree(wt_info);
+                                let _ = persist_to_worktree(&path, &metadata);
+
+                                if std::env::set_current_dir(&path).is_ok() {
+                                    execute!(self.stderr, style::Print("✓ Changed to worktree directory\n"))?;
+                                }
+                            },
+                            Err(e) => {
+                                execute!(self.stderr, style::Print(format!("✗ Failed to create worktree: {}\n", e)))?;
+                            }
+                        }
+                    }
+                },
+                Ok(_) => {
+                    execute!(self.stderr, style::Print("ℹ Already in a worktree\n"))?;
+                },
+                Err(_) => {
+                    execute!(self.stderr, style::Print("✗ Not in a git repository\n"))?;
+                }
+            }
+            
+            return Ok(ChatState::PromptUser {
+                skip_printing_tools: false,
+            });
+        }
+
         // Check if there's a pending clipboard paste from Ctrl+V
         let pasted_paths = self.input_source.take_clipboard_pastes();
         if !pasted_paths.is_empty() {
