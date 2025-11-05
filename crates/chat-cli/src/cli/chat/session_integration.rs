@@ -13,11 +13,16 @@ use crate::cli::chat::session_switcher::SessionSwitcher;
 use crate::cli::chat::visual_feedback::VisualFeedback;
 
 /// Handle session command with coordinator
-pub async fn handle_session_command<W: Write>(
+pub async fn handle_session_command<W, F>(
     input: &str,
     coordinator: &mut MultiSessionCoordinator,
     writer: &mut W,
-) -> Result<bool> {
+    context_factory: F,
+) -> Result<bool>
+where
+    W: Write,
+    F: Fn() -> crate::cli::chat::coordinator::SessionContext,
+{
     // Check for help
     if input.contains("help") || input.contains("--help") || input.contains("-h") {
         show_help(writer)?;
@@ -49,10 +54,33 @@ pub async fn handle_session_command<W: Write>(
             }
         },
         SessionCommand::New { session_type, name } => {
-            VisualFeedback::warning(
-                writer,
-                "Session creation requires full chat context. Use 'q chat' to start a new session.",
-            )?;
+            use crate::cli::chat::coordinator::SessionConfig;
+            
+            let session_name = name.unwrap_or_else(|| {
+                format!("session-{}", uuid::Uuid::new_v4().to_string()[..8].to_string())
+            });
+            let sess_type = session_type.unwrap_or(crate::theme::session::SessionType::Development);
+            
+            // Get context from factory
+            let context = context_factory();
+            
+            match coordinator.create_session(
+                SessionConfig {
+                    name: session_name.clone(),
+                    session_type: sess_type,
+                },
+                context,
+            ).await {
+                Ok(conv_id) => {
+                    VisualFeedback::success(
+                        writer,
+                        &format!("Created session '{}' ({})", session_name, &conv_id[..8])
+                    )?;
+                },
+                Err(e) => {
+                    VisualFeedback::error(writer, &format!("Failed to create session: {}", e))?;
+                }
+            }
         },
         SessionCommand::Close(name_opt) => {
             let name = name_opt.as_ref().ok_or_else(|| eyre::eyre!("Session name required"))?;

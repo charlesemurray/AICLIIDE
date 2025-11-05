@@ -340,7 +340,13 @@ impl ChatArgs {
         if let (Some(coord), Some(inp)) = (&mut coordinator, &input) {
             if inp.starts_with("/sessions") || inp.starts_with("/switch") || inp.starts_with("/s ") {
                 let mut stderr = std::io::stderr();
-                match session_integration::handle_session_command(inp, coord, &mut stderr).await {
+                
+                // Dummy context factory - /new won't work at this stage
+                let context_factory = || {
+                    panic!("Session creation not available before chat session is initialized");
+                };
+                
+                match session_integration::handle_session_command(inp, coord, &mut stderr, context_factory).await {
                     Ok(true) => return Ok(ExitCode::SUCCESS), // Command handled
                     Ok(false) => {},                          // Not a session command, continue
                     Err(e) => {
@@ -2743,57 +2749,28 @@ impl ChatSession {
             || user_input.starts_with("/rename")
             || user_input.starts_with("/session-name")
         {
-            // Handle /new specially since it needs full context
-            if user_input.starts_with("/new") {
-                if let Some(ref coord) = self.coordinator {
-                    let parts: Vec<&str> = user_input.split_whitespace().collect();
-                    let name = if parts.len() > 1 {
-                        parts[1].to_string()
-                    } else {
-                        format!("session-{}", uuid::Uuid::new_v4().to_string()[..8].to_string())
-                    };
-                    
-                    let new_conv_id = uuid::Uuid::new_v4().to_string();
-                    let mut coord_lock = coord.lock().await;
-                    
-                    // Get tool config from conversation
-                    // TODO: Properly extract tool specs from conversation.tools
-                    let tool_config = std::collections::HashMap::new();
-                    
-                    match coord_lock.create_session(
-                        coordinator::SessionConfig {
-                            name: name.clone(),
-                            session_type: crate::theme::session::SessionType::Development,
-                        },
-                        coordinator::SessionContext {
-                            conversation_id: new_conv_id.clone(),
-                            os: os.clone(),
-                            agents: self.conversation.agents.clone(),
-                            tool_config,
-                            tool_manager: self.conversation.tool_manager.clone(),
-                            model_id: None,
-                        }
-                    ).await {
-                        Ok(_) => {
-                            execute!(self.stderr, style::Print(format!("✓ Created session '{}' ({})\n", name, &new_conv_id[..8])))?;
-                        },
-                        Err(e) => {
-                            execute!(self.stderr, style::Print(format!("✗ Failed to create session: {}\n", e)))?;
-                        }
-                    }
-                }
-                
-                return Ok(ChatState::PromptUser {
-                    skip_printing_tools: false,
-                });
-            }
-            
-            // Handle other session commands with coordinator
+            // Handle session commands with coordinator
             if let Some(ref coord) = self.coordinator {
                 let mut coord_lock = coord.lock().await;
-                match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr)
-                    .await
-                {
+                
+                // Create context factory for session creation
+                let context_factory = || {
+                    coordinator::SessionContext {
+                        conversation_id: uuid::Uuid::new_v4().to_string(),
+                        os: os.clone(),
+                        agents: self.conversation.agents.clone(),
+                        tool_config: std::collections::HashMap::new(),
+                        tool_manager: self.conversation.tool_manager.clone(),
+                        model_id: None,
+                    }
+                };
+                
+                match session_integration::handle_session_command(
+                    &user_input,
+                    &mut coord_lock,
+                    &mut self.stderr,
+                    context_factory,
+                ).await {
                     Ok(true) => {},  // Command handled
                     Ok(false) => {}, // Not a session command
                     Err(e) => {
