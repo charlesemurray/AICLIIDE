@@ -236,22 +236,21 @@ You can still:
 
 ## Configuration
 
-### Enable Stats Widget
-```bash
-export Q_SHOW_STATS=1
-q chat
-```
+Both features are **enabled by default**!
 
-### Disable Interactive Selector
+### Disable if Needed
 ```bash
+# Disable interactive selector (use text input)
 export Q_NO_TUI=1
 q chat
-```
 
-### Both
-```bash
-export Q_SHOW_STATS=1
+# Disable stats widget
+export Q_NO_STATS=1
+q chat
+
+# Disable both
 export Q_NO_TUI=1
+export Q_NO_STATS=1
 q chat
 ```
 

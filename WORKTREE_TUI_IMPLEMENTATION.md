@@ -112,8 +112,9 @@ use crate::cli::chat::worktree_selector::{WorktreeSelector, SelectorAction};
 // List existing worktrees
 let existing_worktrees = list_worktrees(&ctx.repo_root).unwrap_or_default();
 
-// Use interactive selector if worktrees exist and stdin is a TTY
-let selection = if !existing_worktrees.is_empty() && atty::is(atty::Stream::Stdin) {
+// Use interactive selector by default (unless Q_NO_TUI=1)
+let use_tui = std::env::var("Q_NO_TUI").is_err();
+let selection = if !existing_worktrees.is_empty() && use_tui && atty::is(atty::Stream::Stdin) {
     let selector = WorktreeSelector::new(existing_worktrees.clone());
     match selector.run() {
         Ok(action) => Some(action),
@@ -156,34 +157,28 @@ Add stats as a field in ChatSession:
 ```rust
 pub struct ChatSession {
     // ... existing fields ...
-    context_stats: Option<Arc<Mutex<ContextStats>>>,
+    context_stats: Arc<Mutex<ContextStats>>,
 }
 ```
 
-Initialize in `new()`:
+Initialize in `new()` - **enabled by default**:
 ```rust
-let context_stats = if std::env::var("Q_SHOW_STATS").is_ok() {
-    Some(Arc::new(Mutex::new(ContextStats::new())))
-} else {
-    None
-};
+let context_stats = Arc::new(Mutex::new(ContextStats::new()));
 ```
 
 Update stats after each message:
 ```rust
-if let Some(ref stats) = self.context_stats {
-    let mut stats = stats.lock().unwrap();
-    stats.increment_messages();
-    stats.update_tokens(self.conversation.token_count());
-    let _ = stats.render();
-}
+let mut stats = self.context_stats.lock().unwrap();
+stats.increment_messages();
+stats.update_tokens(self.conversation.token_count());
+let _ = stats.render();
 ```
 
 **Option B: Standalone Renderer**
 
 Create a background task that periodically renders stats:
 ```rust
-// In ChatArgs::execute()
+// In ChatArgs::execute() - enabled by default
 let stats = Arc::new(Mutex::new(ContextStats::new()));
 let stats_clone = stats.clone();
 
@@ -213,31 +208,32 @@ if let Some(ref stats) = context_stats {
 
 ## Testing
 
-### Test Interactive Selector
+### Test Interactive Selector (Enabled by Default)
 
 ```bash
 # In a git repo with worktrees
 cd /path/to/repo
 q chat
 
-# Should show interactive selector
+# Should show interactive selector automatically
 # Test:
 # - Arrow keys navigate
 # - Enter selects
 # - n creates new
 # - q cancels
+
+# To test text fallback:
+export Q_NO_TUI=1
+q chat
 ```
 
-### Test Context Stats
+### Test Context Stats (Enabled by Default)
 
 ```bash
-# Enable stats
-export Q_SHOW_STATS=1
-
 # Start chat in worktree
 q chat --worktree feature-test
 
-# Should see stats widget in top-right:
+# Should see stats widget in top-right automatically:
 # ┌────────────────────────┐
 # │ 🌳 feature-test        │
 # │    [Feature]           │
@@ -246,16 +242,22 @@ q chat --worktree feature-test
 # │   30.0K/200.0K         │
 # │ Messages: 5            │
 # └────────────────────────┘
+
+# To disable:
+export Q_NO_STATS=1
+q chat
 ```
 
 ---
 
 ## Configuration
 
-### Environment Variables
+### Environment Variables (Optional)
 
-- `Q_SHOW_STATS=1` - Enable context stats widget
+Both features are **enabled by default**. Use these to disable:
+
 - `Q_NO_TUI=1` - Disable interactive selector, use text input
+- `Q_NO_STATS=1` - Disable context stats widget
 
 ### Fallback Behavior
 
@@ -264,6 +266,11 @@ The selector automatically falls back to text input if:
 - Selector fails to initialize
 - `Q_NO_TUI=1` is set
 - No existing worktrees found
+
+The stats widget automatically disables if:
+- Terminal doesn't support cursor positioning
+- `Q_NO_STATS=1` is set
+- Rendering fails
 
 ---
 

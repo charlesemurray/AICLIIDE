@@ -296,8 +296,7 @@ impl SkillCreationFlow {
         // STEP 2: Ask type-specific questions based on selection
         match selected_type.as_str() {
             "command" => {
-                let session_request = ui.request_chat_session("Command to execute", "Creating a shell command skill that executes system commands")?;
-                // For now, fall back to direct input - TODO: handle session request properly
+                let _session_request = ui.request_chat_session("Command to execute", "Creating a shell command skill that executes system commands")?;
                 self.config.command = ui.prompt_required("Command to execute")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
@@ -309,8 +308,7 @@ impl SkillCreationFlow {
                 }
             },
             "assistant" => {
-                let session_request = ui.request_chat_session("System prompt (e.g., 'You are a helpful code reviewer')", "Creating an AI assistant skill with a custom system prompt")?;
-                // For now, fall back to direct input - TODO: handle session request properly  
+                let _session_request = ui.request_chat_session("System prompt (e.g., 'You are a helpful code reviewer')", "Creating an AI assistant skill with a custom system prompt")?;
                 self.config.command = ui.prompt_required("System prompt (e.g., 'You are a helpful code reviewer')")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
@@ -322,8 +320,7 @@ impl SkillCreationFlow {
                 }
             },
             "template" => {
-                let session_request = ui.request_chat_session("Template text (use {{variable}} for parameters)", "Creating a template skill that generates text with variable substitution")?;
-                // For now, fall back to direct input - TODO: handle session request properly
+                let _session_request = ui.request_chat_session("Template text (use {{variable}} for parameters)", "Creating a template skill that generates text with variable substitution")?;
                 self.config.command = ui.prompt_required("Template text (use {{variable}} for parameters)")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {

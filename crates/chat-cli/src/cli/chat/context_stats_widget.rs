@@ -46,6 +46,11 @@ impl ContextStats {
 
     /// Render the stats widget in the top-right corner
     pub fn render(&self) -> Result<()> {
+        // Check if disabled
+        if std::env::var("Q_NO_STATS").is_ok() {
+            return Ok(());
+        }
+        
         let mut stdout = io::stdout();
         
         // Save cursor position

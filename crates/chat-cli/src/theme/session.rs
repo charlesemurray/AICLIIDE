@@ -8,6 +8,7 @@ use serde::{
 /// Types of sessions in Q CLI
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ValueEnum)]
 pub enum SessionType {
+    Shell,
     Debug,
     Planning,
     Development,
