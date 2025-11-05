@@ -631,18 +631,48 @@ impl ChatArgs {
 
                         use crate::cli::chat::branch_naming::sanitize_branch_name;
                         use crate::cli::chat::worktree_session::persist_to_worktree;
-                        use crate::git::create_worktree;
+                        use crate::git::{create_worktree, list_worktrees};
                         use crate::session::metadata::WorktreeInfo;
 
-                        eprint!("Create a worktree for this session? [branch name/auto/N]: ");
+                        // List existing worktrees
+                        let existing_worktrees = list_worktrees(&ctx.repo_root).unwrap_or_default();
+                        
+                        if !existing_worktrees.is_empty() {
+                            eprintln!("\n📂 Existing worktrees:");
+                            for (idx, wt) in existing_worktrees.iter().enumerate() {
+                                eprintln!("  {}. {} ({})", idx + 1, wt.branch, wt.path.display());
+                            }
+                            eprintln!();
+                        }
+
+                        eprint!("Create or select worktree [number/name/auto/N]: ");
                         io::stderr().flush().ok();
 
                         let mut input = String::new();
                         if io::stdin().read_line(&mut input).is_ok() {
                             let input = input.trim();
-                            if !input.is_empty() && input.to_lowercase() != "n" {
+                            
+                            if input.is_empty() || input.to_lowercase() == "n" {
+                                eprintln!("✓ Skipping worktree");
+                                None
+                            } else if let Ok(idx) = input.parse::<usize>() {
+                                // User selected existing worktree by number
+                                if idx > 0 && idx <= existing_worktrees.len() {
+                                    let selected = &existing_worktrees[idx - 1];
+                                    eprintln!("✓ Using existing worktree: {}", selected.branch);
+                                    
+                                    if std::env::set_current_dir(&selected.path).is_ok() {
+                                        eprintln!("✓ Changed to worktree directory");
+                                    }
+                                    
+                                    Some(selected.path.clone())
+                                } else {
+                                    eprintln!("✗ Invalid selection");
+                                    None
+                                }
+                            } else {
+                                // Create new worktree
                                 let branch_name = if input.to_lowercase() == "auto" {
-                                    // Will be auto-generated from first message
                                     format!("session-{}", &conversation_id[..8])
                                 } else {
                                     match sanitize_branch_name(input) {
@@ -670,7 +700,6 @@ impl ChatArgs {
                                             merge_target: ctx.branch_name.clone(),
                                         };
                                         
-                                        // TODO: Get first_message from user input
                                         let metadata = SessionMetadata::new(&conversation_id, "")
                                             .with_worktree(wt_info);
                                         let _ = persist_to_worktree(&path, &metadata);
@@ -686,8 +715,6 @@ impl ChatArgs {
                                         None
                                     },
                                 }
-                            } else {
-                                None
                             }
                         } else {
                             None
