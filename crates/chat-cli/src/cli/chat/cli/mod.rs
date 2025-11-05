@@ -18,7 +18,6 @@ pub mod profile;
 pub mod prompts;
 pub mod reply;
 pub mod session_mgmt;
-pub mod sessions;
 pub mod skills;
 // pub mod status;
 pub mod subscribe;
@@ -49,7 +48,6 @@ use profile::AgentSubcommand;
 use prompts::PromptsArgs;
 use reply::ReplyArgs;
 use session_mgmt::SessionMgmtArgs;
-use sessions::SessionsSubcommand;
 use skills::SkillsSubcommand;
 // use status::StatusArgs;
 use tangent::TangentArgs;
@@ -127,9 +125,6 @@ pub enum SlashCommand {
     /// Make conversations persistent
     #[command(flatten)]
     Persist(PersistSubcommand),
-    /// Manage development sessions
-    #[command(subcommand)]
-    Sessions(SessionsSubcommand),
     /// Manage conversation session metadata
     #[command(name = "session")]
     SessionMgmt(SessionMgmtArgs),
@@ -218,7 +213,6 @@ impl SlashCommand {
             Self::Subscribe(args) => args.execute(os, session).await,
             Self::Tangent(args) => args.execute(os, session).await,
             Self::Persist(subcommand) => subcommand.execute(os, session).await,
-            Self::Sessions(subcommand) => subcommand.execute(session, os).await,
             Self::SessionMgmt(args) => args.execute(session, os).await,
             Self::Skills(subcommand) => subcommand.execute(session, os).await,
             Self::Memory(subcommand) => execute_memory_command(subcommand, session).await,
@@ -281,7 +275,6 @@ impl SlashCommand {
             Self::Checkpoint(_) => "checkpoint",
             Self::Todos(_) => "todos",
             Self::Skills(_) => "skills",
-            Self::Sessions(_) => "sessions",
             Self::SessionMgmt(_) => "session",
             Self::Memory(_) => "memory",
             Self::Recall(_) => "recall",
@@ -296,7 +289,6 @@ impl SlashCommand {
             SlashCommand::Agent(sub) => Some(sub.name()),
             SlashCommand::Context(sub) => Some(sub.name()),
             SlashCommand::Knowledge(sub) => Some(sub.name()),
-            SlashCommand::Sessions(sub) => Some(sub.name()),
             SlashCommand::SessionMgmt(args) => Some(match &args.command {
                 session_mgmt::SessionMgmtSubcommand::List => "list",
                 session_mgmt::SessionMgmtSubcommand::History { .. } => "history",

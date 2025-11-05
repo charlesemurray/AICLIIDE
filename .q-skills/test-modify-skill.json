@@ -1,0 +1,11 @@
+{
+  "name": "test-modify-skill",
+  "skill_type": "code_inline",
+  "command": "find . -name '*.txt'",
+  "description": "Executes: find . -name '*.txt'",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}

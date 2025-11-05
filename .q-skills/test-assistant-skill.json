@@ -1,0 +1,11 @@
+{
+  "name": "test-assistant-skill",
+  "skill_type": "conversation",
+  "command": "You are a helpful assistant that helps with code reviews. Please help the user with their request.",
+  "description": "AI assistant: test-assistant-skill",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}

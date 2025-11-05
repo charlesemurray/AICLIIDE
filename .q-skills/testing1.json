@@ -1,0 +1,11 @@
+{
+  "name": "testing1",
+  "skill_type": "code_session",
+  "command": "bash",
+  "description": "Yep",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}

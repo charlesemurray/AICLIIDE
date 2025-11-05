@@ -1,0 +1,11 @@
+{
+  "name": "test-session-skill",
+  "skill_type": "code_inline",
+  "command": "ls -la",
+  "description": "Executes: ls -la",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}

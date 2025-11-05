@@ -1,0 +1,11 @@
+{
+  "name": "newtesting",
+  "skill_type": "conversation",
+  "command": "What is going on.",
+  "description": "AI assistant: newtesting",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}

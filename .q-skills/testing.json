@@ -1,0 +1,11 @@
+{
+  "name": "testing",
+  "skill_type": "conversation",
+  "command": "You are a helpful code reviewer.",
+  "description": "Yep",
+  "security": {
+    "enabled": true,
+    "level": "Medium",
+    "resource_limit": 1000
+  }
+}
