@@ -125,27 +125,23 @@ impl StepExecutor {
         // If we have a tool manager, try to invoke through it
         if let Some(manager) = tool_manager {
             // Check if it's a skill
-            if let Some(skill_def) = manager.skill_registry.get(&tool_name) {
-                use crate::cli::chat::tools::skill::SkillTool;
-                let skill_tool = SkillTool::from_definition(skill_def);
+            if manager.skill_registry.exists(&tool_name) {
+                // Convert params HashMap to Value
+                let params_value = serde_json::to_value(&params)
+                    .map_err(|e| eyre::eyre!("Failed to convert params: {}", e))?;
                 
-                // Execute the skill based on its implementation type
-                let output = match &skill_def.implementation {
-                    Some(crate::cli::chat::tools::skill::SkillImplementation::Script { .. }) => {
-                        skill_tool.execute_script_with_timeout(skill_def, &params, 30).await?
+                // Execute via registry
+                match manager.skill_registry.execute_skill(&tool_name, params_value).await {
+                    Ok(skill_result) => {
+                        return Ok(StepResult {
+                            output: skill_result.output,
+                            success: true,
+                        });
                     }
-                    Some(crate::cli::chat::tools::skill::SkillImplementation::Command { .. }) => {
-                        skill_tool.execute_command_with_timeout(skill_def, &params, 30).await?
+                    Err(e) => {
+                        return Err(eyre::eyre!("Skill execution failed: {}", e));
                     }
-                    None => {
-                        return Err(eyre::eyre!("Skill '{}' has no implementation", tool_name));
-                    }
-                };
-                
-                return Ok(StepResult {
-                    output,
-                    success: true,
-                });
+                }
             }
             
             // Check if it's another workflow

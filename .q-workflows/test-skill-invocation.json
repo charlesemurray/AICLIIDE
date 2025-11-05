@@ -1,0 +1,16 @@
+{
+  "name": "test-skill-invocation",
+  "version": "1.0.0",
+  "description": "Test workflow that invokes calculator skill",
+  "steps": [
+    {
+      "name": "calculate",
+      "tool": "calculator",
+      "parameters": {
+        "operation": "add",
+        "a": 5,
+        "b": 3
+      }
+    }
+  ]
+}

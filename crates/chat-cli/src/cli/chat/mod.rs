@@ -789,12 +789,7 @@ impl ChatArgs {
                                     None
                                 }
                             }
-                        } else {
-                            None
                         }
-                        };
-                        
-                        worktree_path
                     } else {
                         None
                     }
@@ -1046,8 +1041,8 @@ pub struct ChatSession {
     feedback_manager: Option<cortex_memory::FeedbackManager>,
     /// Last user message for memory storage
     last_user_message: Option<String>,
-    /// Context stats widget for displaying usage
-    context_stats: Arc<Mutex<context_stats_widget::ContextStats>>,
+    // TODO: Add context_stats widget when ready
+    // context_stats: Arc<Mutex<context_stats_widget::ContextStats>>,
 }
 
 impl ChatSession {
@@ -1285,16 +1280,17 @@ impl ChatSession {
             cortex,
             feedback_manager,
             last_user_message: None,
-            context_stats: Arc::new(Mutex::new(context_stats_widget::ContextStats::new())),
+            // context_stats: Arc::new(Mutex::new(context_stats_widget::ContextStats::new())),
         };
 
         // Initialize context stats with worktree info if available
         if let Ok(current_dir) = os.env.current_dir() {
             if let Ok(git_ctx) = crate::git::detect_git_context(&current_dir) {
                 if git_ctx.is_worktree {
-                    let session_type = worktree_selector::detect_session_type(&git_ctx.branch_name);
-                    let mut stats = session.context_stats.lock().unwrap();
-                    stats.update_worktree(git_ctx.branch_name.clone(), session_type.display_name().to_string());
+                    let _session_type = worktree_selector::detect_session_type(&git_ctx.branch_name);
+                    // TODO: Re-enable when context_stats is ready
+                    // let mut stats = session.context_stats.lock().unwrap();
+                    // stats.update_worktree(git_ctx.branch_name.clone(), session_type.display_name().to_string());
                 }
             }
         }
@@ -1876,17 +1872,12 @@ impl ChatSession {
 
     /// Update context stats widget
     fn update_stats(&self) {
-        let mut stats = self.context_stats.lock().unwrap();
-        
-        // Update message count
-        stats.increment_messages();
-        
-        // Update token usage (approximate from conversation history)
-        let token_count = self.conversation.history().len() * 500; // Rough estimate
-        stats.update_tokens(token_count);
-        
-        // Render the widget
-        let _ = stats.render();
+        // TODO: Re-enable when context_stats is ready
+        // let mut stats = self.context_stats.lock().unwrap();
+        // stats.increment_messages();
+        // let token_count = self.conversation.history().len() * 500;
+        // stats.update_tokens(token_count);
+        // let _ = stats.render();
     }
 }
 

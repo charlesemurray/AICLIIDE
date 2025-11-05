@@ -160,7 +160,7 @@ impl WorkflowsSubcommand {
                         
                         let tool = WorkflowTool::from_definition(workflow);
                         
-                        match tool.invoke_with_definition(workflow, params_map) {
+                        match tool.invoke_with_definition_and_manager(workflow, params_map, Some(&mut _session.conversation.tool_manager)).await {
                             Ok(result) => format!("🔄 Workflow '{}' completed\n\n{}", workflow_name, result),
                             Err(e) => format!("❌ Workflow '{}' failed: {}", workflow_name, e),
                         }
