@@ -2,10 +2,11 @@ use std::io;
 use std::path::PathBuf;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::cursor::{Hide, Show};
 use crossterm::execute;
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
@@ -47,15 +48,17 @@ impl WorktreeSelector {
     pub fn run(mut self) -> Result<SelectorAction> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen)?;
+        execute!(stdout, EnterAlternateScreen, Hide)?;
         
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
+        terminal.clear()?;
 
         let result = self.event_loop(&mut terminal);
 
-        disable_raw_mode()?;
-        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        // Always cleanup, even on error
+        let _ = disable_raw_mode();
+        let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen, Show);
 
         result
     }
@@ -149,15 +152,18 @@ impl WorktreeSelector {
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
+        
+        // Add margin around the entire UI
+        let margin_area = area.inner(Margin { horizontal: 2, vertical: 1 });
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(3),   // Title
-                Constraint::Min(10),     // List
+                Constraint::Min(5),      // List
                 Constraint::Length(3),   // Input or help
             ])
-            .split(area);
+            .split(margin_area);
 
         // Title
         let title = Paragraph::new("📂 Select Worktree")
@@ -180,24 +186,29 @@ impl WorktreeSelector {
                     let session_type = detect_session_type(&wt.branch);
                     let type_badge = format!("[{}]", session_type.display_name());
                     
-                    let content = vec![
-                        Line::from(vec![
-                            Span::styled(&wt.branch, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                            Span::raw(" "),
-                            Span::styled(type_badge, Style::default().fg(Color::Yellow)),
-                        ]),
-                        Line::from(Span::styled(
-                            format!("  {}", wt.path.display()),
-                            Style::default().fg(Color::DarkGray)
-                        )),
-                    ];
+                    // Truncate path if too long
+                    let path_str = wt.path.display().to_string();
+                    let max_path_len = 60;
+                    let path_display = if path_str.len() > max_path_len {
+                        format!("...{}", &path_str[path_str.len() - max_path_len..])
+                    } else {
+                        path_str
+                    };
                     
-                    ListItem::new(content)
+                    let line = Line::from(vec![
+                        Span::styled(&wt.branch, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                        Span::raw(" "),
+                        Span::styled(type_badge, Style::default().fg(Color::Yellow)),
+                        Span::raw(" "),
+                        Span::styled(path_display, Style::default().fg(Color::DarkGray)),
+                    ]);
+                    
+                    ListItem::new(line)
                 })
                 .collect();
 
             let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL))
+                .block(Block::default().borders(Borders::ALL).title("Worktrees"))
                 .highlight_style(Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD))

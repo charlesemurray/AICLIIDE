@@ -125,9 +125,15 @@ impl StepExecutor {
         // If we have a tool manager, try to invoke through it
         if let Some(manager) = tool_manager {
             // Check if it's a skill
-            if manager.skill_registry.get(&tool_name).is_some() {
-                // TODO: Implement skill execution
-                // For now, fall through to command execution
+            if manager.skill_registry.exists(&tool_name) {
+                let params_json = serde_json::to_value(&params)?;
+                match manager.skill_registry.execute_skill(&tool_name, params_json).await {
+                    Ok(result) => return Ok(StepResult {
+                        output: result,
+                        success: true,
+                    }),
+                    Err(e) => return Err(e),
+                }
             }
             
             // Check if it's another workflow

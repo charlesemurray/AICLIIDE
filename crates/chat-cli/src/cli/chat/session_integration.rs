@@ -55,10 +55,9 @@ where
         },
         SessionCommand::New { session_type, name } => {
             use crate::cli::chat::coordinator::SessionConfig;
+            use crate::cli::chat::session_names;
             
-            let session_name = name.unwrap_or_else(|| {
-                format!("session-{}", uuid::Uuid::new_v4().to_string()[..8].to_string())
-            });
+            let session_name = name.unwrap_or_else(|| session_names::generate_session_name());
             let sess_type = session_type.unwrap_or(crate::theme::session::SessionType::Development);
             
             // Get context from factory

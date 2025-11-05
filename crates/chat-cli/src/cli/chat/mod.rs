@@ -38,6 +38,8 @@ pub mod worktree_session;
 pub mod worktree_strategy;
 mod worktree_selector;
 mod context_stats_widget;
+mod session_indicator_widget;
+mod session_names;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
@@ -835,9 +837,12 @@ impl ChatArgs {
             // TODO: Properly extract tool specs from conversation.tools
             let tool_config = std::collections::HashMap::new();
             
+            // Generate a nice human-readable session name
+            let session_name = session_names::generate_session_name();
+            
             if let Err(e) = coord_lock.create_session(
                 coordinator::SessionConfig {
-                    name: "main".to_string(),
+                    name: session_name,
                     session_type: crate::theme::session::SessionType::Development,
                 },
                 coordinator::SessionContext {
@@ -2844,12 +2849,11 @@ impl ChatSession {
             error!("Failed to receive user prompting acknowledgement from UI: {:?}", e);
         }
 
-        // Render session indicator in top-right corner
+        // Render session indicator inline before prompt
         if let Some(ref coord) = self.coordinator {
-            use crate::cli::chat::terminal_ui::TerminalUI;
-            let ui = TerminalUI::new();
+            use crate::cli::chat::session_indicator_widget::SessionIndicator;
             let coord_lock = coord.lock().await;
-            let _ = ui.render_indicator(&mut self.stderr, &coord_lock);
+            let _ = SessionIndicator::render(&mut self.stderr, &coord_lock);
         }
 
         let user_input = match self.read_user_input(&prompt, false) {
@@ -4838,10 +4842,16 @@ impl ChatSession {
             None
         };
 
-        // Get current session name from coordinator
+        // Get active session name from coordinator (not current session)
         let session_name = if let Some(ref coord) = self.coordinator {
             let coord_lock = coord.lock().await;
-            coord_lock.get_session_name(self.conversation.conversation_id()).await
+            // Always show the active session name
+            if let Some(active_id) = coord_lock.active_session_id().await {
+                coord_lock.get_session_name(&active_id)
+            } else {
+                // If no active session set, use current session as fallback
+                coord_lock.get_session_name(self.conversation.conversation_id())
+            }
         } else {
             None
         };

@@ -61,8 +61,8 @@ impl TerminalUI {
             return Ok(());
         }
 
-        // Save cursor position
-        let pos = cursor::position().ok();
+        // Save cursor position and hide cursor
+        execute!(writer, cursor::SavePosition, cursor::Hide)?;
 
         // Build indicator box
         let max_width: usize = 30;
@@ -74,12 +74,16 @@ impl TerminalUI {
         let start_col = cols.saturating_sub(max_width as u16);
         
         // Draw header
-        execute!(writer, cursor::MoveTo(start_col, 0))?;
-        execute!(writer, SetForegroundColor(Color::Cyan))?;
-        execute!(writer, Print(&header))?;
-        execute!(writer, ResetColor)?;
+        execute!(
+            writer,
+            cursor::MoveTo(start_col, 0),
+            SetForegroundColor(Color::Cyan),
+            Print(&header),
+            ResetColor
+        )?;
 
         // Draw sessions (max 5 to avoid taking too much space)
+        let num_sessions = all_sessions.len().min(5);
         for (idx, session_name) in all_sessions.iter().take(5).enumerate() {
             let row = (idx + 1) as u16;
             if row >= rows {
@@ -87,16 +91,13 @@ impl TerminalUI {
             }
             
             execute!(writer, cursor::MoveTo(start_col, row))?;
-            execute!(writer, SetForegroundColor(Color::Cyan))?;
-            execute!(writer, Print("│ "))?;
+            execute!(writer, SetForegroundColor(Color::Cyan), Print("│ "))?;
             
             // Check if waiting for input
             if waiting_sessions.contains(session_name) {
-                execute!(writer, SetForegroundColor(Color::Yellow))?;
-                execute!(writer, Print("⏸ "))?;
+                execute!(writer, SetForegroundColor(Color::Yellow), Print("⏸ "))?;
             } else {
-                execute!(writer, SetForegroundColor(Color::Green))?;
-                execute!(writer, Print("▶ "))?;
+                execute!(writer, SetForegroundColor(Color::Green), Print("▶ "))?;
             }
             
             // Truncate name if too long
@@ -107,31 +108,34 @@ impl TerminalUI {
                 session_name.clone()
             };
             
-            execute!(writer, SetForegroundColor(Color::White))?;
-            execute!(writer, Print(&display_name))?;
+            execute!(writer, SetForegroundColor(Color::White), Print(&display_name))?;
             
             // Pad to box width
             let padding_len = max_width.saturating_sub(display_name.len()).saturating_sub(5);
-            execute!(writer, Print(" ".repeat(padding_len)))?;
-            execute!(writer, SetForegroundColor(Color::Cyan))?;
-            execute!(writer, Print("│"))?;
-            execute!(writer, ResetColor)?;
+            execute!(
+                writer,
+                Print(" ".repeat(padding_len)),
+                SetForegroundColor(Color::Cyan),
+                Print("│"),
+                ResetColor
+            )?;
         }
         
         // Draw footer
-        let footer_row = all_sessions.len().min(5) as u16 + 1;
+        let footer_row = num_sessions as u16 + 1;
         if footer_row < rows {
-            execute!(writer, cursor::MoveTo(start_col, footer_row))?;
-            execute!(writer, SetForegroundColor(Color::Cyan))?;
-            let footer = format!("└{}┘", "─".repeat(max_width.saturating_sub(2)));
-            execute!(writer, Print(&footer))?;
-            execute!(writer, ResetColor)?;
+            execute!(
+                writer,
+                cursor::MoveTo(start_col, footer_row),
+                SetForegroundColor(Color::Cyan),
+                Print(format!("└{}┘", "─".repeat(max_width.saturating_sub(2)))),
+                ResetColor
+            )?;
         }
 
-        // Restore cursor
-        if let Some((col, row)) = pos {
-            execute!(writer, cursor::MoveTo(col, row))?;
-        }
+        // Restore cursor and show it
+        execute!(writer, cursor::RestorePosition, cursor::Show)?;
+        writer.flush()?;
 
         Ok(())
     }

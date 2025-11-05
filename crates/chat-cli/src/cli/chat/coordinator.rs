@@ -305,11 +305,15 @@ impl MultiSessionCoordinator {
         
         let mut state = self.state.lock().await;
 
-        // Find session by name
+        // Find session by name, or by conversation_id prefix
         let target_id = state
             .sessions
             .iter()
             .find(|(_, s)| s.display.name == name)
+            .or_else(|| {
+                // Fallback: try matching by conversation_id prefix
+                state.sessions.iter().find(|(id, _)| id.starts_with(name))
+            })
             .map(|(id, _)| id.clone())
             .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
 
@@ -500,8 +504,8 @@ impl MultiSessionCoordinator {
     }
 
     /// Get the display name of a session
-    pub async fn get_session_name(&self, conversation_id: &str) -> Option<String> {
-        let state = self.state.lock().await;
+    pub fn get_session_name(&self, conversation_id: &str) -> Option<String> {
+        let state = self.state.blocking_lock();
         state.sessions.get(conversation_id).map(|s| s.display.name.clone())
     }
 
