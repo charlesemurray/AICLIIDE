@@ -113,6 +113,46 @@ impl StepExecutor {
         Some(current.clone())
     }
 
+    pub async fn execute_step_with_context_and_manager(
+        &self,
+        step: &WorkflowStep,
+        context: &Value,
+        tool_manager: Option<&mut crate::cli::chat::tool_manager::ToolManager>,
+    ) -> Result<StepResult> {
+        let tool_name = self.resolve_tool_name(step)?;
+        let params = self.build_step_params(step, context)?;
+
+        // If we have a tool manager, try to invoke through it
+        if let Some(manager) = tool_manager {
+            // Check if it's a skill
+            if let Some(skill_def) = manager.skill_registry.get(&tool_name) {
+                use crate::cli::chat::tools::skill::SkillTool;
+                let skill_tool = SkillTool::from_definition(skill_def);
+                // Skills need actual execution - for now return placeholder
+                return Ok(StepResult {
+                    output: format!("Skill '{}' invoked (execution pending)", tool_name),
+                    success: true,
+                });
+            }
+            
+            // Check if it's another workflow
+            if let Some(workflow_def) = manager.workflow_registry.get(&tool_name) {
+                let workflow_tool = WorkflowTool::from_definition(workflow_def);
+                // Recursive workflow execution
+                match workflow_tool.invoke_with_definition(workflow_def, params.clone()) {
+                    Ok(result) => return Ok(StepResult {
+                        output: result,
+                        success: true,
+                    }),
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+
+        // Fall back to built-in tool execution
+        self.execute_step_with_context(step, context)
+    }
+
     pub fn execute_step_with_context(&self, step: &WorkflowStep, context: &Value) -> Result<StepResult> {
         let tool_name = self.resolve_tool_name(step)?;
         let params = self.build_step_params(step, context)?;
@@ -262,6 +302,53 @@ impl WorkflowTool {
             let step_start = Instant::now();
 
             match executor.execute_step_with_context(step, &context) {
+                Ok(step_result) => {
+                    let step_duration = step_start.elapsed();
+                    results.push(format!(
+                        "Step '{}': {} (completed in {:.2}ms)",
+                        step.name,
+                        step_result.output,
+                        step_duration.as_secs_f64() * 1000.0
+                    ));
+                    context = executor.add_step_output_to_context(context, &step.name, &step_result.output);
+                },
+                Err(e) => {
+                    state = WorkflowState::Failed;
+                    return Err(eyre::eyre!(self.format_error(current_step, &step.name, &e)));
+                },
+            }
+        }
+
+        state = WorkflowState::Completed;
+        let total_duration = workflow_start.elapsed();
+        Ok(format!(
+            "Executed {} steps successfully in {:.2}ms\n\n{}",
+            definition.steps.len(),
+            total_duration.as_secs_f64() * 1000.0,
+            self.format_results(results)
+        ))
+    }
+
+    pub async fn invoke_with_definition_and_manager(
+        &self,
+        definition: &WorkflowDefinition,
+        _params: HashMap<String, Value>,
+        tool_manager: Option<&mut crate::cli::chat::tool_manager::ToolManager>,
+    ) -> Result<String> {
+        use std::time::Instant;
+
+        let executor = StepExecutor::new();
+        let mut context = definition.context.clone().unwrap_or(Value::Object(Default::default()));
+        let mut results = Vec::new();
+        let mut state = WorkflowState::Running;
+        let workflow_start = Instant::now();
+        let mut current_step = 0;
+
+        for step in &definition.steps {
+            current_step += 1;
+            let step_start = Instant::now();
+
+            match executor.execute_step_with_context_and_manager(step, &context, tool_manager.as_deref_mut()).await {
                 Ok(step_result) => {
                     let step_duration = step_start.elapsed();
                     results.push(format!(
