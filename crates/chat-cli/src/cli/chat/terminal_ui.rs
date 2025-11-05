@@ -65,7 +65,7 @@ impl TerminalUI {
         let pos = cursor::position().ok();
 
         // Build indicator box
-        let max_width = 30;
+        let max_width: usize = 30;
         let title = format!("┌─ Sessions ({}) ", all_sessions.len());
         let padding = "─".repeat(max_width.saturating_sub(title.len()).saturating_sub(1));
         let header = format!("{}{}┐", title, padding);

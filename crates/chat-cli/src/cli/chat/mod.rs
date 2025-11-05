@@ -2747,6 +2747,14 @@ impl ChatSession {
             error!("Failed to receive user prompting acknowledgement from UI: {:?}", e);
         }
 
+        // Render session indicator in top-right corner
+        if let Some(ref coord) = self.coordinator {
+            use crate::cli::chat::terminal_ui::TerminalUI;
+            let ui = TerminalUI::new();
+            let coord_lock = coord.lock().await;
+            let _ = ui.render_indicator(&mut self.stderr, &coord_lock);
+        }
+
         let user_input = match self.read_user_input(&prompt, false) {
             Some(input) => input,
             None => return Ok(ChatState::Exit),
