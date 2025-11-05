@@ -19,7 +19,8 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
 
     /// Interactive template-based creation
     pub fn create_from_template(&mut self) -> Result<PromptTemplate> {
-        let template_choice = self.ui.select_option("Choose a starting template:", &[
+        let template_choice = self.ui.select_option("How would you like to create your assistant?", &[
+            ("custom", "Create from scratch - Build your own assistant interactively"),
             (
                 "code_reviewer",
                 "Code Reviewer - Reviews code for security and best practices",
@@ -30,7 +31,6 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
             ),
             ("domain_expert", "Domain Expert - Specialized knowledge assistant"),
             ("conversation", "General Assistant - Flexible helper for various tasks"),
-            ("custom", "Custom - Build from scratch"),
         ])?;
 
         match template_choice.as_str() {
@@ -189,10 +189,21 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
     }
 
     fn preview_and_build(&mut self, builder: PromptBuilder) -> Result<PromptTemplate> {
+        // Show human-readable preview first
         let preview = builder.preview();
+        self.ui.show_message("\n📋 Prompt Preview:", SemanticColor::Info);
         self.ui.show_preview(&preview);
 
+        // Validate before building (since build() consumes the builder)
         let validation = builder.validate()?;
+        
+        // Build the template to show actual file contents
+        let template = builder.build()?;
+        let json_content = serde_json::to_string_pretty(&template)?;
+        
+        self.ui.show_message("\n📄 File Contents (JSON):", SemanticColor::Info);
+        self.ui.show_preview(&json_content);
+
         self.ui.show_message(
             &format!("Quality score: {:.1}/1.0", validation.score),
             if validation.score > 0.7 {
@@ -216,7 +227,7 @@ impl<'a, T: TerminalUI> InteractivePromptBuilder<'a, T> {
         }
 
         if self.ui.confirm("Create this assistant")? {
-            builder.build()
+            Ok(template)
         } else {
             Err(eyre::eyre!("Creation cancelled"))
         }

@@ -387,8 +387,7 @@ impl ApiClient {
         let model_id_opt: Option<String> = user_input_message.model_id.clone();
 
         if let Some(client) = &self.streaming_client {
-            let conversation_state = amzn_codewhisperer_streaming_client::types::ConversationState::builder()
-                .set_conversation_id(conversation_id)
+            let mut conversation_state_builder = amzn_codewhisperer_streaming_client::types::ConversationState::builder()
                 .current_message(
                     amzn_codewhisperer_streaming_client::types::ChatMessage::UserInputMessage(
                         user_input_message.into(),
@@ -399,7 +398,14 @@ impl ApiClient {
                     history
                         .map(|v| v.into_iter().map(|i| i.try_into()).collect::<Result<Vec<_>, _>>())
                         .transpose()?,
-                )
+                );
+
+            // Only set conversation_id if it's provided (not None)
+            if let Some(conv_id) = conversation_id {
+                conversation_state_builder = conversation_state_builder.conversation_id(conv_id);
+            }
+
+            let conversation_state = conversation_state_builder
                 .build()
                 .expect("building conversation should not fail");
 
@@ -481,8 +487,7 @@ impl ApiClient {
                 },
             }
         } else if let Some(client) = &self.sigv4_streaming_client {
-            let conversation_state = amzn_qdeveloper_streaming_client::types::ConversationState::builder()
-                .set_conversation_id(conversation_id)
+            let mut conversation_state_builder = amzn_qdeveloper_streaming_client::types::ConversationState::builder()
                 .current_message(amzn_qdeveloper_streaming_client::types::ChatMessage::UserInputMessage(
                     user_input_message.into(),
                 ))
@@ -491,7 +496,14 @@ impl ApiClient {
                     history
                         .map(|v| v.into_iter().map(|i| i.try_into()).collect::<Result<Vec<_>, _>>())
                         .transpose()?,
-                )
+                );
+
+            // Only set conversation_id if it's provided (not None)
+            if let Some(conv_id) = conversation_id {
+                conversation_state_builder = conversation_state_builder.conversation_id(conv_id);
+            }
+
+            let conversation_state = conversation_state_builder
                 .build()
                 .expect("building conversation_state should not fail");
 

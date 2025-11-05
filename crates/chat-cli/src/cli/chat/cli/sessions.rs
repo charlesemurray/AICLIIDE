@@ -5,7 +5,7 @@ use std::sync::{
     OnceLock,
 };
 
-use clap::Subcommand;
+use clap::Parser;
 
 use crate::cli::chat::{
     ChatError,
@@ -20,7 +20,7 @@ pub fn get_sessions() -> &'static Arc<Mutex<HashMap<String, String>>> {
     SESSIONS.get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
 }
 
-#[derive(Debug, PartialEq, Subcommand)]
+#[derive(Debug, PartialEq, Parser)]
 pub enum SessionsSubcommand {
     /// List all active sessions
     List,

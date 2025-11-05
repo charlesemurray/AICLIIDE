@@ -802,8 +802,15 @@ impl ConversationState {
 
         enforce_conversation_invariants(&mut history, &mut summary_message, &tools);
 
+        // For new conversations (empty history), use None to let backend assign conversation_id
+        let conversation_id = if self.history.is_empty() {
+            None
+        } else {
+            Some(self.conversation_id.clone())
+        };
+
         Ok(FigConversationState {
-            conversation_id: Some(self.conversation_id.clone()),
+            conversation_id,
             user_input_message: summary_message
                 .unwrap_or(UserMessage::new_prompt(summary_content, None)) // should not happen
                 .into_user_input_message(self.model_info.as_ref().map(|m| m.model_id.clone()), &tools),
@@ -862,8 +869,15 @@ Return only the JSON configuration, no additional text.",
             ToolOrigin::McpServer(_) | ToolOrigin::Skill(_) | ToolOrigin::Workflow(_) => false,
         });
 
+        // For new conversations (empty history), use None to let backend assign conversation_id
+        let conversation_id = if self.history.is_empty() {
+            None
+        } else {
+            Some(self.conversation_id.clone())
+        };
+
         Ok(FigConversationState {
-            conversation_id: Some(self.conversation_id.clone()),
+            conversation_id,
             user_input_message: generation_message.into_user_input_message(self.model.clone(), &tools),
             history: Some(flatten_history(history.iter())),
         })
@@ -1103,8 +1117,15 @@ impl BackendConversationStateImpl<'_, std::collections::vec_deque::Iter<'_, Hist
             .map(|msg| msg.into_user_input_message(self.model_id.map(str::to_string), self.tools))
             .ok_or(eyre::eyre!("next user message is not set"))?;
 
+        // For new conversations (empty history), use None to let backend assign conversation_id
+        let conversation_id = if history.is_empty() {
+            None
+        } else {
+            Some(self.conversation_id.to_string())
+        };
+
         Ok(FigConversationState {
-            conversation_id: Some(self.conversation_id.to_string()),
+            conversation_id,
             user_input_message,
             history: Some(history),
         })

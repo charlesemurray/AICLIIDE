@@ -107,7 +107,7 @@ impl SkillsSubcommand {
                 // Try to load actual skills from the current directory
                 let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-                match SkillRegistry::with_workspace_skills(&current_dir).await {
+                match SkillRegistry::with_all_skills(&current_dir).await {
                     Ok(registry) => {
                         let skills = registry.list();
                         if skills.is_empty() {
@@ -137,7 +137,7 @@ impl SkillsSubcommand {
 
                 let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-                match SkillRegistry::with_workspace_skills(&current_dir).await {
+                match SkillRegistry::with_all_skills(&current_dir).await {
                     Ok(registry) => {
                         if let Some(skill) = registry.get(skill_name) {
                             let params_json = if let Some(p) = params {
@@ -202,13 +202,15 @@ impl SkillsSubcommand {
                 };
 
                 match Os::new().await {
-                    Ok(mut os) => match create_args.execute(&mut os).await {
-                        Ok(_) => {
-                            println!("✓ Skill '{}' created successfully", name);
-                        },
-                        Err(e) => {
-                            println!("❌ Failed to create skill: {}", e);
-                        },
+                    Ok(mut os) => {
+                        match create_args.execute(&mut os).await {
+                            Ok(_) => {
+                                println!("✓ Skill '{}' created successfully", name);
+                            },
+                            Err(e) => {
+                                println!("❌ Failed to create skill: {}", e);
+                            },
+                        }
                     },
                     Err(e) => {
                         println!("❌ Failed to initialize system: {}", e);

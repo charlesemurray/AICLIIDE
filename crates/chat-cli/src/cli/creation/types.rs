@@ -127,6 +127,17 @@ pub trait TerminalUI {
     // New multiple choice methods
     fn select_option(&mut self, prompt: &str, options: &[(&str, &str)]) -> Result<String>;
     fn select_multiple(&mut self, prompt: &str, options: &[(&str, &str)], allow_other: bool) -> Result<Vec<String>>;
+    
+    // Chat assistance for creating commands/prompts - returns a request for async handling
+    fn request_chat_session(&mut self, field: &str, context: &str) -> Result<ChatSessionRequest>;
+}
+
+/// Request for creating a chat session to help with skill creation
+#[derive(Debug, Clone)]
+pub struct ChatSessionRequest {
+    pub field: String,
+    pub context: String,
+    pub prompt: String,
 }
 
 /// Smart defaults and suggestions based on context
@@ -194,6 +205,8 @@ pub enum SkillType {
     Conversation,
     #[serde(rename = "prompt_inline")]
     PromptInline,
+    #[serde(rename = "rust")]
+    Rust,
 }
 
 /// Command types

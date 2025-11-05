@@ -302,12 +302,21 @@ impl CreateArgs {
 
                 Ok(ExitCode::SUCCESS)
             },
-            CreateCommand::Skill { name: _, mode: _ } => {
-                let ui = TerminalUIImpl::new();
-                let mut flow = InteractiveCreationFlow::new(ui).await?;
-                let result = flow.run(CreationType::Skill).await?;
-                println!("Created skill:\n{}", result);
-                Ok(ExitCode::SUCCESS)
+            CreateCommand::Skill { name, mode } => {
+                let creation_mode = mode
+                    .map(|m| match m {
+                        SkillMode::Quick => CreationMode::Quick,
+                        SkillMode::Guided => CreationMode::Guided,
+                        SkillMode::Expert => CreationMode::Expert,
+                        SkillMode::Template { source: _ } => CreationMode::Template,
+                        SkillMode::Preview => CreationMode::Preview,
+                        SkillMode::Edit => CreationMode::Guided,
+                        SkillMode::Force => CreationMode::Guided,
+                    })
+                    .unwrap_or(CreationMode::Guided);
+
+                let flow = SkillCreationFlow::new(name, creation_mode)?;
+                CreationAssistant::new(flow).run().await
             },
             CreateCommand::Command { name: _, mode: _ } => {
                 let ui = TerminalUIImpl::new();

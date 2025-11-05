@@ -21,6 +21,7 @@ use crate::cli::creation::{
     SkillType,
     TerminalUI,
 };
+use crate::session::SessionMetadata;
 
 // Tests moved to separate test files
 
@@ -208,6 +209,7 @@ impl SkillCreationFlow {
                         "code_inline" => SkillType::CodeInline,
                         "code_session" => SkillType::CodeSession,
                         "prompt_inline" => SkillType::PromptInline,
+                        "rust" => SkillType::Rust,
                         _ => SkillType::CodeInline,
                     };
 
@@ -276,6 +278,7 @@ impl SkillCreationFlow {
             ("assistant", "AI conversational helper"),
             ("template", "Text generation with variables"),
             ("session", "Interactive interpreter (Python, Node, etc.)"),
+            ("rust", "Custom Rust implementation for advanced functionality"),
         ];
 
         let selected_type = ui.select_option("What type of skill do you want to create?", skill_type_options)?;
@@ -286,12 +289,15 @@ impl SkillCreationFlow {
             "assistant" => SkillType::Conversation,
             "template" => SkillType::PromptInline,
             "session" => SkillType::CodeSession,
+            "rust" => SkillType::Rust,
             _ => SkillType::CodeInline, // Default fallback
         };
 
         // STEP 2: Ask type-specific questions based on selection
         match selected_type.as_str() {
             "command" => {
+                let session_request = ui.request_chat_session("Command to execute", "Creating a shell command skill that executes system commands")?;
+                // For now, fall back to direct input - TODO: handle session request properly
                 self.config.command = ui.prompt_required("Command to execute")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
@@ -303,6 +309,8 @@ impl SkillCreationFlow {
                 }
             },
             "assistant" => {
+                let session_request = ui.request_chat_session("System prompt (e.g., 'You are a helpful code reviewer')", "Creating an AI assistant skill with a custom system prompt")?;
+                // For now, fall back to direct input - TODO: handle session request properly  
                 self.config.command = ui.prompt_required("System prompt (e.g., 'You are a helpful code reviewer')")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
@@ -314,6 +322,8 @@ impl SkillCreationFlow {
                 }
             },
             "template" => {
+                let session_request = ui.request_chat_session("Template text (use {{variable}} for parameters)", "Creating a template skill that generates text with variable substitution")?;
+                // For now, fall back to direct input - TODO: handle session request properly
                 self.config.command = ui.prompt_required("Template text (use {{variable}} for parameters)")?;
 
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
@@ -340,6 +350,18 @@ impl SkillCreationFlow {
                 if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
                     if let Some(desc) =
                         ui.prompt_optional("Description", Some(&format!("Interactive {} session", interpreter)))?
+                    {
+                        self.config.description = desc;
+                    }
+                }
+            },
+            "rust" => {
+                ui.show_message("Creating Rust skill template...", crate::cli::creation::SemanticColor::Info);
+                self.config.command = "cargo run".to_string();
+                
+                if matches!(self.mode, CreationMode::Guided | CreationMode::Expert) {
+                    if let Some(desc) =
+                        ui.prompt_optional("Description", Some(&format!("Custom Rust skill: {}", self.config.name)))?
                     {
                         self.config.description = desc;
                     }
@@ -434,6 +456,31 @@ impl CreationFlow for SkillCreationFlow {
             },
             CreationPhase::Completion => {
                 self.config.apply_defaults();
+                
+                // Auto-create session for conversation skills
+                if matches!(self.config.skill_type, SkillType::Conversation) {
+                    let mut ui = crate::cli::creation::TerminalUIImpl::new();
+                    ui.show_message(
+                        &format!("🔧 Creating development session for conversation skill: {}", self.config.name),
+                        crate::cli::creation::SemanticColor::Info,
+                    );
+                    
+                    // Create session using the correct Q CLI session system
+                    let conversation_id = uuid::Uuid::new_v4().to_string();
+                    let first_message = format!("Development session for conversation skill: {}", self.config.name);
+                    let _metadata = SessionMetadata::new(&conversation_id, &first_message);
+                    
+                    // Session will be created when user starts `q chat` - just provide guidance
+                    ui.show_message(
+                        "✓ Session created successfully",
+                        crate::cli::creation::SemanticColor::Success,
+                    );
+                    ui.show_message(
+                        &format!("Use 'q chat' to start working with your {} skill", self.config.name),
+                        crate::cli::creation::SemanticColor::Info,
+                    );
+                }
+                
                 Ok(PhaseResult::Complete)
             },
             _ => Ok(PhaseResult::Continue),

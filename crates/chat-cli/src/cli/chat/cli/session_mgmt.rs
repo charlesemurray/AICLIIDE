@@ -189,12 +189,19 @@ impl SessionMgmtArgs {
             SessionMgmtSubcommand::Name { session_id, name } => {
                 let repo = FileSystemRepository::new(os.clone());
                 let manager = SessionManager::new(repo);
-                manager
-                    .name_session(&session_id, name.clone())
-                    .await
-                    .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-
-                println!("✓ Session '{}' named: {}", session_id, name);
+                
+                match manager.name_session(&session_id, name.clone()).await {
+                    Ok(_) => {
+                        println!("✓ Session '{}' named: {}", session_id, name);
+                    },
+                    Err(e) => {
+                        eprintln!("❌ Failed to name session '{}': {}", session_id, e);
+                        eprintln!("💡 Tip: Use '/sessions list' to see available sessions, or create a new session first");
+                        return Err(ChatError::Std(std::io::Error::new(std::io::ErrorKind::NotFound, 
+                            format!("Session '{}' not found. Use '/sessions list' to see available sessions.", session_id))));
+                    }
+                }
+                
                 Ok(ChatState::PromptUser {
                     skip_printing_tools: true,
                 })

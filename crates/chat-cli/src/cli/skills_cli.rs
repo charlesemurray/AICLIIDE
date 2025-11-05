@@ -240,7 +240,7 @@ pub enum SkillsSlashCommand {
 }
 
 impl SkillsArgs {
-    pub async fn execute(self, _os: &mut Os) -> Result<ExitCode> {
+    pub async fn execute(self, os: &mut Os) -> Result<ExitCode> {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         let registry = SkillRegistry::with_workspace_skills(&current_dir)
             .await
@@ -322,21 +322,26 @@ impl SkillsArgs {
                 description,
                 ..
             } => {
-                let skills_dir = dirs::home_dir()
-                    .ok_or_else(|| eyre::eyre!(constants::messages::COULD_NOT_FIND_HOME))?
-                    .join(constants::HOME_SKILLS_DIR_NAME);
+                // Use the new creation system instead of the old handlers::create_command
+                use crate::cli::creation::{CreateArgs, CreateCommand, SkillMode};
+                
+                let create_args = CreateArgs {
+                    command: CreateCommand::Skill {
+                        name: name.clone(),
+                        mode: Some(SkillMode::Guided),
+                    },
+                };
 
-                handlers::create_command(
-                    &name,
-                    from_template.as_deref(),
-                    description.as_deref(),
-                    &skills_dir,
-                    &mut std::io::stdout()
-                )
-                .await
-                .map_err(|e| eyre::eyre!(e))?;
-
-                Ok(ExitCode::SUCCESS)
+                match create_args.execute(os).await {
+                    Ok(_) => {
+                        println!("✓ Skill '{}' created successfully", name);
+                        Ok(ExitCode::SUCCESS)
+                    },
+                    Err(e) => {
+                        eprintln!("❌ Failed to create skill: {}", e);
+                        Ok(ExitCode::FAILURE)
+                    },
+                }
             },
             SkillsCommand::Remove { skill_name } => {
                 let skills_dir = current_dir.join(constants::SKILLS_DIR_NAME);

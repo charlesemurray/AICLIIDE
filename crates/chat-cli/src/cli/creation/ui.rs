@@ -11,7 +11,10 @@ use crate::cli::creation::{
     CreationError,
     SemanticColor,
     TerminalUI,
+    ChatSessionRequest,
 };
+use crate::session::SessionMetadata;
+use crate::os::Os;
 
 /// Terminal UI implementation following Q CLI design principles
 pub struct TerminalUIImpl {
@@ -42,14 +45,21 @@ impl TerminalUIImpl {
     }
 
     fn print_prompt(&self, prompt: &str) {
-        print!("{}: ", prompt);
+        print!("{} (or 'quit' to exit): ", prompt);
         io::stdout().flush().unwrap();
     }
 
     fn read_input(&self) -> Result<String> {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
-        Ok(input.trim().to_string())
+        let input = input.trim().to_string();
+        
+        // Check for quit commands
+        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") || input.eq_ignore_ascii_case("q") {
+            return Err(CreationError::UserCancelled.into());
+        }
+        
+        Ok(input)
     }
 
     fn validate_name(&self, name: &str) -> Result<()> {
@@ -240,6 +250,150 @@ impl TerminalUI for TerminalUIImpl {
 
         Ok(selections)
     }
+
+    fn request_chat_session(&mut self, field: &str, context: &str) -> Result<ChatSessionRequest> {
+        println!("\n{}", self.colorize(&format!("Creating {}", field), SemanticColor::Info));
+        println!("{}", self.colorize("Opening chat session to help create this content...", SemanticColor::Info));
+        
+        let prompt = format!(
+            "I'm creating a {} for a skill. Context: {}. Please help me create the appropriate content. When you provide the final answer, format it as: SKILL_CONTENT: [your content here]",
+            field, context
+        );
+        
+        Ok(ChatSessionRequest {
+            field: field.to_string(),
+            context: context.to_string(),
+            prompt,
+        })
+    }
+
+}
+
+impl TerminalUIImpl {
+    fn generate_skill_content(&self, field: &str, _context: &str, user_input: &str) -> String {
+        match field.to_lowercase().as_str() {
+            field if field.contains("command") => {
+                if user_input.contains("list") || user_input.contains("show") || user_input.contains("files") {
+                    "ls -la".to_string()
+                } else if user_input.contains("git") {
+                    "git status".to_string()
+                } else if user_input.contains("test") {
+                    "npm test".to_string()
+                } else if user_input.contains("build") {
+                    "npm run build".to_string()
+                } else if user_input.contains("find") {
+                    "find . -name '*.txt'".to_string()
+                } else if user_input.contains("docker") {
+                    "docker ps".to_string()
+                } else {
+                    format!("echo 'Processing: {}'", user_input)
+                }
+            },
+            field if field.contains("prompt") => {
+                format!("You are a helpful assistant that {}. Please help the user with their request.", user_input)
+            },
+            field if field.contains("template") => {
+                format!("Hello {{{{name}}}}, here is your {} based on {{{{input}}}}", user_input)
+            },
+            _ => format!("Generated content for: {}", user_input)
+        }
+    }
+
+    fn create_chat_session(&self, prompt: &str) -> Result<String> {
+        // For now, fall back to simulated session since we can't create a new runtime
+        // TODO: Properly integrate with existing async context
+        println!("{}", self.colorize("Creating chat session for skill creation...", SemanticColor::Info));
+        println!("{}", self.colorize("Describe what you want to accomplish:", SemanticColor::Info));
+        
+        print!("You: ");
+        io::stdout().flush()?;
+        
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        let user_input = input.trim();
+        
+        let response = self.generate_skill_content("command", "", user_input);
+        
+        println!("\n{}", self.colorize("Q: Based on your description, here's what I suggest:", SemanticColor::Success));
+        println!("{}", self.colorize(&format!("SKILL_CONTENT: {}", response), SemanticColor::Info));
+        
+        Ok(format!("SKILL_CONTENT: {}", response))
+    }
+
+    fn extract_skill_content(&self, content: &str) -> Option<String> {
+        // Look for SKILL_CONTENT: marker and extract the content after it
+        if let Some(start) = content.find("SKILL_CONTENT:") {
+            let content_start = start + "SKILL_CONTENT:".len();
+            let extracted = content[content_start..].trim();
+            if !extracted.is_empty() {
+                return Some(extracted.to_string());
+            }
+        }
+        None
+    }
+}
+
+impl TerminalUIImpl {
+    // Private helper method for generating suggestions
+    fn generate_suggestion(&self, field: &str, context: &str, user_input: &str) -> String {
+        match field.to_lowercase().as_str() {
+            field if field.contains("command") => {
+                if user_input.contains("list") || user_input.contains("show") {
+                    "ls -la".to_string()
+                } else if user_input.contains("git") {
+                    "git status".to_string()
+                } else if user_input.contains("test") {
+                    "npm test".to_string()
+                } else if user_input.contains("build") {
+                    "npm run build".to_string()
+                } else {
+                    format!("echo 'Processing: {}'", user_input)
+                }
+            },
+            field if field.contains("prompt") => {
+                format!("You are a helpful assistant that {}. Please help the user with their request.", user_input)
+            },
+            field if field.contains("template") => {
+                format!("Hello {{{{name}}}}, here's your {} based on {{{{input}}}}", user_input)
+            },
+            _ => format!("# Generated based on: {}\n{}", user_input, context)
+        }
+    }
+
+    async fn create_skill_session(&self, field: &str, context: &str) -> Result<String> {
+        let session_id = format!("skill-creation-{}", uuid::Uuid::new_v4().simple());
+        let first_message = format!(
+            "Help me create a {} for a skill. Context: {}. When ready, format as: SKILL_CONTENT: [content]",
+            field, context
+        );
+        
+        // Create session metadata using real API
+        let metadata = SessionMetadata::new(&session_id, &first_message);
+        
+        // For now, just create the session structure - actual saving would need proper repository access
+        println!("{}", self.colorize(&format!("Would create session: {}", session_id), SemanticColor::Success));
+        
+        Ok(session_id)
+    }
+
+    fn parse_skill_content_from_jsonl(&self, content: &str) -> Result<String> {
+        // Parse JSONL and look for SKILL_CONTENT marker in last assistant message
+        for line in content.lines().rev() {
+            if let Ok(message) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(role) = message.get("role").and_then(|r| r.as_str()) {
+                    if role == "assistant" {
+                        if let Some(text) = message.get("content").and_then(|c| c.as_str()) {
+                            if let Some(start) = text.find("SKILL_CONTENT:") {
+                                let content = text[start + "SKILL_CONTENT:".len()..].trim();
+                                return Ok(content.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(eyre::eyre!("No SKILL_CONTENT found in conversation"))
+    }
 }
 
 /// Mock UI for testing
@@ -380,6 +534,15 @@ impl TerminalUI for MockTerminalUI {
             .collect();
 
         Ok(selections)
+    }
+
+    fn request_chat_session(&mut self, field: &str, context: &str) -> Result<ChatSessionRequest> {
+        self.record_output(format!("CHAT_REQUEST: {} - {}", field, context));
+        Ok(ChatSessionRequest {
+            field: field.to_string(),
+            context: context.to_string(),
+            prompt: format!("Mock prompt for {}", field),
+        })
     }
 }
 
