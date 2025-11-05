@@ -290,8 +290,8 @@ impl ChatArgs {
     pub async fn execute(mut self, os: &mut Os) -> Result<ExitCode> {
         let mut input = self.input;
 
-        // Initialize multi-session coordinator if enabled
-        let mut coordinator = if std::env::var("Q_MULTI_SESSION").is_ok() {
+        // Initialize multi-session coordinator
+        let mut coordinator = {
             let mut coord = coordinator::MultiSessionCoordinator::new(coordinator::CoordinatorConfig::default());
 
             // Enable persistence
@@ -314,8 +314,6 @@ impl ChatArgs {
             }
 
             Some(coord)
-        } else {
-            None
         };
 
         if self.no_interactive && input.is_none() {
@@ -2719,25 +2717,17 @@ impl ChatSession {
             || user_input.starts_with("/rename")
             || user_input.starts_with("/session-name")
         {
-            // Parse and execute session command directly
-            use crate::cli::chat::cli::sessions::SessionsSubcommand;
-            use clap::Parser;
-            
-            // Convert input to args format
-            let args: Vec<&str> = user_input.split_whitespace().collect();
-            
-            // Try to parse as SessionsSubcommand
-            match SessionsSubcommand::try_parse_from(args) {
-                Ok(cmd) => {
-                    match cmd.execute(self, os).await {
-                        Ok(state) => return Ok(state),
-                        Err(e) => {
-                            execute!(self.stderr, style::Print(format!("Session command error: {}\n", e)))?;
-                        }
-                    }
-                },
-                Err(e) => {
-                    execute!(self.stderr, style::Print(format!("Invalid command: {}\n", e)))?;
+            // Handle session command with coordinator
+            if let Some(ref coord) = self.coordinator {
+                let mut coord_lock = coord.lock().await;
+                match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr)
+                    .await
+                {
+                    Ok(true) => {},  // Command handled
+                    Ok(false) => {}, // Not a session command
+                    Err(e) => {
+                        execute!(self.stderr, style::Print(format!("Session command error: {}\n", e)))?;
+                    },
                 }
             }
             
