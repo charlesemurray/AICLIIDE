@@ -1,7 +1,6 @@
 use eyre::Result;
 
 use crate::cli::chat::input_router::SessionCommand;
-use crate::theme::session::SessionStatus;
 
 pub struct SessionCommandHandler;
 

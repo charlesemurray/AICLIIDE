@@ -93,6 +93,24 @@ impl SessionSwitcher {
         Ok(())
     }
 
+    /// List sessions waiting for input
+    pub async fn list_waiting_sessions<W: Write>(&self, coordinator: &MultiSessionCoordinator, writer: &mut W) -> Result<()> {
+        let sessions = coordinator.get_waiting_sessions().await;
+
+        if sessions.is_empty() {
+            writeln!(writer, "No sessions waiting for input")?;
+            return Ok(());
+        }
+
+        let mut session_info = Vec::new();
+        for name in sessions {
+            session_info.push((name, crate::theme::session::SessionType::Development, false));
+        }
+
+        self.ui.show_session_list(writer, &session_info)?;
+        Ok(())
+    }
+
     /// Clear screen for session switch
     pub fn clear_screen<W: Write>(&self, writer: &mut W) -> Result<()> {
         self.ui.clear_for_switch(writer)

@@ -28,8 +28,12 @@ pub async fn handle_session_command<W: Write>(
     let mut switcher = SessionSwitcher::new();
 
     match cmd {
-        SessionCommand::List { .. } => {
-            switcher.list_sessions(coordinator, writer).await?;
+        SessionCommand::List { waiting, .. } => {
+            if waiting {
+                switcher.list_waiting_sessions(coordinator, writer).await?;
+            } else {
+                switcher.list_sessions(coordinator, writer).await?;
+            }
         },
         SessionCommand::Switch(name) => {
             switcher.switch_to(coordinator, &name, writer).await?;
