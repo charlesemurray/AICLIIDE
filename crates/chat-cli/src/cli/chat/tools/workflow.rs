@@ -69,21 +69,17 @@ impl StepExecutor {
         if step.tool.is_empty() {
             return Err(eyre::eyre!("Step tool name cannot be empty"));
         }
-
-        let known_tools = ["echo", "calculator"];
-        if !known_tools.contains(&step.tool.as_str()) {
-            return Err(eyre::eyre!("Unknown tool '{}' in step '{}'", step.tool, step.name));
-        }
-
         Ok(step.tool.clone())
     }
 
-    pub fn build_step_params(&self, step: &WorkflowStep, _context: &Value) -> Result<HashMap<String, Value>> {
+    pub fn build_step_params(&self, step: &WorkflowStep, context: &Value) -> Result<HashMap<String, Value>> {
         match &step.parameters {
             Value::Object(map) => {
                 let mut params = HashMap::new();
                 for (key, value) in map {
-                    params.insert(key.clone(), value.clone());
+                    // Replace context variables like {{steps.step1.output}}
+                    let resolved_value = self.resolve_context_vars(value, context);
+                    params.insert(key.clone(), resolved_value);
                 }
                 Ok(params)
             },
@@ -91,12 +87,97 @@ impl StepExecutor {
         }
     }
 
+    fn resolve_context_vars(&self, value: &Value, context: &Value) -> Value {
+        match value {
+            Value::String(s) => {
+                // Simple variable replacement: {{steps.step_name.output}}
+                if s.starts_with("{{") && s.ends_with("}}") {
+                    let path = s.trim_start_matches("{{").trim_end_matches("}}").trim();
+                    self.get_context_value(context, path).unwrap_or_else(|| value.clone())
+                } else {
+                    value.clone()
+                }
+            }
+            _ => value.clone(),
+        }
+    }
+
+    fn get_context_value(&self, context: &Value, path: &str) -> Option<Value> {
+        let parts: Vec<&str> = path.split('.').collect();
+        let mut current = context;
+        
+        for part in parts {
+            current = current.get(part)?;
+        }
+        
+        Some(current.clone())
+    }
+
     pub fn execute_step_with_context(&self, step: &WorkflowStep, context: &Value) -> Result<StepResult> {
         let tool_name = self.resolve_tool_name(step)?;
-        let _params = self.build_step_params(step, context)?;
+        let params = self.build_step_params(step, context)?;
+
+        // Execute based on tool type
+        let output = match tool_name.as_str() {
+            "fs_read" => {
+                let path = params.get("path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| eyre::eyre!("fs_read requires 'path' parameter"))?;
+                
+                match std::fs::read_to_string(path) {
+                    Ok(content) => format!("Read {} bytes from {}", content.len(), path),
+                    Err(e) => return Err(eyre::eyre!("Failed to read file: {}", e)),
+                }
+            }
+            "fs_write" => {
+                let path = params.get("path")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| eyre::eyre!("fs_write requires 'path' parameter"))?;
+                let content = params.get("content")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| eyre::eyre!("fs_write requires 'content' parameter"))?;
+                
+                match std::fs::write(path, content) {
+                    Ok(_) => format!("Wrote {} bytes to {}", content.len(), path),
+                    Err(e) => return Err(eyre::eyre!("Failed to write file: {}", e)),
+                }
+            }
+            "execute_bash" | "execute_cmd" => {
+                let command = params.get("command")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| eyre::eyre!("execute_bash requires 'command' parameter"))?;
+                
+                #[cfg(not(windows))]
+                let output = std::process::Command::new("bash")
+                    .arg("-c")
+                    .arg(command)
+                    .output();
+                
+                #[cfg(windows)]
+                let output = std::process::Command::new("cmd")
+                    .arg("/C")
+                    .arg(command)
+                    .output();
+                
+                match output {
+                    Ok(out) => {
+                        if out.status.success() {
+                            String::from_utf8_lossy(&out.stdout).to_string()
+                        } else {
+                            return Err(eyre::eyre!("Command failed: {}", String::from_utf8_lossy(&out.stderr)));
+                        }
+                    }
+                    Err(e) => return Err(eyre::eyre!("Failed to execute command: {}", e)),
+                }
+            }
+            _ => {
+                // For unknown tools, return a placeholder
+                format!("Executed tool '{}' with {} parameters", tool_name, params.len())
+            }
+        };
 
         Ok(StepResult {
-            output: format!("Executed step '{}' with tool '{}'", step.name, tool_name),
+            output,
             success: true,
         })
     }

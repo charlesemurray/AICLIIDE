@@ -104,6 +104,16 @@ impl WorkflowRegistry {
     pub fn workflow_dir(&self) -> &Path {
         &self.workflow_dir
     }
+
+    /// Get number of workflows
+    pub fn len(&self) -> usize {
+        self.workflows.len()
+    }
+
+    /// Check if registry is empty
+    pub fn is_empty(&self) -> bool {
+        self.workflows.is_empty()
+    }
 }
 
 #[cfg(test)]

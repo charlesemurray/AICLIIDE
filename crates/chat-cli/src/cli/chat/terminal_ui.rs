@@ -46,23 +46,87 @@ impl TerminalUI {
             return Ok(());
         }
 
-        let (cols, _) = terminal::size()?;
-        let waiting = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(coordinator.get_waiting_sessions())
+        let (cols, rows) = terminal::size()?;
+        
+        // Get session info
+        let (all_sessions, waiting_sessions) = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let all = coordinator.list_sessions().await;
+                let waiting = coordinator.get_waiting_sessions().await;
+                (all, waiting)
+            })
         });
 
-        if waiting.is_empty() {
+        if all_sessions.is_empty() {
             return Ok(());
         }
 
         // Save cursor position
         let pos = cursor::position().ok();
 
-        // Move to top-right corner
-        execute!(writer, cursor::MoveTo(cols.saturating_sub(25), 0))?;
-        execute!(writer, SetForegroundColor(Color::Yellow))?;
-        execute!(writer, Print(format!("⏸ {} waiting", waiting.len())))?;
+        // Build indicator box
+        let max_width = 30;
+        let title = format!("┌─ Sessions ({}) ", all_sessions.len());
+        let padding = "─".repeat(max_width.saturating_sub(title.len()).saturating_sub(1));
+        let header = format!("{}{}┐", title, padding);
+        
+        // Position in top-right corner
+        let start_col = cols.saturating_sub(max_width as u16);
+        
+        // Draw header
+        execute!(writer, cursor::MoveTo(start_col, 0))?;
+        execute!(writer, SetForegroundColor(Color::Cyan))?;
+        execute!(writer, Print(&header))?;
         execute!(writer, ResetColor)?;
+
+        // Draw sessions (max 5 to avoid taking too much space)
+        for (idx, session_name) in all_sessions.iter().take(5).enumerate() {
+            let row = (idx + 1) as u16;
+            if row >= rows {
+                break;
+            }
+            
+            execute!(writer, cursor::MoveTo(start_col, row))?;
+            execute!(writer, SetForegroundColor(Color::Cyan))?;
+            execute!(writer, Print("│ "))?;
+            
+            // Check if waiting for input
+            if waiting_sessions.contains(session_name) {
+                execute!(writer, SetForegroundColor(Color::Yellow))?;
+                execute!(writer, Print("⏸ "))?;
+            } else {
+                execute!(writer, SetForegroundColor(Color::Green))?;
+                execute!(writer, Print("▶ "))?;
+            }
+            
+            // Truncate name if too long
+            let max_name_len = max_width.saturating_sub(6);
+            let display_name = if session_name.len() > max_name_len {
+                format!("{}…", &session_name[..max_name_len.saturating_sub(1)])
+            } else {
+                session_name.clone()
+            };
+            
+            execute!(writer, SetForegroundColor(Color::White))?;
+            execute!(writer, Print(&display_name))?;
+            
+            // Pad to box width
+            let padding_len = max_width.saturating_sub(display_name.len()).saturating_sub(5);
+            execute!(writer, Print(" ".repeat(padding_len)))?;
+            execute!(writer, SetForegroundColor(Color::Cyan))?;
+            execute!(writer, Print("│"))?;
+            execute!(writer, ResetColor)?;
+        }
+        
+        // Draw footer
+        let footer_row = all_sessions.len().min(5) as u16 + 1;
+        if footer_row < rows {
+            execute!(writer, cursor::MoveTo(start_col, footer_row))?;
+            execute!(writer, SetForegroundColor(Color::Cyan))?;
+            let footer = format!("└{}┘", "─".repeat(max_width.saturating_sub(2)));
+            execute!(writer, Print(&footer))?;
+            execute!(writer, ResetColor)?;
+        }
 
         // Restore cursor
         if let Some((col, row)) = pos {

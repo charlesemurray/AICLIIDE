@@ -19,6 +19,7 @@ pub mod skills;
 mod skills_cli;
 mod user;
 pub mod workflow;
+pub mod workflows;
 
 use std::fmt::Display;
 use std::io::{

@@ -147,9 +147,23 @@ impl WorkflowsSubcommand {
                     .map_err(|e| ChatError::Custom(format!("Failed to load workflows: {}", e).into()))?;
                 
                 match registry.get(&workflow_name) {
-                    Some(_workflow) => {
-                        let params_str = params.unwrap_or_else(|| "{}".to_string());
-                        format!("🔄 Running workflow: {}\nParameters: {}\n\n(Workflow execution not yet implemented)", workflow_name, params_str)
+                    Some(workflow) => {
+                        use crate::cli::chat::tools::workflow::WorkflowTool;
+                        use std::collections::HashMap;
+                        
+                        let params_map: HashMap<String, serde_json::Value> = if let Some(params_str) = params {
+                            serde_json::from_str(&params_str)
+                                .map_err(|e| ChatError::Custom(format!("Invalid JSON parameters: {}", e).into()))?
+                        } else {
+                            HashMap::new()
+                        };
+                        
+                        let tool = WorkflowTool::from_definition(workflow);
+                        
+                        match tool.invoke_with_definition(workflow, params_map) {
+                            Ok(result) => format!("🔄 Workflow '{}' completed\n\n{}", workflow_name, result),
+                            Err(e) => format!("❌ Workflow '{}' failed: {}", workflow_name, e),
+                        }
                     }
                     None => format!("❌ Workflow '{}' not found", workflow_name)
                 }
