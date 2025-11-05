@@ -222,7 +222,7 @@ impl WorktreeSelector {
     }
 }
 
-fn detect_session_type(branch: &str) -> SessionType {
+pub fn detect_session_type(branch: &str) -> SessionType {
     if branch.starts_with("feature/") || branch.starts_with("feat/") {
         SessionType::Feature
     } else if branch.starts_with("fix/") || branch.starts_with("hotfix/") {

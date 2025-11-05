@@ -658,7 +658,7 @@ impl ChatArgs {
                             None
                         };
 
-                        match selection {
+                        let worktree_path = match selection {
                             Some(SelectorAction::Selected(idx)) => {
                                 // User selected existing worktree
                                 let selected = &existing_worktrees[idx];
@@ -721,73 +721,80 @@ impl ChatArgs {
                                 if io::stdin().read_line(&mut input).is_ok() {
                                     let input = input.trim();
                             
-                            if input.is_empty() || input.to_lowercase() == "n" {
-                                eprintln!("✓ Skipping worktree");
-                                None
-                            } else if let Ok(idx) = input.parse::<usize>() {
-                                // User selected existing worktree by number
-                                if idx > 0 && idx <= existing_worktrees.len() {
-                                    let selected = &existing_worktrees[idx - 1];
-                                    eprintln!("✓ Using existing worktree: {}", selected.branch);
-                                    
-                                    if std::env::set_current_dir(&selected.path).is_ok() {
-                                        eprintln!("✓ Changed to worktree directory");
-                                    }
-                                    
-                                    Some(selected.path.clone())
-                                } else {
-                                    eprintln!("✗ Invalid selection");
-                                    None
-                                }
-                            } else {
-                                // Create new worktree
-                                let branch_name = if input.to_lowercase() == "auto" {
-                                    format!("session-{}", &conversation_id[..8])
-                                } else {
-                                    match sanitize_branch_name(input) {
-                                        Ok(name) => name,
-                                        Err(e) => {
-                                            eprintln!("✗ Invalid branch name: {}", e);
-                                            return Err(eyre::eyre!("Invalid branch name: {}", e));
-                                        }
-                                    }
-                                };
-
-                                let unique_branch =
-                                    ensure_unique_branch_name(&ctx.repo_root, &branch_name).unwrap_or(branch_name);
-
-                                match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
-                                    Ok(path) => {
-                                        eprintln!("✓ Created worktree at: {}", path.display());
-                                        eprintln!("✓ Branch: {}", unique_branch);
-
-                                        let wt_info = WorktreeInfo {
-                                            path: path.clone(),
-                                            branch: unique_branch.clone(),
-                                            repo_root: ctx.repo_root.clone(),
-                                            is_temporary: false,
-                                            merge_target: ctx.branch_name.clone(),
-                                        };
-                                        
-                                        let metadata = SessionMetadata::new(&conversation_id, "")
-                                            .with_worktree(wt_info);
-                                        let _ = persist_to_worktree(&path, &metadata);
-
-                                        if std::env::set_current_dir(&path).is_ok() {
-                                            eprintln!("✓ Changed to worktree directory");
-                                        }
-
-                                        Some(path)
-                                    },
-                                    Err(e) => {
-                                        eprintln!("✗ Failed to create worktree: {}", e);
+                                    if input.is_empty() || input.to_lowercase() == "n" {
+                                        eprintln!("✓ Skipping worktree");
                                         None
-                                    },
+                                    } else if let Ok(idx) = input.parse::<usize>() {
+                                        // User selected existing worktree by number
+                                        if idx > 0 && idx <= existing_worktrees.len() {
+                                            let selected = &existing_worktrees[idx - 1];
+                                            eprintln!("✓ Using existing worktree: {}", selected.branch);
+                                            
+                                            if std::env::set_current_dir(&selected.path).is_ok() {
+                                                eprintln!("✓ Changed to worktree directory");
+                                            }
+                                            
+                                            Some(selected.path.clone())
+                                        } else {
+                                            eprintln!("✗ Invalid selection");
+                                            None
+                                        }
+                                    } else {
+                                        // Create new worktree
+                                        let branch_name = if input.to_lowercase() == "auto" {
+                                            format!("session-{}", &conversation_id[..8])
+                                        } else {
+                                            match sanitize_branch_name(input) {
+                                                Ok(name) => name,
+                                                Err(e) => {
+                                                    eprintln!("✗ Invalid branch name: {}", e);
+                                                    return Err(eyre::eyre!("Invalid branch name: {}", e));
+                                                }
+                                            }
+                                        };
+
+                                        let unique_branch =
+                                            ensure_unique_branch_name(&ctx.repo_root, &branch_name).unwrap_or(branch_name);
+
+                                        match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
+                                            Ok(path) => {
+                                                eprintln!("✓ Created worktree at: {}", path.display());
+                                                eprintln!("✓ Branch: {}", unique_branch);
+
+                                                let wt_info = WorktreeInfo {
+                                                    path: path.clone(),
+                                                    branch: unique_branch.clone(),
+                                                    repo_root: ctx.repo_root.clone(),
+                                                    is_temporary: false,
+                                                    merge_target: ctx.branch_name.clone(),
+                                                };
+                                                
+                                                let metadata = SessionMetadata::new(&conversation_id, "")
+                                                    .with_worktree(wt_info);
+                                                let _ = persist_to_worktree(&path, &metadata);
+
+                                                if std::env::set_current_dir(&path).is_ok() {
+                                                    eprintln!("✓ Changed to worktree directory");
+                                                }
+
+                                                Some(path)
+                                            },
+                                            Err(e) => {
+                                                eprintln!("✗ Failed to create worktree: {}", e);
+                                                None
+                                            },
+                                        }
+                                    }
+                                } else {
+                                    None
                                 }
                             }
                         } else {
                             None
                         }
+                        };
+                        
+                        worktree_path
                     } else {
                         None
                     }
@@ -1039,6 +1046,8 @@ pub struct ChatSession {
     feedback_manager: Option<cortex_memory::FeedbackManager>,
     /// Last user message for memory storage
     last_user_message: Option<String>,
+    /// Context stats widget for displaying usage
+    context_stats: Arc<Mutex<context_stats_widget::ContextStats>>,
 }
 
 impl ChatSession {
@@ -1276,7 +1285,19 @@ impl ChatSession {
             cortex,
             feedback_manager,
             last_user_message: None,
+            context_stats: Arc::new(Mutex::new(context_stats_widget::ContextStats::new())),
         };
+
+        // Initialize context stats with worktree info if available
+        if let Ok(current_dir) = os.env.current_dir() {
+            if let Ok(git_ctx) = crate::git::detect_git_context(&current_dir) {
+                if git_ctx.is_worktree {
+                    let session_type = worktree_selector::detect_session_type(&git_ctx.branch_name);
+                    let mut stats = session.context_stats.lock().unwrap();
+                    stats.update_worktree(git_ctx.branch_name.clone(), session_type.display_name().to_string());
+                }
+            }
+        }
 
         // Log session start for analytics
         if let Some(ref mut analytics) = session.analytics {
@@ -1428,6 +1449,9 @@ impl ChatSession {
     pub async fn next(&mut self, os: &mut Os) -> Result<(), ChatError> {
         // Update conversation state with new tool information
         self.conversation.update_state(false).await;
+
+        // Update context stats
+        self.update_stats();
 
         let mut ctrl_c_stream = self.ctrlc_rx.resubscribe();
         let result = match self.inner.take().expect("state must always be Some") {
@@ -1848,6 +1872,21 @@ impl ChatSession {
         } else {
             format!("{}{}", input, mode_suffix)
         }
+    }
+
+    /// Update context stats widget
+    fn update_stats(&self) {
+        let mut stats = self.context_stats.lock().unwrap();
+        
+        // Update message count
+        stats.increment_messages();
+        
+        // Update token usage (approximate from conversation history)
+        let token_count = self.conversation.history().len() * 500; // Rough estimate
+        stats.update_tokens(token_count);
+        
+        // Render the widget
+        let _ = stats.render();
     }
 }
 

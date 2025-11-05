@@ -25,6 +25,7 @@ cortex-memory = { path = "../cortex-memory" }
 anstream.workspace = true
 arboard.workspace = true
 async-trait.workspace = true
+atty = "0.2"
 aws-config.workspace = true
 aws-credential-types.workspace = true
 aws-runtime.workspace = true
@@ -49,6 +50,7 @@ color-print.workspace = true
 convert_case.workspace = true
 cookie.workspace = true
 crossterm.workspace = true
+ratatui.workspace = true
 ctrlc.workspace = true
 dialoguer.workspace = true
 dirs.workspace = true

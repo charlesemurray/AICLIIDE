@@ -33,6 +33,7 @@ impl SessionType {
 
     pub fn display_name(&self) -> &'static str {
         match self {
+            SessionType::Shell => "Shell",
             SessionType::Debug => "Debug",
             SessionType::Planning => "Planning",
             SessionType::Development => "Development",
@@ -112,6 +113,7 @@ impl SessionType {
     /// Get the color for this session type from the theme
     pub fn color(&self, colors: &SessionColors) -> Color {
         match self {
+            SessionType::Shell => colors.development,
             SessionType::Debug => colors.debug,
             SessionType::Planning => colors.planning,
             SessionType::Development => colors.development,
@@ -134,6 +136,7 @@ impl SessionType {
             SessionType::Hotfix => "hotfix",
             SessionType::Refactor => "refactor",
             SessionType::Experiment => "experiment",
+            SessionType::Shell => "shell",
         }
     }
 }

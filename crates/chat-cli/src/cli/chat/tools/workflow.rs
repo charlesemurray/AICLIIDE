@@ -128,9 +128,22 @@ impl StepExecutor {
             if let Some(skill_def) = manager.skill_registry.get(&tool_name) {
                 use crate::cli::chat::tools::skill::SkillTool;
                 let skill_tool = SkillTool::from_definition(skill_def);
-                // Skills need actual execution - for now return placeholder
+                
+                // Execute the skill based on its implementation type
+                let output = match &skill_def.implementation {
+                    Some(crate::cli::chat::tools::skill::SkillImplementation::Script { .. }) => {
+                        skill_tool.execute_script_with_timeout(skill_def, &params, 30).await?
+                    }
+                    Some(crate::cli::chat::tools::skill::SkillImplementation::Command { .. }) => {
+                        skill_tool.execute_command_with_timeout(skill_def, &params, 30).await?
+                    }
+                    None => {
+                        return Err(eyre::eyre!("Skill '{}' has no implementation", tool_name));
+                    }
+                };
+                
                 return Ok(StepResult {
-                    output: format!("Skill '{}' invoked (execution pending)", tool_name),
+                    output,
                     success: true,
                 });
             }
