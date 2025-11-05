@@ -4886,6 +4886,15 @@ impl ChatSession {
         self.conversation.agents.trust_all_tools
     }
 
+    /// Switch to a different conversation
+    pub fn switch_conversation(&mut self, new_conversation: ConversationState) {
+        self.conversation = new_conversation;
+        // Clear any pending state
+        self.tool_uses.clear();
+        self.pending_tool_index = None;
+        self.pending_prompts.clear();
+    }
+
     /// Display character limit warnings based on current conversation size
     async fn display_char_warnings(&mut self, os: &Os) -> Result<(), ChatError> {
         let warning_level = self.conversation.get_token_warning_level(os).await?;

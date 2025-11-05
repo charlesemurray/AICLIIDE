@@ -509,6 +509,12 @@ impl MultiSessionCoordinator {
         state.sessions.get(conversation_id).map(|s| s.display.name.clone())
     }
 
+    /// Get a managed session by conversation_id
+    pub async fn get_managed_session(&self, conversation_id: &str) -> Option<ManagedSession> {
+        let state = self.state.lock().await;
+        state.sessions.get(conversation_id).cloned()
+    }
+
     /// Get state change sender for new sessions
     pub fn state_sender(&self) -> mpsc::Sender<SessionStateChange> {
         self.state_tx.clone()

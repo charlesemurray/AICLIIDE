@@ -262,3 +262,18 @@ mod tests {
         assert!(!SessionStatus::Completed.can_transition_to(&SessionStatus::WaitingForInput));
     }
 }
+
+impl Clone for ManagedSession {
+    fn clone(&self) -> Self {
+        Self {
+            display: self.display.clone(),
+            conversation: self.conversation.clone(),
+            conversation_id: self.conversation_id.clone(),
+            state: self.state.clone(),
+            output_buffer: self.output_buffer.clone(),
+            task_handle: None, // Can't clone JoinHandle
+            last_error: self.last_error.clone(),
+            metadata: self.metadata.clone(),
+        }
+    }
+}

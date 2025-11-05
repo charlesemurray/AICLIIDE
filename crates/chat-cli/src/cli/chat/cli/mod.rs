@@ -99,6 +99,11 @@ pub enum SessionsSubcommand {
         /// New name for the session
         new_name: String,
     },
+    /// Switch to a different session
+    Switch {
+        /// Name of session to switch to
+        name: String,
+    },
 }
 
 impl SessionsSubcommand {
@@ -106,50 +111,80 @@ impl SessionsSubcommand {
         use crate::cli::chat::session_integration;
         
         if let Some(ref coord) = session.coordinator {
-            let mut coord_lock = coord.lock().await;
+            let switch_conversation = {
+                let mut coord_lock = coord.lock().await;
+                
+                // Build context once to avoid borrow issues
+                let context = session.build_session_context(os);
+                let context_factory = move || context.clone();
+                
+                // Check if this is a switch command - we need to handle it specially
+                let is_switch = matches!(&self, Self::Switch { .. });
+                
+                // Convert to command string for session_integration
+                let command_str = match &self {
+                    Self::List { all, waiting } => {
+                        let mut cmd = "/sessions".to_string();
+                        if *all { cmd.push_str(" --all"); }
+                        if *waiting { cmd.push_str(" --waiting"); }
+                        cmd
+                    },
+                    Self::New { name, session_type } => {
+                        let mut cmd = "/new".to_string();
+                        if let Some(n) = name {
+                            cmd.push_str(" ");
+                            cmd.push_str(n);
+                        }
+                        cmd
+                    },
+                    Self::Close { name } => {
+                        let mut cmd = "/close".to_string();
+                        if let Some(n) = name {
+                            cmd.push_str(" ");
+                            cmd.push_str(n);
+                        }
+                        cmd
+                    },
+                    Self::Rename { new_name } => {
+                        format!("/rename {}", new_name)
+                    },
+                    Self::Switch { name } => {
+                        format!("/switch {}", name)
+                    },
+                };
+                
+                match session_integration::handle_session_command(
+                    &command_str,
+                    &mut coord_lock,
+                    &mut session.stderr,
+                    context_factory,
+                ).await {
+                    Ok(_) => {
+                        // If this was a switch command, get the conversation to swap
+                        if is_switch {
+                            if let Some(active_id) = coord_lock.active_session_id().await {
+                                if let Some(managed_session) = coord_lock.get_managed_session(&active_id).await {
+                                    Some(managed_session.conversation.clone())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    },
+                    Err(e) => return Err(ChatError::Custom(e.to_string().into())),
+                }
+            }; // coord_lock dropped here
             
-            // Build context once to avoid borrow issues
-            let context = session.build_session_context(os);
-            let context_factory = move || context.clone();
-            
-            // Convert to command string for session_integration
-            let command_str = match &self {
-                Self::List { all, waiting } => {
-                    let mut cmd = "/sessions".to_string();
-                    if *all { cmd.push_str(" --all"); }
-                    if *waiting { cmd.push_str(" --waiting"); }
-                    cmd
-                },
-                Self::New { name, session_type } => {
-                    let mut cmd = "/new".to_string();
-                    if let Some(n) = name {
-                        cmd.push_str(" ");
-                        cmd.push_str(n);
-                    }
-                    cmd
-                },
-                Self::Close { name } => {
-                    let mut cmd = "/close".to_string();
-                    if let Some(n) = name {
-                        cmd.push_str(" ");
-                        cmd.push_str(n);
-                    }
-                    cmd
-                },
-                Self::Rename { new_name } => {
-                    format!("/rename {}", new_name)
-                },
-            };
-            
-            match session_integration::handle_session_command(
-                &command_str,
-                &mut coord_lock,
-                &mut session.stderr,
-                context_factory,
-            ).await {
-                Ok(_) => Ok(ChatState::PromptUser { skip_printing_tools: false }),
-                Err(e) => Err(ChatError::Custom(e.to_string().into())),
+            // Now we can mutate session
+            if let Some(conversation) = switch_conversation {
+                session.switch_conversation(conversation);
             }
+            
+            Ok(ChatState::PromptUser { skip_printing_tools: false })
         } else {
             Err(ChatError::Custom("Session coordinator not available".into()))
         }
@@ -414,6 +449,7 @@ impl SlashCommand {
                 SessionsSubcommand::New { .. } => "new",
                 SessionsSubcommand::Close { .. } => "close",
                 SessionsSubcommand::Rename { .. } => "rename",
+                SessionsSubcommand::Switch { .. } => "switch",
             }),
             SlashCommand::Skills(sub) => Some(sub.name()),
             SlashCommand::Workflows(sub) => Some(sub.name()),
