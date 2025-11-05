@@ -125,23 +125,9 @@ impl StepExecutor {
         // If we have a tool manager, try to invoke through it
         if let Some(manager) = tool_manager {
             // Check if it's a skill
-            if manager.skill_registry.exists(&tool_name) {
-                // Convert params HashMap to Value
-                let params_value = serde_json::to_value(&params)
-                    .map_err(|e| eyre::eyre!("Failed to convert params: {}", e))?;
-                
-                // Execute via registry
-                match manager.skill_registry.execute_skill(&tool_name, params_value).await {
-                    Ok(skill_result) => {
-                        return Ok(StepResult {
-                            output: skill_result.output,
-                            success: true,
-                        });
-                    }
-                    Err(e) => {
-                        return Err(eyre::eyre!("Skill execution failed: {}", e));
-                    }
-                }
+            if manager.skill_registry.get(&tool_name).is_some() {
+                // TODO: Implement skill execution
+                // For now, fall through to command execution
             }
             
             // Check if it's another workflow
@@ -342,7 +328,7 @@ impl WorkflowTool {
         &self,
         definition: &WorkflowDefinition,
         _params: HashMap<String, Value>,
-        tool_manager: Option<&mut crate::cli::chat::tool_manager::ToolManager>,
+        mut tool_manager: Option<&mut crate::cli::chat::tool_manager::ToolManager>,
     ) -> Result<String> {
         use std::time::Instant;
 

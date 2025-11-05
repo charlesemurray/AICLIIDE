@@ -789,7 +789,9 @@ impl ChatArgs {
                                     None
                                 }
                             }
-                        }
+                        };
+                        
+                        worktree_path
                     } else {
                         None
                     }
@@ -4836,8 +4838,16 @@ impl ChatSession {
             None
         };
 
+        // Get current session name from coordinator
+        let session_name = if let Some(ref coord) = self.coordinator {
+            let coord_lock = coord.lock().await;
+            coord_lock.get_session_name(self.conversation.conversation_id()).await
+        } else {
+            None
+        };
+
         let mut generated_prompt =
-            prompt::generate_prompt(profile.as_deref(), all_trusted, tangent_mode, usage_percentage);
+            prompt::generate_prompt(profile.as_deref(), all_trusted, tangent_mode, usage_percentage, session_name.as_deref());
 
         if ExperimentManager::is_enabled(os, ExperimentName::Delegate) && status_all_agents(os).await.is_ok() {
             generated_prompt = format!("{DELEGATE_NOTIFIER}\n{generated_prompt}");

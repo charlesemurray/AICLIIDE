@@ -87,6 +87,7 @@ pub fn generate_prompt(
     warning: bool,
     tangent_mode: bool,
     usage_percentage: Option<f32>,
+    session_name: Option<&str>,
 ) -> String {
     // Generate plain text prompt that will be colored by highlight_prompt
     let warning_symbol = if warning { "!" } else { "" };
@@ -96,11 +97,13 @@ pub fn generate_prompt(
         .unwrap_or_default();
 
     let percentage_part = usage_percentage.map(|p| format!("{:.0}% ", p)).unwrap_or_default();
+    
+    let session_part = session_name.map(|s| format!("({}) ", s)).unwrap_or_default();
 
     if tangent_mode {
-        format!("{profile_part}{percentage_part}↯ {warning_symbol}> ")
+        format!("{session_part}{profile_part}{percentage_part}↯ {warning_symbol}> ")
     } else {
-        format!("{profile_part}{percentage_part}{warning_symbol}> ")
+        format!("{session_part}{profile_part}{percentage_part}{warning_symbol}> ")
     }
 }
 
@@ -111,43 +114,50 @@ mod tests {
     #[test]
     fn test_generate_prompt() {
         // Test default prompt (no profile)
-        assert_eq!(generate_prompt(None, false, false, None), "> ");
+        assert_eq!(generate_prompt(None, false, false, None, None), "> ");
         // Test default prompt with warning
-        assert_eq!(generate_prompt(None, true, false, None), "!> ");
+        assert_eq!(generate_prompt(None, true, false, None, None), "!> ");
         // Test tangent mode
-        assert_eq!(generate_prompt(None, false, true, None), "↯ > ");
+        assert_eq!(generate_prompt(None, false, true, None, None), "↯ > ");
         // Test tangent mode with warning
-        assert_eq!(generate_prompt(None, true, true, None), "↯ !> ");
+        assert_eq!(generate_prompt(None, true, true, None, None), "↯ !> ");
         // Test default profile (should be same as no profile)
-        assert_eq!(generate_prompt(Some(DEFAULT_AGENT_NAME), false, false, None), "> ");
+        assert_eq!(generate_prompt(Some(DEFAULT_AGENT_NAME), false, false, None, None), "> ");
         // Test custom profile
         assert_eq!(
-            generate_prompt(Some("test-profile"), false, false, None),
+            generate_prompt(Some("test-profile"), false, false, None, None),
             "[test-profile] > "
         );
         // Test custom profile with tangent mode
         assert_eq!(
-            generate_prompt(Some("test-profile"), false, true, None),
+            generate_prompt(Some("test-profile"), false, true, None, None),
             "[test-profile] ↯ > "
         );
         // Test another custom profile with warning
-        assert_eq!(generate_prompt(Some("dev"), true, false, None), "[dev] !> ");
+        assert_eq!(generate_prompt(Some("dev"), true, false, None, None), "[dev] !> ");
         // Test custom profile with warning and tangent mode
-        assert_eq!(generate_prompt(Some("dev"), true, true, None), "[dev] ↯ !> ");
+        assert_eq!(generate_prompt(Some("dev"), true, true, None, None), "[dev] ↯ !> ");
         // Test custom profile with usage percentage
         assert_eq!(
-            generate_prompt(Some("rust-agent"), false, false, Some(6.2)),
+            generate_prompt(Some("rust-agent"), false, false, Some(6.2), None),
             "[rust-agent] 6% > "
         );
         // Test custom profile with usage percentage and warning
         assert_eq!(
-            generate_prompt(Some("rust-agent"), true, false, Some(15.7)),
+            generate_prompt(Some("rust-agent"), true, false, Some(15.7), None),
             "[rust-agent] 16% !> "
         );
         // Test usage percentage without profile
-        assert_eq!(generate_prompt(None, false, false, Some(25.3)), "25% > ");
+        assert_eq!(generate_prompt(None, false, false, Some(25.3), None), "25% > ");
         // Test usage percentage with tangent mode
-        assert_eq!(generate_prompt(None, false, true, Some(8.9)), "9% ↯ > ");
+        assert_eq!(generate_prompt(None, false, true, Some(8.9), None), "9% ↯ > ");
+        // Test session name
+        assert_eq!(generate_prompt(None, false, false, None, Some("my-feature")), "(my-feature) > ");
+        // Test session name with profile
+        assert_eq!(
+            generate_prompt(Some("dev"), false, false, None, Some("bugfix")),
+            "(bugfix) [dev] > "
+        );
     }
 
     #[test]

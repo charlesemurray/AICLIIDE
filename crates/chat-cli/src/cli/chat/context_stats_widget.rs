@@ -66,19 +66,21 @@ impl ContextStats {
         let y = 0;
         
         // Create mini terminal for widget
-        let backend = CrosstermBackend::new(&mut stdout);
-        let mut terminal = Terminal::new(backend)?;
-        
-        terminal.draw(|frame| {
-            let area = Rect {
-                x,
-                y,
-                width,
-                height,
-            };
+        {
+            let backend = CrosstermBackend::new(&mut stdout);
+            let mut terminal = Terminal::new(backend)?;
             
-            self.render_widget(frame, area);
-        })?;
+            terminal.draw(|frame| {
+                let area = Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                };
+                
+                self.render_widget(frame, area);
+            })?;
+        } // terminal dropped here, releasing stdout
         
         // Restore cursor position
         if let Some((col, row)) = original_pos {

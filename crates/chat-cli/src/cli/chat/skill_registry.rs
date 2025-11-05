@@ -116,6 +116,28 @@ impl SkillRegistry {
     pub fn is_empty(&self) -> bool {
         self.skills.is_empty()
     }
+
+    pub fn exists(&self, name: &str) -> bool {
+        self.skills.contains_key(name)
+    }
+
+    pub async fn execute_skill(&self, name: &str, params: serde_json::Value) -> Result<String> {
+        use crate::cli::chat::tools::skill::SkillTool;
+        
+        let skill = self.get(name)
+            .ok_or_else(|| eyre::eyre!("Skill '{}' not found", name))?;
+        
+        let tool = SkillTool::from_definition(skill);
+        
+        // Convert Value to HashMap<String, Value>
+        let param_map = if let serde_json::Value::Object(obj) = params {
+            obj.into_iter().collect()
+        } else {
+            std::collections::HashMap::new()
+        };
+        
+        tool.invoke(param_map)
+    }
 }
 
 impl Default for SkillRegistry {
