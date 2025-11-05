@@ -36,6 +36,8 @@ pub mod terminal_state;
 pub mod terminal_ui;
 pub mod worktree_session;
 pub mod worktree_strategy;
+mod worktree_selector;
+mod context_stats_widget;
 use std::path::MAIN_SEPARATOR;
 pub mod checkpoint;
 mod line_tracker;
@@ -637,24 +639,87 @@ impl ChatArgs {
                         use crate::cli::chat::worktree_session::persist_to_worktree;
                         use crate::git::{create_worktree, list_worktrees};
                         use crate::session::metadata::WorktreeInfo;
+                        use crate::cli::chat::worktree_selector::{WorktreeSelector, SelectorAction};
 
                         // List existing worktrees
                         let existing_worktrees = list_worktrees(&ctx.repo_root).unwrap_or_default();
                         
-                        if !existing_worktrees.is_empty() {
-                            eprintln!("\n📂 Existing worktrees:");
-                            for (idx, wt) in existing_worktrees.iter().enumerate() {
-                                eprintln!("  {}. {} ({})", idx + 1, wt.branch, wt.path.display());
+                        // Use interactive selector if worktrees exist
+                        let selection = if !existing_worktrees.is_empty() && atty::is(atty::Stream::Stdin) {
+                            let selector = WorktreeSelector::new(existing_worktrees.clone());
+                            match selector.run() {
+                                Ok(action) => Some(action),
+                                Err(e) => {
+                                    eprintln!("Selector error: {}, falling back to text input", e);
+                                    None
+                                }
                             }
-                            eprintln!();
-                        }
+                        } else {
+                            None
+                        };
 
-                        eprint!("Create or select worktree [number/name/auto/N]: ");
-                        io::stderr().flush().ok();
+                        match selection {
+                            Some(SelectorAction::Selected(idx)) => {
+                                // User selected existing worktree
+                                let selected = &existing_worktrees[idx];
+                                eprintln!("✓ Using existing worktree: {}", selected.branch);
+                                
+                                if std::env::set_current_dir(&selected.path).is_ok() {
+                                    eprintln!("✓ Changed to worktree directory");
+                                }
+                                
+                                Some(selected.path.clone())
+                            },
+                            Some(SelectorAction::CreateNew(branch_name)) => {
+                                // User wants to create new worktree
+                                let unique_branch = ensure_unique_branch_name(&ctx.repo_root, &branch_name)
+                                    .unwrap_or(branch_name);
 
-                        let mut input = String::new();
-                        if io::stdin().read_line(&mut input).is_ok() {
-                            let input = input.trim();
+                                match create_worktree(&ctx.repo_root, &unique_branch, &ctx.branch_name, None) {
+                                    Ok(path) => {
+                                        eprintln!("✓ Created worktree at: {}", path.display());
+                                        eprintln!("✓ Branch: {}", unique_branch);
+
+                                        let wt_info = WorktreeInfo {
+                                            path: path.clone(),
+                                            branch: unique_branch.clone(),
+                                            repo_root: ctx.repo_root.clone(),
+                                            is_temporary: false,
+                                            merge_target: ctx.branch_name.clone(),
+                                        };
+                                        
+                                        let metadata = SessionMetadata::new(&conversation_id, "")
+                                            .with_worktree(wt_info);
+                                        let _ = persist_to_worktree(&path, &metadata);
+
+                                        if std::env::set_current_dir(&path).is_ok() {
+                                            eprintln!("✓ Changed to worktree directory");
+                                        }
+
+                                        Some(path)
+                                    },
+                                    Err(e) => {
+                                        eprintln!("✗ Failed to create worktree: {}", e);
+                                        None
+                                    }
+                                }
+                            },
+                            Some(SelectorAction::Cancel) | None => {
+                                // Fallback to text input or skip
+                                if !existing_worktrees.is_empty() {
+                                    eprintln!("\n📂 Existing worktrees:");
+                                    for (idx, wt) in existing_worktrees.iter().enumerate() {
+                                        eprintln!("  {}. {} ({})", idx + 1, wt.branch, wt.path.display());
+                                    }
+                                    eprintln!();
+                                }
+
+                                eprint!("Create or select worktree [number/name/auto/N]: ");
+                                io::stderr().flush().ok();
+
+                                let mut input = String::new();
+                                if io::stdin().read_line(&mut input).is_ok() {
+                                    let input = input.trim();
                             
                             if input.is_empty() || input.to_lowercase() == "n" {
                                 eprintln!("✓ Skipping worktree");

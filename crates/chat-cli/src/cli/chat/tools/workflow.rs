@@ -142,10 +142,25 @@ impl StepExecutor {
                     Err(e) => return Err(eyre::eyre!("Failed to write file: {}", e)),
                 }
             }
-            "execute_bash" | "execute_cmd" => {
+            "execute_bash" | "execute_cmd" | "execute_bash_readonly" => {
                 let command = params.get("command")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| eyre::eyre!("execute_bash requires 'command' parameter"))?;
+                
+                let is_readonly = tool_name == "execute_bash_readonly";
+                
+                // Validate readonly commands don't have write operations
+                if is_readonly {
+                    let dangerous_patterns = [">", ">>", "rm ", "mv ", "cp ", "chmod", "chown", 
+                                             "dd ", "mkfs", "mount", "umount", "sudo", "su "];
+                    for pattern in &dangerous_patterns {
+                        if command.contains(pattern) {
+                            return Err(eyre::eyre!(
+                                "Readonly command cannot contain '{}': {}", pattern, command
+                            ));
+                        }
+                    }
+                }
                 
                 #[cfg(not(windows))]
                 let output = std::process::Command::new("bash")
