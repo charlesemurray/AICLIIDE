@@ -2683,7 +2683,7 @@ impl ChatSession {
             None => return Ok(ChatState::Exit),
         };
 
-        // Check for session commands (if multi-session is enabled)
+        // Check for session commands
         if user_input.starts_with("/sessions")
             || user_input.starts_with("/switch")
             || user_input.starts_with("/s ")
@@ -2692,27 +2692,28 @@ impl ChatSession {
             || user_input.starts_with("/rename")
             || user_input.starts_with("/session-name")
         {
-            // Session commands need coordinator - show message if not enabled
-            if self.coordinator.is_none() {
-                execute!(
-                    self.stderr,
-                    style::Print("ℹ Session commands require Q_MULTI_SESSION=1 environment variable\n")
-                )?;
-            } else {
-                // Handle session command with coordinator
-                if let Some(ref coord) = self.coordinator {
-                    let mut coord_lock = coord.lock().await;
-                    match session_integration::handle_session_command(&user_input, &mut coord_lock, &mut self.stderr)
-                        .await
-                    {
-                        Ok(true) => {},  // Command handled
-                        Ok(false) => {}, // Not a session command
+            // Parse and execute session command directly
+            use crate::cli::chat::cli::sessions::SessionsSubcommand;
+            use clap::Parser;
+            
+            // Convert input to args format
+            let args: Vec<&str> = user_input.split_whitespace().collect();
+            
+            // Try to parse as SessionsSubcommand
+            match SessionsSubcommand::try_parse_from(args) {
+                Ok(cmd) => {
+                    match cmd.execute(self, os).await {
+                        Ok(state) => return Ok(state),
                         Err(e) => {
                             execute!(self.stderr, style::Print(format!("Session command error: {}\n", e)))?;
-                        },
+                        }
                     }
+                },
+                Err(e) => {
+                    execute!(self.stderr, style::Print(format!("Invalid command: {}\n", e)))?;
                 }
             }
+            
             return Ok(ChatState::PromptUser {
                 skip_printing_tools: false,
             });
