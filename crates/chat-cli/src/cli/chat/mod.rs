@@ -2035,6 +2035,19 @@ impl ChatSession {
         // stats.update_tokens(token_count);
         // let _ = stats.render();
     }
+    
+    /// Check if this session is currently active
+    fn is_active_session(&self) -> bool {
+        if let Some(ref coord) = self.coordinator {
+            if let Ok(coord_guard) = coord.try_lock() {
+                if let Ok(state) = coord_guard.state.try_lock() {
+                    let current_id = self.conversation.conversation_id().to_string();
+                    return state.active_session_id.as_ref() == Some(&current_id);
+                }
+            }
+        }
+        true // Default to active if no coordinator or can't lock
+    }
 }
 
 impl Drop for ChatSession {
