@@ -66,7 +66,7 @@ dependencies = [
  "color-eyre",
  "color-print",
  "criterion",
- "crossterm",
+ "crossterm 0.29.0",
  "dialoguer",
  "dirs 5.0.1",
  "eyre",
@@ -924,7 +924,7 @@ name = "aws-toolkit-telemetry-definitions"
 version = "0.1.0"
 dependencies = [
  "amzn-toolkit-telemetry-client",
- "convert_case",
+ "convert_case 0.8.0",
  "prettyplease",
  "quote",
  "serde",
@@ -1441,7 +1441,7 @@ name = "chat-cli-ui"
 version = "1.19.3"
 dependencies = [
  "chrono",
- "crossterm",
+ "crossterm 0.29.0",
  "eyre",
  "futures",
  "nix 0.29.0",
@@ -1499,11 +1499,11 @@ dependencies = [
  "clap_complete_fig",
  "color-eyre",
  "color-print",
- "convert_case",
+ "convert_case 0.8.0",
  "cookie",
  "cortex-memory",
  "criterion",
- "crossterm",
+ "crossterm 0.29.0",
  "ctrlc",
  "dialoguer",
  "dirs 5.0.1",
@@ -1896,6 +1896,15 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
 name = "convert_case"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb402b8d4c85569410425650ce3eddc7d698ed96d39a73f941b08fb63082f1e7"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "convert_case"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baaaa0ecca5b51987b9423ccdc971514dd8b0bb7b4060b983d3664dad3f1f89f"
@@ -2114,10 +2123,28 @@ checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
 dependencies = [
  "bitflags 2.10.0",
  "crossterm_winapi",
- "futures-core",
  "mio",
  "parking_lot",
  "rustix 0.38.44",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
+name = "crossterm"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8b9f2e4c67f833b660cdb0a3523065869fb35570177239812ed4c905aeff87b"
+dependencies = [
+ "bitflags 2.10.0",
+ "crossterm_winapi",
+ "derive_more",
+ "document-features",
+ "futures-core",
+ "mio",
+ "parking_lot",
+ "rustix 1.1.2",
  "signal-hook",
  "signal-hook-mio",
  "winapi",
@@ -2309,6 +2336,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab63b0e2bf4d5928aff72e83a7dace85d7bba5fe12dcc3c5a572d78caffd3f3c"
 dependencies = [
  "derive_builder_core",
+ "syn 2.0.108",
+]
+
+[[package]]
+name = "derive_more"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "093242cf7570c207c83073cf82f79706fe7b8317e98620a47d5be7c3d8497678"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bda628edc44c4bb645fbe0f758797143e4e07926f7ebf4e9bdfbd3d2ce621df3"
+dependencies = [
+ "convert_case 0.7.1",
+ "proc-macro2",
+ "quote",
  "syn 2.0.108",
 ]
 
@@ -5838,7 +5886,7 @@ dependencies = [
  "bitflags 2.10.0",
  "cassowary",
  "compact_str 0.8.1",
- "crossterm",
+ "crossterm 0.28.1",
  "instability",
  "itertools 0.13.0",
  "lru",
@@ -5859,7 +5907,7 @@ dependencies = [
  "bitflags 2.10.0",
  "cassowary",
  "compact_str 0.8.1",
- "crossterm",
+ "crossterm 0.28.1",
  "indoc",
  "instability",
  "itertools 0.13.0",
