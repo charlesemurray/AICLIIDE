@@ -40,6 +40,7 @@ pub mod terminal_state;
 pub mod terminal_ui;
 pub mod worktree_session;
 pub mod worktree_strategy;
+pub mod worktree_repo;
 mod worktree_selector;
 mod context_stats_widget;
 mod session_indicator_widget;
