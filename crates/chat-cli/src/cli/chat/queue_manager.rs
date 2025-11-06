@@ -54,14 +54,12 @@ impl QueueManager {
         }
     }
     
-    /// Create with Tower-based LLM service
-    pub fn with_tower(client: ApiClient, max_concurrent: usize, num_workers: usize) -> Self {
-        let tower = LLMTower::new(client, max_concurrent);
-        
+    /// Create with shared Tower instance (MUST be same instance as coordinator uses)
+    pub fn with_shared_tower(tower: Arc<Mutex<LLMTower>>, num_workers: usize) -> Self {
         Self {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
-            llm_tower: Some(Arc::new(Mutex::new(tower))),
+            llm_tower: Some(tower),
             num_workers,
         }
     }

@@ -221,25 +221,27 @@ impl MultiSessionCoordinator {
         
         // Create shared Tower instance for ALL LLM calls
         let tower = Arc::new(tokio::sync::Mutex::new(
-            crate::cli::chat::llm_tower::LLMTower::new(client.clone(), total_permits)
+            crate::cli::chat::llm_tower::LLMTower::new(client, total_permits)
         ));
         
         // Store Tower in coordinator (for foreground use)
         self.llm_tower = Some(tower.clone());
         
-        // Create Tower-based queue manager (shares same Tower instance)
-        let new_queue_manager = Arc::new(crate::cli::chat::queue_manager::QueueManager::with_tower(
-            client,
-            total_permits,
-            num_workers
-        ));
+        // Create queue manager with SAME Tower instance (for background use)
+        let new_queue_manager = Arc::new(
+            crate::cli::chat::queue_manager::QueueManager::with_shared_tower(
+                tower.clone(),  // ← Pass the SAME Tower instance
+                num_workers
+            )
+        );
         new_queue_manager.clone().start_background_worker();
         self.queue_manager = new_queue_manager;
         
-        eprintln!("[COORDINATOR] Tower-based LLM service configured");
-        eprintln!("[COORDINATOR] Shared Tower: {} total concurrent capacity", total_permits);
+        eprintln!("[COORDINATOR] Shared Tower instance configured");
+        eprintln!("[COORDINATOR] Total capacity: {} concurrent calls (SHARED by foreground + background)", total_permits);
         eprintln!("[COORDINATOR] Foreground: uses Tower.call_high_priority()");
         eprintln!("[COORDINATOR] Background: {} workers using Tower.call_low_priority()", num_workers);
+        eprintln!("[COORDINATOR] ✓ Both use SAME Tower instance - unified rate limiting");
     }
 
     /// Save session to disk with error handling
