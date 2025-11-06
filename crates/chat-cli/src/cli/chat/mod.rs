@@ -2056,6 +2056,24 @@ impl ChatSession {
         // 2. This session is not active
         self.coordinator.is_some() && !self.is_active_session()
     }
+    
+    /// Submit message to background queue (returns immediately)
+    async fn submit_to_background(&self, message: String) -> Result<(), ChatError> {
+        if let Some(ref coord) = self.coordinator {
+            if let Ok(coord_guard) = coord.try_lock() {
+                let session_id = self.conversation.conversation_id().to_string();
+                let _rx = coord_guard.queue_manager.submit_message(
+                    session_id.clone(),
+                    message,
+                    message_queue::MessagePriority::Low,
+                ).await;
+                
+                eprintln!("[BACKGROUND] Submitted message for session {}", session_id);
+                return Ok(());
+            }
+        }
+        Err(ChatError::Custom("No coordinator available".into()))
+    }
 }
 
 impl Drop for ChatSession {
