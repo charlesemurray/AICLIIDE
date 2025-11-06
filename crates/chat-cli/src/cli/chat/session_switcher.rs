@@ -90,16 +90,49 @@ impl SessionSwitcher {
 
         writeln!(writer, "\nActive Sessions:")?;
         for (num, name, is_active) in sessions {
-            let marker = if is_active { " *" } else { "" };
-            
             // Check for notifications
             let has_notif = coordinator.has_notification(&name).await;
-            let notif_marker = if has_notif { " 📬" } else { "" };
             
-            writeln!(writer, "  [{}] {}{}{}", num, name, marker, notif_marker)?;
+            // Determine icon and color based on state
+            let (icon, color_start, color_end) = if is_active {
+                ("▶", "\x1b[32m", "\x1b[0m") // Green for active
+            } else if has_notif {
+                ("📬", "\x1b[33m", "\x1b[0m") // Yellow for notifications
+            } else {
+                ("○", "\x1b[90m", "\x1b[0m") // Gray for inactive
+            };
+            
+            writeln!(writer, "  {}{} [{}] {}{}", 
+                color_start, icon, num, name, color_end)?;
         }
         writeln!(writer)?;
         
+        Ok(())
+    }
+    
+    /// Show detailed session information
+    pub async fn show_session_details<W: Write>(&self, coordinator: &MultiSessionCoordinator, session_id: &str, writer: &mut W) -> Result<()> {
+        writeln!(writer, "\nSession: {}", session_id)?;
+        writeln!(writer, "{}", "─".repeat(40))?;
+        
+        // Check state
+        let has_notif = coordinator.has_notification(session_id).await;
+        if has_notif {
+            writeln!(writer, "Status: 📬 Has notifications")?;
+        } else {
+            writeln!(writer, "Status: ✓ Up to date")?;
+        }
+        
+        // Check for background responses
+        let state = coordinator.state.lock().await;
+        if let Some(session) = state.sessions.get(session_id) {
+            let response_count = session.background_responses.len();
+            if response_count > 0 {
+                writeln!(writer, "Background responses: {}", response_count)?;
+            }
+        }
+        
+        writeln!(writer)?;
         Ok(())
     }
 
