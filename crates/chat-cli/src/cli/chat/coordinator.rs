@@ -18,6 +18,7 @@ use crate::cli::chat::managed_session::{
     OutputBuffer,
 };
 use crate::cli::chat::memory_monitor::MemoryMonitor;
+use crate::cli::chat::queue_manager::QueueManager;
 use crate::cli::chat::rate_limiter::ApiRateLimiter;
 use crate::cli::chat::resource_cleanup::ResourceCleanupManager;
 use crate::cli::chat::session_lock::SessionLockManager;
@@ -164,6 +165,8 @@ pub struct MultiSessionCoordinator {
     dropped_events: Arc<std::sync::atomic::AtomicUsize>,
     /// Reference to the currently active ChatSession
     active_chat_session: Option<Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>>,
+    /// Message queue manager for LLM processing
+    pub queue_manager: Arc<QueueManager>,
 }
 
 impl MultiSessionCoordinator {
@@ -190,6 +193,7 @@ impl MultiSessionCoordinator {
             cleanup_manager: ResourceCleanupManager::default(),
             dropped_events: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             active_chat_session: None,
+            queue_manager: Arc::new(QueueManager::new()),
         }
     }
 
