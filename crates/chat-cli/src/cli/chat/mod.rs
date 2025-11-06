@@ -2266,6 +2266,7 @@ impl Default for ChatState {
 
 impl ChatSession {
     /// Sends a request to the SendMessage API. Emits error telemetry on failure.
+    /// Uses Tower for rate-limited calls if coordinator is available.
     async fn send_message(
         &mut self,
         os: &mut Os,
@@ -2273,6 +2274,39 @@ impl ChatSession {
         request_metadata_lock: Arc<Mutex<Option<RequestMetadata>>>,
         message_meta_tags: Option<Vec<MessageMetaTag>>,
     ) -> Result<SendMessageStream, ChatError> {
+        // Try to use Tower if coordinator is available (unified rate limiting)
+        if let Some(ref coord) = self.coordinator {
+            if let Ok(coord_guard) = coord.try_lock() {
+                if let Some(tower) = coord_guard.tower() {
+                    eprintln!("[CHAT] Using Tower for foreground LLM call (high priority)");
+                    drop(coord_guard); // Release lock before async call
+                    
+                    let mut tower_guard = tower.lock().await;
+                    match tower_guard.call_high_priority(conversation_state).await {
+                        Ok(stream) => {
+                            eprintln!("[CHAT] Tower call successful");
+                            return Ok(stream);
+                        },
+                        Err(err) => {
+                            eprintln!("[CHAT] Tower call failed: {}", err);
+                            let (reason, reason_desc) = get_error_reason(&err);
+                            self.send_chat_telemetry(
+                                os,
+                                TelemetryResult::Failed,
+                                Some(reason),
+                                Some(reason_desc),
+                                None,
+                                true,
+                            ).await;
+                            return Err(ChatError::SendMessage(Box::new(err)));
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback to direct API call (no Tower available)
+        eprintln!("[CHAT] Using direct API call (no Tower)");
         match SendMessageStream::send_message(&os.client, conversation_state, request_metadata_lock, message_meta_tags)
             .await
         {

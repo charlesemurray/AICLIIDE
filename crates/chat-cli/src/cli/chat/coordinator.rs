@@ -169,6 +169,8 @@ pub struct MultiSessionCoordinator {
     active_chat_session: Option<Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>>,
     /// Message queue manager for LLM processing
     pub queue_manager: Arc<QueueManager>,
+    /// Tower service for ALL LLM calls (shared by foreground and background)
+    pub llm_tower: Option<Arc<tokio::sync::Mutex<crate::cli::chat::llm_tower::LLMTower>>>,
 }
 
 impl MultiSessionCoordinator {
@@ -202,6 +204,7 @@ impl MultiSessionCoordinator {
             dropped_events: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             active_chat_session: None,
             queue_manager,
+            llm_tower: None,
         }
     }
 
@@ -211,12 +214,20 @@ impl MultiSessionCoordinator {
         Ok(())
     }
     
-    /// Set API client for real LLM calls in background processing
+    /// Set API client for real LLM calls (foreground and background)
     pub fn set_api_client(&mut self, client: crate::api_client::ApiClient) {
         let total_permits = self.rate_limiter.max_concurrent();
         let num_workers = if total_permits > 1 { total_permits - 1 } else { 1 };
         
-        // Create Tower-based queue manager
+        // Create shared Tower instance for ALL LLM calls
+        let tower = Arc::new(tokio::sync::Mutex::new(
+            crate::cli::chat::llm_tower::LLMTower::new(client.clone(), total_permits)
+        ));
+        
+        // Store Tower in coordinator (for foreground use)
+        self.llm_tower = Some(tower.clone());
+        
+        // Create Tower-based queue manager (shares same Tower instance)
         let new_queue_manager = Arc::new(crate::cli::chat::queue_manager::QueueManager::with_tower(
             client,
             total_permits,
@@ -225,9 +236,10 @@ impl MultiSessionCoordinator {
         new_queue_manager.clone().start_background_worker();
         self.queue_manager = new_queue_manager;
         
-        eprintln!("[COORDINATOR] Tower-based background processing configured");
-        eprintln!("[COORDINATOR] Total capacity: {} concurrent calls, {} background workers", 
-            total_permits, num_workers);
+        eprintln!("[COORDINATOR] Tower-based LLM service configured");
+        eprintln!("[COORDINATOR] Shared Tower: {} total concurrent capacity", total_permits);
+        eprintln!("[COORDINATOR] Foreground: uses Tower.call_high_priority()");
+        eprintln!("[COORDINATOR] Background: {} workers using Tower.call_low_priority()", num_workers);
     }
 
     /// Save session to disk with error handling
@@ -885,6 +897,11 @@ impl MultiSessionCoordinator {
         }
     }
 
+    /// Get Tower service for making LLM calls
+    pub fn tower(&self) -> Option<Arc<tokio::sync::Mutex<crate::cli::chat::llm_tower::LLMTower>>> {
+        self.llm_tower.clone()
+    }
+    
     /// Get rate limiter for API calls
     pub fn rate_limiter(&self) -> ApiRateLimiter {
         self.rate_limiter.clone()
