@@ -19,6 +19,7 @@ mod input_source;
 pub mod managed_session;
 pub mod memory_monitor;
 pub mod message_queue;
+pub mod queue_manager;
 pub mod merge_workflow;
 mod message;
 mod parse;
