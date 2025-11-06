@@ -2038,23 +2038,38 @@ impl ChatSession {
     
     /// Check if this session is currently active
     fn is_active_session(&self) -> bool {
+        let session_id = self.conversation.conversation_id().to_string();
+        
         if let Some(ref coord) = self.coordinator {
             if let Ok(coord_guard) = coord.try_lock() {
                 if let Ok(state) = coord_guard.state.try_lock() {
                     let current_id = self.conversation.conversation_id().to_string();
-                    return state.active_session_id.as_ref() == Some(&current_id);
+                    let is_active = state.active_session_id.as_ref() == Some(&current_id);
+                    eprintln!("[SESSION] is_active_session for {}: {} (active_id: {:?})", 
+                        session_id, is_active, state.active_session_id);
+                    return is_active;
+                } else {
+                    eprintln!("[SESSION] Could not lock state for {}, defaulting to active", session_id);
                 }
+            } else {
+                eprintln!("[SESSION] Could not lock coordinator for {}, defaulting to active", session_id);
             }
+        } else {
+            eprintln!("[SESSION] No coordinator for {}, defaulting to active", session_id);
         }
         true // Default to active if no coordinator or can't lock
     }
     
     /// Check if should process in background
     fn should_process_in_background(&self) -> bool {
-        // Only use background processing if:
-        // 1. We have a coordinator
-        // 2. This session is not active
-        self.coordinator.is_some() && !self.is_active_session()
+        let has_coord = self.coordinator.is_some();
+        let is_active = self.is_active_session();
+        let should_background = has_coord && !is_active;
+        
+        eprintln!("[ROUTING] should_process_in_background: {} (has_coordinator: {}, is_active: {})", 
+            should_background, has_coord, is_active);
+        
+        should_background
     }
     
     /// Submit message to background queue (returns immediately)
@@ -2190,13 +2205,17 @@ impl ChatSession {
     }
 
     async fn spawn(&mut self, os: &mut Os) -> Result<()> {
+        let session_id = self.conversation.conversation_id().to_string();
+        eprintln!("[SPAWN] Starting session {}", session_id);
+        
         // Check for background notifications and responses
         if let Some(ref coord) = self.coordinator {
             if let Ok(coord_guard) = coord.try_lock() {
-                let session_id = self.conversation.conversation_id().to_string();
+                eprintln!("[SPAWN] Checking for notifications for session {}", session_id);
                 
                 // Check for notification
                 if let Some(notif) = coord_guard.take_notification(&session_id).await {
+                    eprintln!("[SPAWN] Found notification for session {}: {}", session_id, notif);
                     execute!(
                         self.stderr,
                         StyledText::success_fg(),
@@ -2208,6 +2227,9 @@ impl ChatSession {
                     
                     // Display accumulated background responses
                     let responses = coord_guard.take_background_responses(&session_id).await;
+                    eprintln!("[SPAWN] Retrieved {} background responses for session {}", 
+                        responses.len(), session_id);
+                    
                     if !responses.is_empty() {
                         execute!(
                             self.stderr,
@@ -2216,7 +2238,8 @@ impl ChatSession {
                             StyledText::reset()
                         )?;
                         
-                        for response in responses {
+                        for (i, response) in responses.iter().enumerate() {
+                            eprintln!("[SPAWN] Displaying response {} ({} bytes)", i + 1, response.len());
                             execute!(
                                 self.stderr,
                                 style::Print(&response),
@@ -2226,8 +2249,14 @@ impl ChatSession {
                         
                         execute!(self.stderr, style::Print("\n"))?;
                     }
+                } else {
+                    eprintln!("[SPAWN] No notifications for session {}", session_id);
                 }
+            } else {
+                eprintln!("[SPAWN] ERROR: Could not lock coordinator for session {}", session_id);
             }
+        } else {
+            eprintln!("[SPAWN] No coordinator available for session {}", session_id);
         }
         
         let is_small_screen = self.terminal_width() < GREETING_BREAK_POINT;
@@ -3826,16 +3855,26 @@ impl ChatSession {
 
             // Check if should process in background
             if self.should_process_in_background() {
-                eprintln!("[BACKGROUND] Session inactive, submitting to background queue");
+                let session_id = self.conversation.conversation_id().to_string();
+                eprintln!("[ROUTING] Session {} is inactive, routing to background", session_id);
+                
                 // Get the message that was just set
                 if let Some(msg) = self.conversation.next_user_message() {
-                    let msg_text = format!("{:?}", msg.content); // Simple conversion for now
+                    let msg_text = format!("{:?}", msg.content);
+                    eprintln!("[ROUTING] Submitting message to background queue (msg_len: {})", msg_text.len());
+                    
                     if let Err(e) = self.submit_to_background(msg_text).await {
-                        eprintln!("[BACKGROUND] Failed to submit: {}", e);
+                        eprintln!("[ROUTING] ERROR: Failed to submit to background: {}", e);
                     } else {
+                        eprintln!("[ROUTING] Successfully submitted to background, returning to prompt");
                         return Ok(ChatState::PromptUser { skip_printing_tools: false });
                     }
+                } else {
+                    eprintln!("[ROUTING] ERROR: No message to submit to background");
                 }
+            } else {
+                eprintln!("[ROUTING] Session {} is active, processing in foreground", 
+                    self.conversation.conversation_id());
             }
 
             Ok(ChatState::HandleResponseStream(conv_state))

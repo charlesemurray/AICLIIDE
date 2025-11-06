@@ -50,35 +50,54 @@ impl QueueManager {
     
     /// Start background worker to process queued messages
     pub fn start_background_worker(self: Arc<Self>) {
+        eprintln!("[WORKER] Starting background worker thread");
         tokio::spawn(async move {
+            let mut iteration = 0;
             loop {
+                iteration += 1;
+                
                 // Check for messages to process
                 let msg = {
                     let mut queue = self.queue.lock().await;
+                    let stats = queue.stats();
+                    if iteration % 100 == 0 {
+                        eprintln!("[WORKER] Iteration {} - Queue stats: high={}, low={}", 
+                            iteration, stats.high_priority_count, stats.low_priority_count);
+                    }
                     queue.dequeue()
                 };
                 
                 if let Some(queued_msg) = msg {
-                    eprintln!("[WORKER] Processing message from session {}", queued_msg.session_id);
+                    let elapsed = queued_msg.timestamp.elapsed();
+                    eprintln!("[WORKER] Processing message from session {} (waited: {:?}, priority: {:?})", 
+                        queued_msg.session_id, elapsed, queued_msg.priority);
                     
                     // Get response channel
                     let tx = {
                         let channels = self.response_channels.lock().await;
-                        channels.get(&queued_msg.session_id).cloned()
+                        let result = channels.get(&queued_msg.session_id).cloned();
+                        if result.is_none() {
+                            eprintln!("[WORKER] ERROR: No response channel for session {}", queued_msg.session_id);
+                        }
+                        result
                     };
                     
                     if let Some(tx) = tx {
                         // Send processing indicator
-                        let _ = tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string()));
+                        if tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string())).is_err() {
+                            eprintln!("[WORKER] ERROR: Failed to send processing indicator to session {}", queued_msg.session_id);
+                            continue;
+                        }
                         
                         // Check for interruption
                         if self.should_interrupt().await {
-                            eprintln!("[WORKER] Interrupted for higher priority");
+                            eprintln!("[WORKER] Interrupted for higher priority (session: {})", queued_msg.session_id);
                             let _ = tx.send(LLMResponse::Interrupted);
                             continue;
                         }
                         
                         // Simulate LLM processing time
+                        eprintln!("[WORKER] Simulating LLM processing for session {}", queued_msg.session_id);
                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
                         // Generate response based on message
@@ -91,16 +110,28 @@ impl QueueManager {
                             queued_msg.message
                         );
                         
+                        eprintln!("[WORKER] Sending response to session {} ({} bytes)", 
+                            queued_msg.session_id, response.len());
+                        
                         // Send response chunks (simulate streaming)
+                        let mut chunk_count = 0;
                         for chunk in response.split('\n') {
-                            let _ = tx.send(LLMResponse::Chunk(format!("{}\n", chunk)));
+                            if tx.send(LLMResponse::Chunk(format!("{}\n", chunk))).is_err() {
+                                eprintln!("[WORKER] ERROR: Failed to send chunk {} to session {}", 
+                                    chunk_count, queued_msg.session_id);
+                                break;
+                            }
+                            chunk_count += 1;
                             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                         }
                         
                         // Send completion
-                        let _ = tx.send(LLMResponse::Complete);
-                        
-                        eprintln!("[WORKER] Completed processing for session {}", queued_msg.session_id);
+                        if tx.send(LLMResponse::Complete).is_err() {
+                            eprintln!("[WORKER] ERROR: Failed to send completion to session {}", queued_msg.session_id);
+                        } else {
+                            eprintln!("[WORKER] Completed processing for session {} (sent {} chunks)", 
+                                queued_msg.session_id, chunk_count);
+                        }
                     }
                 } else {
                     // No messages, sleep briefly
@@ -119,23 +150,29 @@ impl QueueManager {
     ) -> mpsc::UnboundedReceiver<LLMResponse> {
         let (tx, rx) = mpsc::unbounded_channel();
         
-        eprintln!("[QUEUE] Submitting message from session {} (priority: {:?})", session_id, priority);
+        eprintln!("[QUEUE] Submitting message from session {} (priority: {:?}, msg_len: {})", 
+            session_id, priority, message.len());
         
         // Register response channel
         {
             let mut channels = self.response_channels.lock().await;
             channels.insert(session_id.clone(), tx);
+            eprintln!("[QUEUE] Registered response channel for session {} (total channels: {})", 
+                session_id, channels.len());
         }
         
         // Enqueue message
         {
             let mut queue = self.queue.lock().await;
             queue.enqueue(QueuedMessage {
-                session_id,
+                session_id: session_id.clone(),
                 message,
                 priority,
                 timestamp: std::time::Instant::now(),
             });
+            let stats = queue.stats();
+            eprintln!("[QUEUE] Enqueued message for session {} (queue size: high={}, low={})", 
+                session_id, stats.high_priority_count, stats.low_priority_count);
         }
         
         rx

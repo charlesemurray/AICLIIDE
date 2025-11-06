@@ -659,9 +659,11 @@ impl MultiSessionCoordinator {
     pub async fn store_background_response(&self, session_id: &str, response: String) {
         let mut state = self.state.lock().await;
         if let Some(session) = state.sessions.get_mut(session_id) {
-            session.background_responses.push(response);
-            eprintln!("[STORE] Stored background response for session {} ({} total)", 
-                session_id, session.background_responses.len());
+            session.background_responses.push(response.clone());
+            eprintln!("[STORE] Stored background response for session {} ({} bytes, {} total responses)", 
+                session_id, response.len(), session.background_responses.len());
+        } else {
+            eprintln!("[STORE] ERROR: Session {} not found, cannot store response", session_id);
         }
     }
     
@@ -669,8 +671,12 @@ impl MultiSessionCoordinator {
     pub async fn take_background_responses(&self, session_id: &str) -> Vec<String> {
         let mut state = self.state.lock().await;
         if let Some(session) = state.sessions.get_mut(session_id) {
-            std::mem::take(&mut session.background_responses)
+            let responses = std::mem::take(&mut session.background_responses);
+            eprintln!("[RETRIEVE] Retrieved {} background responses for session {}", 
+                responses.len(), session_id);
+            responses
         } else {
+            eprintln!("[RETRIEVE] ERROR: Session {} not found", session_id);
             Vec::new()
         }
     }
