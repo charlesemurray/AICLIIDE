@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::Stdio;
+use std::time::Duration;
 
 use eyre::Result;
 use serde::{
@@ -77,24 +79,54 @@ impl SkillTool {
             return Err(eyre::eyre!("Skill name contains invalid characters"));
         }
         
-        // For now, execute the description as a simple command
-        // TODO: Implement proper skill execution based on skill type
-        let command = self.description.clone();
+        // Validate command security
+        Self::validate_command_security(&command)?;
         
-        if command.is_empty() {
-            tracing::error!("Skill {} has no command to execute", self.name);
-            return Err(eyre::eyre!("Skill has no command defined"));
+    /// Comprehensive security validation for skill commands
+    fn validate_command_security(command: &str) -> Result<()> {
+        // Check for empty command
+        if command.trim().is_empty() {
+            return Err(eyre::eyre!("Command cannot be empty"));
         }
         
-        // Basic command injection prevention
-        if command.contains(';') || command.contains('|') || command.contains('&') {
-            tracing::error!("Skill {} command contains potentially unsafe characters: {}", self.name, command);
+        // Enhanced command injection prevention
+        let dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '{', '}', '[', ']', '<', '>', '"', '\'', '\\'];
+        if command.chars().any(|c| dangerous_chars.contains(&c)) {
+            tracing::error!("Command contains potentially unsafe characters: {}", command);
             return Err(eyre::eyre!("Command contains unsafe characters"));
         }
         
+        // Check for dangerous command patterns
+        let dangerous_patterns = [
+            "rm ", "sudo ", "chmod ", "chown ", "dd ", "mkfs", "fdisk", "format",
+            "del ", "deltree", "format ", "fdisk ", "parted", "mkfs.", "mount ",
+            "umount ", "kill ", "killall", "pkill", "shutdown", "reboot", "halt",
+            "passwd", "su ", "sudo", "doas", "runas", "net user", "net localgroup",
+            "curl ", "wget ", "nc ", "netcat", "telnet", "ssh ", "scp ", "rsync ",
+            "python -c", "perl -e", "ruby -e", "node -e", "php -r", "bash -c",
+            "sh -c", "cmd /c", "powershell", "pwsh", "eval", "exec"
+        ];
+        
+        let command_lower = command.to_lowercase();
+        for pattern in &dangerous_patterns {
+            if command_lower.contains(pattern) {
+                tracing::error!("Command contains dangerous pattern '{}': {}", pattern, command);
+                return Err(eyre::eyre!("Command contains dangerous pattern: {}", pattern));
+            }
+        }
+        
+        // Check command length to prevent buffer overflow attempts
+        if command.len() > 1000 {
+            tracing::error!("Command too long ({} chars): {}", command.len(), &command[..100]);
+            return Err(eyre::eyre!("Command exceeds maximum length"));
+        }
+        
+        Ok(())
+    }
+        
         tracing::debug!("Executing command: {}", command);
         
-        // Simple command execution with timeout
+        // Secure command execution with timeout and proper error handling
         let output = std::process::Command::new("sh")
             .arg("-c")
             .arg(&command)
@@ -105,12 +137,17 @@ impl SkillTool {
             })?;
         
         if output.status.success() {
-            let result = String::from_utf8_lossy(&output.stdout).to_string();
+            // Safe UTF-8 conversion without unwrap
+            let result = String::from_utf8(output.stdout)
+                .map_err(|e| {
+                    tracing::error!("Skill {} output contains invalid UTF-8: {}", self.name, e);
+                    eyre::eyre!("Command output is not valid UTF-8")
+                })?;
             
             // Limit output size to prevent memory issues
-            let truncated_result = if result.len() > 10000 {
-                tracing::warn!("Skill {} output truncated from {} to 10000 chars", self.name, result.len());
-                format!("{}... [truncated]", &result[..10000])
+            let truncated_result = if result.len() > MAX_OUTPUT_SIZE {
+                tracing::warn!("Skill {} output truncated from {} to {} chars", self.name, result.len(), MAX_OUTPUT_SIZE);
+                format!("{}... [truncated]", &result[..MAX_OUTPUT_SIZE])
             } else {
                 result
             };
@@ -119,9 +156,18 @@ impl SkillTool {
             tracing::debug!("Skill output: {}", truncated_result);
             Ok(truncated_result)
         } else {
-            let error = String::from_utf8_lossy(&output.stderr).to_string();
-            tracing::error!("Skill {} failed with error: {}", self.name, error);
-            Err(eyre::eyre!("Command failed: {}", error))
+            // Safe error message handling without unwrap
+            let stderr = String::from_utf8(output.stderr)
+                .unwrap_or_else(|_| "[Invalid UTF-8 in error output]".to_string());
+            
+            tracing::error!("Skill {} failed with exit code: {:?}", self.name, output.status.code());
+            tracing::error!("Skill {} stderr: {}", self.name, stderr);
+            
+            Err(eyre::eyre!(
+                "Skill execution failed with exit code: {:?}. Error: {}", 
+                output.status.code(),
+                stderr
+            ))
         }
     }
 

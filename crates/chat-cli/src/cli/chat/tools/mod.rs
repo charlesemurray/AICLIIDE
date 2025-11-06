@@ -427,9 +427,13 @@ impl<'de> Deserialize<'de> for ToolOrigin {
         if s == "native___" {
             Ok(ToolOrigin::Native)
         } else if s.starts_with("skill___") {
-            Ok(ToolOrigin::Skill(s.strip_prefix("skill___").unwrap().to_string()))
+            let skill_name = s.strip_prefix("skill___")
+                .ok_or_else(|| serde::de::Error::custom("Invalid skill prefix"))?;
+            Ok(ToolOrigin::Skill(skill_name.to_string()))
         } else if s.starts_with("workflow___") {
-            Ok(ToolOrigin::Workflow(s.strip_prefix("workflow___").unwrap().to_string()))
+            let workflow_name = s.strip_prefix("workflow___")
+                .ok_or_else(|| serde::de::Error::custom("Invalid workflow prefix"))?;
+            Ok(ToolOrigin::Workflow(workflow_name.to_string()))
         } else {
             Ok(ToolOrigin::McpServer(s))
         }

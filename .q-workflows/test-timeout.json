@@ -1,0 +1,14 @@
+{
+  "name": "test-timeout",
+  "version": "1.0.0",
+  "description": "Test timeout protection - sleeps for 10 minutes, should timeout after 5",
+  "steps": [
+    {
+      "name": "long-sleep",
+      "tool": "execute_bash",
+      "parameters": {
+        "command": "sleep 600"
+      }
+    }
+  ]
+}

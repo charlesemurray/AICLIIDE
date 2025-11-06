@@ -106,7 +106,7 @@ mod tests {
 
         let result = tool.invoke(&registry, &mut output).await;
         assert!(result.is_ok());
-        let output_str = String::from_utf8(output).unwrap();
+        let output_str = String::from_utf8(output).expect("Test output should be valid UTF-8");
         assert!(output_str.contains("8"));
     }
 
@@ -118,7 +118,8 @@ mod tests {
 
         let result = tool.invoke(&registry, &mut output).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Skill not found"));
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Skill not found"));
     }
 
     #[tokio::test]
@@ -136,7 +137,7 @@ mod tests {
 
         let result = tool.invoke(&registry, &mut output).await;
         assert!(result.is_ok());
-        let output_str = String::from_utf8(output).unwrap();
+        let output_str = String::from_utf8(output).expect("Test output should be valid UTF-8");
         assert!(output_str.contains("20"));
     }
 

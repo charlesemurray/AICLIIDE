@@ -1,0 +1,12 @@
+{
+  "name": "test-cycle-detection",
+  "version": "1.0.0",
+  "description": "Test cycle detection - this should fail validation",
+  "steps": [
+    {
+      "name": "step1",
+      "tool": "step1",
+      "parameters": {}
+    }
+  ]
+}

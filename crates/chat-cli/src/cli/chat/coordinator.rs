@@ -926,6 +926,13 @@ impl MultiSessionCoordinator {
         self.priority_limiter.clone()
     }
     
+    /// Print priority limiter metrics
+    pub fn print_metrics(&self) {
+        if let Some(ref limiter) = self.priority_limiter {
+            limiter.metrics.print_summary();
+        }
+    }
+    
     /// Get rate limiter for API calls
     pub fn rate_limiter(&self) -> ApiRateLimiter {
         self.rate_limiter.clone()

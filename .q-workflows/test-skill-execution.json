@@ -1,0 +1,25 @@
+{
+  "name": "test-skill-execution",
+  "version": "1.0.0",
+  "description": "Test that workflows can execute skills and return results",
+  "steps": [
+    {
+      "name": "add",
+      "tool": "calculator",
+      "parameters": {
+        "operation": "add",
+        "a": 10,
+        "b": 5
+      }
+    },
+    {
+      "name": "multiply",
+      "tool": "calculator",
+      "parameters": {
+        "operation": "multiply",
+        "a": 3,
+        "b": 7
+      }
+    }
+  ]
+}

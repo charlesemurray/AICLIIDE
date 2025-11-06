@@ -1,0 +1,22 @@
+{
+  "name": "test-dangerous-ops",
+  "version": "1.0.0",
+  "description": "Test permission checking - should require approval",
+  "steps": [
+    {
+      "name": "write-file",
+      "tool": "fs_write",
+      "parameters": {
+        "path": "/tmp/test-workflow-output.txt",
+        "content": "Test output from workflow"
+      }
+    },
+    {
+      "name": "run-command",
+      "tool": "execute_bash",
+      "parameters": {
+        "command": "echo 'Workflow executed bash command'"
+      }
+    }
+  ]
+}
