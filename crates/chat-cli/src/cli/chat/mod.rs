@@ -334,6 +334,9 @@ impl ChatArgs {
                     },
                 }
             }
+            
+            // Configure API client for background processing
+            coord.set_api_client(os.client.clone());
 
             Some(coord)
         };

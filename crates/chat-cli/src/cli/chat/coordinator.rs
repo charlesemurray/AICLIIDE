@@ -210,6 +210,15 @@ impl MultiSessionCoordinator {
         self.persistence = Some(SessionPersistence::new(&base_dir)?);
         Ok(())
     }
+    
+    /// Set API client for real LLM calls in background processing
+    pub fn set_api_client(&mut self, client: crate::api_client::ApiClient) {
+        // Replace queue_manager with one that has the API client
+        let new_queue_manager = Arc::new(crate::cli::chat::queue_manager::QueueManager::with_api_client(client));
+        new_queue_manager.clone().start_background_worker();
+        self.queue_manager = new_queue_manager;
+        eprintln!("[COORDINATOR] API client configured for background processing");
+    }
 
     /// Save session to disk with error handling
     pub async fn save_session(&self, conversation_id: &str) -> Result<()> {

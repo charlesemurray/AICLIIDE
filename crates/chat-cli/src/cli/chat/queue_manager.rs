@@ -108,22 +108,104 @@ impl QueueManager {
                             continue;
                         }
                         
-                        // Use real LLM API if available, otherwise simulate
-                        if let Some(ref _client) = self.api_client {
-                            eprintln!("[WORKER] Real LLM integration available but requires ConversationState");
-                            eprintln!("[WORKER] Current message queue only supports String messages");
-                            eprintln!("[WORKER] Falling back to simulation - see TODO in queue_manager.rs");
+                        // Use real LLM API if available
+                        if let Some(ref client) = self.api_client {
+                            eprintln!("[WORKER] Using real LLM API for session {}", queued_msg.session_id);
+                            
+                            // Create minimal conversation state
+                            use crate::api_client::model::{ConversationState, UserInputMessage};
+                            let conv_state = ConversationState {
+                                conversation_id: Some(queued_msg.session_id.clone()),
+                                user_input_message: UserInputMessage {
+                                    content: queued_msg.message.clone(),
+                                    user_input_message_context: None,
+                                    user_intent: None,
+                                    images: None,
+                                    model_id: None,
+                                },
+                                history: None,
+                            };
+                            
+                            // Call real API using SendMessageStream
+                            use crate::cli::chat::parser::SendMessageStream;
+                            use std::sync::Arc;
+                            use tokio::sync::Mutex;
+                            
+                            let request_metadata_lock = Arc::new(Mutex::new(None));
+                            
+                            match SendMessageStream::send_message(client, conv_state, request_metadata_lock, None).await {
+                                Ok(mut stream) => {
+                                    eprintln!("[WORKER] Real LLM streaming started for session {}", queued_msg.session_id);
+                                    let mut chunk_count = 0;
+                                    
+                                    // Stream responses
+                                    loop {
+                                        // Check for interruption
+                                        if self.should_interrupt().await {
+                                            eprintln!("[WORKER] Interrupted during streaming (session: {})", queued_msg.session_id);
+                                            let _ = tx.send(LLMResponse::Interrupted);
+                                            break;
+                                        }
+                                        
+                                        match stream.recv().await {
+                                            Some(Ok(event)) => {
+                                                use crate::cli::chat::parser::ResponseEvent;
+                                                match event {
+                                                    ResponseEvent::AssistantText(text) => {
+                                                        if tx.send(LLMResponse::Chunk(text)).is_err() {
+                                                            eprintln!("[WORKER] ERROR: Failed to send chunk to session {}", queued_msg.session_id);
+                                                            break;
+                                                        }
+                                                        chunk_count += 1;
+                                                    },
+                                                    ResponseEvent::ToolUseStart { name } => {
+                                                        eprintln!("[WORKER] Tool use starting: {}", name);
+                                                    },
+                                                    ResponseEvent::ToolUse(tool_use) => {
+                                                        eprintln!("[WORKER] Tool use requested: {} (id: {})", tool_use.name, tool_use.id);
+                                                        if tx.send(LLMResponse::ToolUse { 
+                                                            id: tool_use.id, 
+                                                            name: tool_use.name, 
+                                                            params: tool_use.args 
+                                                        }).is_err() {
+                                                            eprintln!("[WORKER] ERROR: Failed to send tool use to session {}", queued_msg.session_id);
+                                                            break;
+                                                        }
+                                                    },
+                                                    ResponseEvent::EndStream { message: _, request_metadata: _ } => {
+                                                        eprintln!("[WORKER] Stream ended for session {}", queued_msg.session_id);
+                                                        break;
+                                                    },
+                                                }
+                                            },
+                                            Some(Err(e)) => {
+                                                eprintln!("[WORKER] ERROR: Stream error: {}", e);
+                                                let _ = tx.send(LLMResponse::Error(format!("Stream error: {}", e)));
+                                                break;
+                                            },
+                                            None => {
+                                                eprintln!("[WORKER] Stream closed for session {}", queued_msg.session_id);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if tx.send(LLMResponse::Complete).is_ok() {
+                                        eprintln!("[WORKER] Completed real LLM processing for session {} (sent {} chunks)", 
+                                            queued_msg.session_id, chunk_count);
+                                    }
+                                    continue;
+                                },
+                                Err(e) => {
+                                    eprintln!("[WORKER] Real LLM call failed for session {}: {}", queued_msg.session_id, e);
+                                    let _ = tx.send(LLMResponse::Error(format!("LLM API error: {}", e)));
+                                    continue;
+                                }
+                            }
                         }
                         
-                        // TODO: Replace simulation with real LLM API call
-                        // To integrate real LLM processing:
-                        // 1. Change QueuedMessage.message from String to ConversationState
-                        // 2. Call: let output = client.send_message(queued_msg.conversation_state).await?;
-                        // 3. Stream responses from output.into_stream()
-                        // 4. Handle tool uses, errors, and interruptions
-                        //
-                        // Current simulation demonstrates the queue/worker infrastructure works correctly
-                        eprintln!("[WORKER] Simulating LLM processing for session {}", queued_msg.session_id);
+                        // Fallback to simulation if no API client
+                        eprintln!("[WORKER] No API client available, using simulation for session {}", queued_msg.session_id);
                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
                         // Generate response based on message
