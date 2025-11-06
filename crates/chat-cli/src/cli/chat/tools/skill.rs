@@ -108,23 +108,18 @@ impl SkillTool {
         tracing::info!("Invoking skill via registry: {}", self.skill_name);
         
         // Try to find and execute the skill through the registry
-        match registry.get_skill(&self.skill_name) {
-            Some(skill_def) => {
-                let result = self.invoke_with_definition(skill_def, self.parameters.clone())?;
-                writeln!(stdout, "{}", result)?;
-                Ok(InvokeOutput {
-                    output: OutputKind::Text(result),
-                })
-            },
-            None => {
+        let result = match registry.execute_skill(&self.skill_name, self.params.clone()).await {
+            Ok(skill_result) => skill_result.output,
+            Err(_) => {
                 // Fallback to direct execution
-                let result = self.invoke_direct(self.parameters.clone())?;
-                writeln!(stdout, "{}", result)?;
-                Ok(InvokeOutput {
-                    output: OutputKind::Text(result),
-                })
+                self.invoke_direct(self.parameters.clone())?
             }
-        }
+        };
+        
+        writeln!(stdout, "{}", result)?;
+        Ok(InvokeOutput {
+            output: OutputKind::Text(result),
+        })
     }
 
     /// Secure command execution using proper libraries

@@ -8,7 +8,6 @@ pub mod gh_issue;
 pub mod introspect;
 pub mod knowledge;
 pub mod skill;
-pub mod skill_tool;
 pub mod thinking;
 pub mod todo;
 pub mod use_aws;
@@ -158,7 +157,7 @@ impl Tool {
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::CodeSearch(code_search) => code_search.eval_perm(os, agent),
             Tool::Skill(skill) => skill.eval_perm(os, agent),
-            Tool::Workflow(_) => PermissionEvalResult::Allow, // Workflows have their own security
+            Tool::Workflow(_) => PermissionEvalResult::Allow,
             Tool::WorkflowNew(workflow) => workflow.eval_perm(os, agent),
         }
     }
@@ -195,6 +194,13 @@ impl Tool {
                     .await
                     .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
                 skill_tool.invoke(&registry, stdout).await
+            },
+            Tool::Workflow(workflow_tool) => {
+                let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
+                    .await
+                    .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
+                let executor = crate::cli::workflow::WorkflowExecutor::new(registry);
+                workflow_tool.invoke(&executor, stdout).await
             },
             Tool::WorkflowNew(workflow) => {
                 let params = std::collections::HashMap::new();
@@ -311,7 +317,7 @@ impl Tool {
             Tool::Delegate(_) => Ok(()),
             Tool::CodeSearch(code_search) => code_search.validate(os).await,
             Tool::Skill(skill) => skill.validate(),
-            Tool::Workflow(_) => Ok(()), // Workflows are validated by the registry
+            Tool::Workflow(_) => Ok(()),
             Tool::WorkflowNew(workflow) => workflow.validate(),
         }
     }
@@ -752,7 +758,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_tool_in_enum() {
-        let tool = Tool::Skill(skill_tool::SkillTool::new(
+        let tool = Tool::Skill(skill::SkillTool::new_legacy(
             "test-skill".to_string(),
             serde_json::json!({}),
         ));
@@ -763,7 +769,7 @@ mod tests {
     async fn test_skill_tool_invocation_through_enum() {
         let os = Os::new().await.unwrap();
         let agents = crate::cli::agent::Agents::default();
-        let tool = Tool::Skill(skill_tool::SkillTool::new(
+        let tool = Tool::Skill(skill::SkillTool::new_legacy(
             "calculator".to_string(),
             serde_json::json!({
                 "a": 5.0,

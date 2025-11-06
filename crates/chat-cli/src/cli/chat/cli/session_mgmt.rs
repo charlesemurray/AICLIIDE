@@ -319,7 +319,7 @@ impl SessionMgmtArgs {
                                 let context = SessionContext {
                                     conversation_id: conflict_session_id.clone(),
                                     os: os.clone(),
-                                    agents: _session.conversation.tool_manager.agent.lock().await.clone(),
+                                    agents: _session.conversation.agents.clone(),
                                     tool_config: _session.conversation.tool_manager.schema.clone(),
                                     tool_manager: _session.conversation.tool_manager.clone(),
                                     model_id: None,
@@ -328,8 +328,9 @@ impl SessionMgmtArgs {
                                 let mut coord_lock = coord.lock().await;
                                 match coord_lock.create_session(config, context).await {
                                     Ok(_) => {
-                                        println!("\n✓ Launched conflict resolution chat session");
-                                        println!("📝 Initial prompt:\n{}", prompt);
+                                        println!("\n✓ Created conflict resolution chat session");
+                                        println!("\n📝 Copy and paste this prompt to start:\n");
+                                        println!("{}", prompt);
                                         println!("\n💡 After resolving conflicts, run: /sessions merge {} --continue", session_id);
                                         
                                         // Switch to the new session
