@@ -2,11 +2,14 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex, mpsc, Semaphore};
 use eyre::Result;
 
 use super::message_queue::{MessageQueue, QueuedMessage, MessagePriority};
 use crate::api_client::ApiClient;
+
+/// Default maximum concurrent LLM API calls
+const DEFAULT_MAX_CONCURRENT_CALLS: usize = 3;
 
 /// Callback for processing messages
 pub type ProcessCallback = Arc<dyn Fn(String) -> String + Send + Sync>;
@@ -40,6 +43,8 @@ pub struct QueueManager {
     queue: Arc<Mutex<MessageQueue>>,
     response_channels: Arc<Mutex<HashMap<String, mpsc::UnboundedSender<LLMResponse>>>>,
     api_client: Option<ApiClient>,
+    rate_limiter: Arc<Semaphore>,
+    max_workers: usize,
 }
 
 impl QueueManager {
@@ -48,6 +53,8 @@ impl QueueManager {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             api_client: None,
+            rate_limiter: Arc::new(Semaphore::new(DEFAULT_MAX_CONCURRENT_CALLS)),
+            max_workers: DEFAULT_MAX_CONCURRENT_CALLS,
         }
     }
     
@@ -57,196 +64,249 @@ impl QueueManager {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             api_client: Some(api_client),
+            rate_limiter: Arc::new(Semaphore::new(DEFAULT_MAX_CONCURRENT_CALLS)),
+            max_workers: DEFAULT_MAX_CONCURRENT_CALLS,
         }
     }
     
-    /// Start background worker to process queued messages
+    /// Create with custom rate limit
+    pub fn with_rate_limit(api_client: ApiClient, max_concurrent: usize) -> Self {
+        Self {
+            queue: Arc::new(Mutex::new(MessageQueue::new())),
+            response_channels: Arc::new(Mutex::new(HashMap::new())),
+            api_client: Some(api_client),
+            rate_limiter: Arc::new(Semaphore::new(max_concurrent)),
+            max_workers: max_concurrent,
+        }
+    }
+    
+    /// Start background workers to process queued messages
     pub fn start_background_worker(self: Arc<Self>) {
-        eprintln!("[WORKER] Starting background worker thread");
-        tokio::spawn(async move {
-            let mut iteration = 0;
-            loop {
-                iteration += 1;
+        eprintln!("[WORKER] Starting {} background worker threads with rate limit {}", 
+            self.max_workers, self.rate_limiter.available_permits());
+        
+        // Spawn multiple workers
+        for worker_id in 0..self.max_workers {
+            let self_clone = Arc::clone(&self);
+            tokio::spawn(async move {
+                eprintln!("[WORKER-{}] Started", worker_id);
+                let mut iteration = 0;
                 
-                // Check for messages to process
-                let msg = {
-                    let mut queue = self.queue.lock().await;
-                    let stats = queue.stats();
-                    if iteration % 100 == 0 {
-                        eprintln!("[WORKER] Iteration {} - Queue stats: high={}, low={}", 
-                            iteration, stats.high_priority_count, stats.low_priority_count);
-                    }
-                    queue.dequeue()
-                };
-                
-                if let Some(queued_msg) = msg {
-                    let elapsed = queued_msg.timestamp.elapsed();
-                    eprintln!("[WORKER] Processing message from session {} (waited: {:?}, priority: {:?})", 
-                        queued_msg.session_id, elapsed, queued_msg.priority);
+                loop {
+                    iteration += 1;
                     
-                    // Get response channel
-                    let tx = {
-                        let channels = self.response_channels.lock().await;
-                        let result = channels.get(&queued_msg.session_id).cloned();
-                        if result.is_none() {
-                            eprintln!("[WORKER] ERROR: No response channel for session {}", queued_msg.session_id);
+                    // Check for messages to process
+                    let msg = {
+                        let mut queue = self_clone.queue.lock().await;
+                        if iteration % 100 == 0 {
+                            let stats = queue.stats();
+                            eprintln!("[WORKER-{}] Iteration {} - Queue stats: high={}, low={}", 
+                                worker_id, iteration, stats.high_priority_count, stats.low_priority_count);
                         }
-                        result
+                        queue.dequeue()
                     };
                     
-                    if let Some(tx) = tx {
-                        // Send processing indicator
-                        if tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string())).is_err() {
-                            eprintln!("[WORKER] ERROR: Failed to send processing indicator to session {}", queued_msg.session_id);
-                            continue;
-                        }
+                    if let Some(queued_msg) = msg {
+                        // Acquire rate limit permit BEFORE making API call
+                        eprintln!("[WORKER-{}] Acquiring rate limit permit (available: {})", 
+                            worker_id, self_clone.rate_limiter.available_permits());
                         
+                        let permit = self_clone.rate_limiter.acquire().await.unwrap();
+                        eprintln!("[WORKER-{}] Permit acquired, processing session {}", 
+                            worker_id, queued_msg.session_id);
+                        
+                        let elapsed = queued_msg.timestamp.elapsed();
+                        eprintln!("[WORKER-{}] Processing message from session {} (waited: {:?}, priority: {:?})", 
+                            worker_id, queued_msg.session_id, elapsed, queued_msg.priority);
+                        
+                        // Get response channel
+                        let tx = {
+                            let channels = self_clone.response_channels.lock().await;
+                            let result = channels.get(&queued_msg.session_id).cloned();
+                            if result.is_none() {
+                                eprintln!("[WORKER-{}] ERROR: No response channel for session {}", 
+                                    worker_id, queued_msg.session_id);
+                            }
+                            result
+                        };
+                        
+                        if let Some(tx) = tx {
+                            // Send processing indicator
+                            if tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string())).is_err() {
+                                eprintln!("[WORKER-{}] ERROR: Failed to send processing indicator to session {}", 
+                                    worker_id, queued_msg.session_id);
+                                drop(permit); // Release permit
+                                continue;
+                            }
+                            
+                            // Check for interruption
+                            if self_clone.should_interrupt().await {
+                                eprintln!("[WORKER-{}] Interrupted for higher priority (session: {})", 
+                                    worker_id, queued_msg.session_id);
+                                let _ = tx.send(LLMResponse::Interrupted);
+                                drop(permit); // Release permit
+                                continue;
+                            }
+                            
+                            // Process with real LLM or simulation
+                            self_clone.process_message(worker_id, queued_msg, tx).await;
+                            
+                            // Release permit after processing completes
+                            drop(permit);
+                            eprintln!("[WORKER-{}] Permit released (available: {})", 
+                                worker_id, self_clone.rate_limiter.available_permits());
+                        } else {
+                            drop(permit); // Release permit if no channel
+                        }
+                    } else {
+                        // No messages, sleep briefly
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                }
+            });
+        }
+    }
+    
+    
+    /// Process a single message (extracted for clarity)
+    async fn process_message(
+        &self,
+        worker_id: usize,
+        queued_msg: QueuedMessage,
+        tx: mpsc::UnboundedSender<LLMResponse>,
+    ) {
+        // Use real LLM API if available
+        if let Some(ref client) = self.api_client {
+            eprintln!("[WORKER-{}] Using real LLM API for session {}", worker_id, queued_msg.session_id);
+            
+            // Create minimal conversation state
+            use crate::api_client::model::{ConversationState, UserInputMessage};
+            let conv_state = ConversationState {
+                conversation_id: Some(queued_msg.session_id.clone()),
+                user_input_message: UserInputMessage {
+                    content: queued_msg.message.clone(),
+                    user_input_message_context: None,
+                    user_intent: None,
+                    images: None,
+                    model_id: None,
+                },
+                history: None,
+            };
+            
+            // Call real API using SendMessageStream
+            use crate::cli::chat::parser::SendMessageStream;
+            use std::sync::Arc;
+            use tokio::sync::Mutex;
+            
+            let request_metadata_lock = Arc::new(Mutex::new(None));
+            
+            match SendMessageStream::send_message(client, conv_state, request_metadata_lock, None).await {
+                Ok(mut stream) => {
+                    eprintln!("[WORKER-{}] Real LLM streaming started for session {}", worker_id, queued_msg.session_id);
+                    let mut chunk_count = 0;
+                    
+                    // Stream responses
+                    loop {
                         // Check for interruption
                         if self.should_interrupt().await {
-                            eprintln!("[WORKER] Interrupted for higher priority (session: {})", queued_msg.session_id);
+                            eprintln!("[WORKER-{}] Interrupted during streaming (session: {})", worker_id, queued_msg.session_id);
                             let _ = tx.send(LLMResponse::Interrupted);
-                            continue;
+                            break;
                         }
                         
-                        // Use real LLM API if available
-                        if let Some(ref client) = self.api_client {
-                            eprintln!("[WORKER] Using real LLM API for session {}", queued_msg.session_id);
-                            
-                            // Create minimal conversation state
-                            use crate::api_client::model::{ConversationState, UserInputMessage};
-                            let conv_state = ConversationState {
-                                conversation_id: Some(queued_msg.session_id.clone()),
-                                user_input_message: UserInputMessage {
-                                    content: queued_msg.message.clone(),
-                                    user_input_message_context: None,
-                                    user_intent: None,
-                                    images: None,
-                                    model_id: None,
-                                },
-                                history: None,
-                            };
-                            
-                            // Call real API using SendMessageStream
-                            use crate::cli::chat::parser::SendMessageStream;
-                            use std::sync::Arc;
-                            use tokio::sync::Mutex;
-                            
-                            let request_metadata_lock = Arc::new(Mutex::new(None));
-                            
-                            match SendMessageStream::send_message(client, conv_state, request_metadata_lock, None).await {
-                                Ok(mut stream) => {
-                                    eprintln!("[WORKER] Real LLM streaming started for session {}", queued_msg.session_id);
-                                    let mut chunk_count = 0;
-                                    
-                                    // Stream responses
-                                    loop {
-                                        // Check for interruption
-                                        if self.should_interrupt().await {
-                                            eprintln!("[WORKER] Interrupted during streaming (session: {})", queued_msg.session_id);
-                                            let _ = tx.send(LLMResponse::Interrupted);
+                        match stream.recv().await {
+                            Some(Ok(event)) => {
+                                use crate::cli::chat::parser::ResponseEvent;
+                                match event {
+                                    ResponseEvent::AssistantText(text) => {
+                                        if tx.send(LLMResponse::Chunk(text)).is_err() {
+                                            eprintln!("[WORKER-{}] ERROR: Failed to send chunk to session {}", worker_id, queued_msg.session_id);
                                             break;
                                         }
-                                        
-                                        match stream.recv().await {
-                                            Some(Ok(event)) => {
-                                                use crate::cli::chat::parser::ResponseEvent;
-                                                match event {
-                                                    ResponseEvent::AssistantText(text) => {
-                                                        if tx.send(LLMResponse::Chunk(text)).is_err() {
-                                                            eprintln!("[WORKER] ERROR: Failed to send chunk to session {}", queued_msg.session_id);
-                                                            break;
-                                                        }
-                                                        chunk_count += 1;
-                                                    },
-                                                    ResponseEvent::ToolUseStart { name } => {
-                                                        eprintln!("[WORKER] Tool use starting: {}", name);
-                                                    },
-                                                    ResponseEvent::ToolUse(tool_use) => {
-                                                        eprintln!("[WORKER] Tool use requested: {} (id: {})", tool_use.name, tool_use.id);
-                                                        if tx.send(LLMResponse::ToolUse { 
-                                                            id: tool_use.id, 
-                                                            name: tool_use.name, 
-                                                            params: tool_use.args 
-                                                        }).is_err() {
-                                                            eprintln!("[WORKER] ERROR: Failed to send tool use to session {}", queued_msg.session_id);
-                                                            break;
-                                                        }
-                                                    },
-                                                    ResponseEvent::EndStream { message: _, request_metadata: _ } => {
-                                                        eprintln!("[WORKER] Stream ended for session {}", queued_msg.session_id);
-                                                        break;
-                                                    },
-                                                }
-                                            },
-                                            Some(Err(e)) => {
-                                                eprintln!("[WORKER] ERROR: Stream error: {}", e);
-                                                let _ = tx.send(LLMResponse::Error(format!("Stream error: {}", e)));
-                                                break;
-                                            },
-                                            None => {
-                                                eprintln!("[WORKER] Stream closed for session {}", queued_msg.session_id);
-                                                break;
-                                            }
+                                        chunk_count += 1;
+                                    },
+                                    ResponseEvent::ToolUseStart { name } => {
+                                        eprintln!("[WORKER-{}] Tool use starting: {}", worker_id, name);
+                                    },
+                                    ResponseEvent::ToolUse(tool_use) => {
+                                        eprintln!("[WORKER-{}] Tool use requested: {} (id: {})", worker_id, tool_use.name, tool_use.id);
+                                        if tx.send(LLMResponse::ToolUse { 
+                                            id: tool_use.id, 
+                                            name: tool_use.name, 
+                                            params: tool_use.args 
+                                        }).is_err() {
+                                            eprintln!("[WORKER-{}] ERROR: Failed to send tool use to session {}", worker_id, queued_msg.session_id);
+                                            break;
                                         }
-                                    }
-                                    
-                                    if tx.send(LLMResponse::Complete).is_ok() {
-                                        eprintln!("[WORKER] Completed real LLM processing for session {} (sent {} chunks)", 
-                                            queued_msg.session_id, chunk_count);
-                                    }
-                                    continue;
-                                },
-                                Err(e) => {
-                                    eprintln!("[WORKER] Real LLM call failed for session {}: {}", queued_msg.session_id, e);
-                                    let _ = tx.send(LLMResponse::Error(format!("LLM API error: {}", e)));
-                                    continue;
+                                    },
+                                    ResponseEvent::EndStream { message: _, request_metadata: _ } => {
+                                        eprintln!("[WORKER-{}] Stream ended for session {}", worker_id, queued_msg.session_id);
+                                        break;
+                                    },
                                 }
-                            }
-                        }
-                        
-                        // Fallback to simulation if no API client
-                        eprintln!("[WORKER] No API client available, using simulation for session {}", queued_msg.session_id);
-                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                        
-                        // Generate response based on message
-                        let response = format!(
-                            "I've processed your message in the background:\n\n\
-                            > {}\n\n\
-                            This is a simulated response. In production, this would be \
-                            the actual LLM response from the API.\n\n\
-                            The background processing system is working correctly!",
-                            queued_msg.message
-                        );
-                        
-                        eprintln!("[WORKER] Sending response to session {} ({} bytes)", 
-                            queued_msg.session_id, response.len());
-                        
-                        // Send response chunks (simulate streaming)
-                        let mut chunk_count = 0;
-                        for chunk in response.split('\n') {
-                            if tx.send(LLMResponse::Chunk(format!("{}\n", chunk))).is_err() {
-                                eprintln!("[WORKER] ERROR: Failed to send chunk {} to session {}", 
-                                    chunk_count, queued_msg.session_id);
+                            },
+                            Some(Err(e)) => {
+                                eprintln!("[WORKER-{}] ERROR: Stream error: {}", worker_id, e);
+                                let _ = tx.send(LLMResponse::Error(format!("Stream error: {}", e)));
+                                break;
+                            },
+                            None => {
+                                eprintln!("[WORKER-{}] Stream closed for session {}", worker_id, queued_msg.session_id);
                                 break;
                             }
-                            chunk_count += 1;
-                            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                        }
-                        
-                        // Send completion
-                        if tx.send(LLMResponse::Complete).is_err() {
-                            eprintln!("[WORKER] ERROR: Failed to send completion to session {}", queued_msg.session_id);
-                        } else {
-                            eprintln!("[WORKER] Completed processing for session {} (sent {} chunks)", 
-                                queued_msg.session_id, chunk_count);
                         }
                     }
-                } else {
-                    // No messages, sleep briefly
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    
+                    if tx.send(LLMResponse::Complete).is_ok() {
+                        eprintln!("[WORKER-{}] Completed real LLM processing for session {} (sent {} chunks)", 
+                            worker_id, queued_msg.session_id, chunk_count);
+                    }
+                    return;
+                },
+                Err(e) => {
+                    eprintln!("[WORKER-{}] Real LLM call failed for session {}: {}", worker_id, queued_msg.session_id, e);
+                    let _ = tx.send(LLMResponse::Error(format!("LLM API error: {}", e)));
+                    return;
                 }
             }
-        });
+        }
+        
+        // Fallback to simulation if no API client
+        eprintln!("[WORKER-{}] No API client available, using simulation for session {}", worker_id, queued_msg.session_id);
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                        
+        // Generate response based on message
+        let response = format!(
+            "I've processed your message in the background:\n\n\
+            > {}\n\n\
+            This is a simulated response. In production, this would be \
+            the actual LLM response from the API.\n\n\
+            The background processing system is working correctly!",
+            queued_msg.message
+        );
+        
+        eprintln!("[WORKER-{}] Sending response to session {} ({} bytes)", 
+            worker_id, queued_msg.session_id, response.len());
+        
+        // Send response chunks (simulate streaming)
+        let mut chunk_count = 0;
+        for chunk in response.split('\n') {
+            if tx.send(LLMResponse::Chunk(format!("{}\n", chunk))).is_err() {
+                eprintln!("[WORKER-{}] ERROR: Failed to send chunk {} to session {}", 
+                    worker_id, chunk_count, queued_msg.session_id);
+                break;
+            }
+            chunk_count += 1;
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+        
+        // Send completion
+        if tx.send(LLMResponse::Complete).is_err() {
+            eprintln!("[WORKER-{}] ERROR: Failed to send completion to session {}", worker_id, queued_msg.session_id);
+        } else {
+            eprintln!("[WORKER-{}] Completed processing for session {} (sent {} chunks)", 
+                worker_id, queued_msg.session_id, chunk_count);
+        }
     }
     
     /// Submit a message to the queue and get response channel
