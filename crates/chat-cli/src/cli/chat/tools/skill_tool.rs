@@ -52,14 +52,28 @@ impl SkillTool {
         let duration = start.elapsed();
 
         match result {
-            Ok(output) => {
+            Ok(skill_result) => {
                 if show_feedback {
                     writeln!(stdout, "✓ Skill completed in {:.2}s", duration.as_secs_f64())?;
                 }
-                writeln!(stdout, "{}", output.output)?;
+                writeln!(stdout, "{}", skill_result.output)?;
+
+                // Handle session management requests
+                if let Some(session_req) = &skill_result.create_session {
+                    writeln!(stdout, "\n[Session Request] Creating session: {}", session_req.name)?;
+                    writeln!(stdout, "Use /sessions switch {} to activate", session_req.name)?;
+                }
+                if let Some(session_name) = &skill_result.switch_to_session {
+                    writeln!(stdout, "\n[Session Request] Switch to: {}", session_name)?;
+                    writeln!(stdout, "Use /sessions switch {}", session_name)?;
+                }
+                if let Some(session_name) = &skill_result.close_session {
+                    writeln!(stdout, "\n[Session Request] Close session: {}", session_name)?;
+                    writeln!(stdout, "Use /close {}", session_name)?;
+                }
 
                 Ok(InvokeOutput {
-                    output: OutputKind::Text(output.output),
+                    output: OutputKind::Text(skill_result.output),
                 })
             },
             Err(e) => {

@@ -143,6 +143,8 @@ pub struct ManagedSession {
     pub last_error: Option<String>,
     /// Session metadata for lifecycle tracking
     pub metadata: SessionMetadata,
+    /// The ChatSession running this conversation (None for not-yet-started sessions)
+    pub chat_session: Option<Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>>,
 }
 
 impl ManagedSession {
@@ -166,6 +168,7 @@ impl ManagedSession {
                 last_active: now,
                 message_count: 0,
             },
+            chat_session: None,
         }
     }
 
@@ -274,6 +277,7 @@ impl Clone for ManagedSession {
             task_handle: None, // Can't clone JoinHandle
             last_error: self.last_error.clone(),
             metadata: self.metadata.clone(),
+            chat_session: self.chat_session.clone(), // Arc can be cloned
         }
     }
 }

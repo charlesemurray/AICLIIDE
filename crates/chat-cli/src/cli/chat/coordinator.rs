@@ -134,6 +134,10 @@ pub(crate) struct SessionState {
     pub(crate) sessions: HashMap<String, ManagedSession>,
     /// Currently active session ID
     pub(crate) active_session_id: Option<String>,
+    /// Ordered list of session IDs (for numbering)
+    pub(crate) session_order: Vec<String>,
+    /// Flag to signal application should quit
+    pub(crate) should_quit: bool,
 }
 
 /// Coordinates multiple chat sessions
@@ -158,6 +162,8 @@ pub struct MultiSessionCoordinator {
     cleanup_manager: ResourceCleanupManager,
     /// Dropped events counter
     dropped_events: Arc<std::sync::atomic::AtomicUsize>,
+    /// Reference to the currently active ChatSession
+    active_chat_session: Option<Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>>,
 }
 
 impl MultiSessionCoordinator {
@@ -171,6 +177,8 @@ impl MultiSessionCoordinator {
             state: Arc::new(Mutex::new(SessionState {
                 sessions: HashMap::new(),
                 active_session_id: None,
+                session_order: Vec::new(),
+                should_quit: false,
             })),
             config,
             state_rx,
@@ -181,6 +189,7 @@ impl MultiSessionCoordinator {
             lock_manager: SessionLockManager::default(),
             cleanup_manager: ResourceCleanupManager::default(),
             dropped_events: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            active_chat_session: None,
         }
     }
 
@@ -192,16 +201,27 @@ impl MultiSessionCoordinator {
 
     /// Save session to disk with error handling
     pub async fn save_session(&self, conversation_id: &str) -> Result<()> {
+        eprintln!("[DEBUG] save_session called for conversation_id: {}", conversation_id);
+        
         let persistence = match &self.persistence {
             Some(p) => p,
-            None => return Ok(()), // Persistence disabled
+            None => {
+                eprintln!("[DEBUG] save_session: persistence disabled");
+                return Ok(());
+            }
         };
 
         let state = self.state.lock().await;
         let session = state
             .sessions
             .get(conversation_id)
-            .ok_or_else(|| eyre::eyre!("Session not found: {}", conversation_id))?;
+            .ok_or_else(|| {
+                eprintln!("[DEBUG] save_session: session not found in state");
+                eyre::eyre!("Session not found: {}", conversation_id)
+            })?;
+
+        eprintln!("[DEBUG] save_session: session name='{}', type={:?}, status={:?}", 
+            session.display.name, session.display.session_type, session.display.status);
 
         let persisted = PersistedSession {
             conversation_id: conversation_id.to_string(),
@@ -212,31 +232,110 @@ impl MultiSessionCoordinator {
             last_active: 0,
         };
 
+        eprintln!("[DEBUG] save_session: saving to disk...");
         persistence.save_session(&persisted)?;
+        eprintln!("[DEBUG] save_session: saved successfully");
         Ok(())
     }
 
     /// Load all sessions from disk with error handling
-    pub async fn load_sessions(&mut self) -> Result<usize> {
+    pub async fn load_sessions(&mut self, os: &mut crate::os::Os) -> Result<usize> {
+        eprintln!("[DEBUG] load_sessions called");
+        
         let persistence = match &self.persistence {
             Some(p) => p,
-            None => return Ok(0), // Persistence disabled
+            None => {
+                eprintln!("[DEBUG] load_sessions: persistence disabled");
+                return Ok(0);
+            }
         };
 
         let persisted_sessions = persistence.load_all_sessions()?;
-        let count = persisted_sessions.len();
-
-        // TODO: Restore actual session state
-        // For now, just return count
-        Ok(count)
+        eprintln!("[DEBUG] load_sessions: found {} persisted sessions", persisted_sessions.len());
+        
+        // Filter for active sessions only (not archived/completed)
+        let active_sessions: Vec<_> = persisted_sessions
+            .into_iter()
+            .filter(|s| {
+                let is_active = !matches!(s.status, SessionStatus::Completed);
+                eprintln!("[DEBUG] load_sessions: session '{}' ({}), status={:?}, active={}", 
+                    s.name, s.conversation_id, s.status, is_active);
+                is_active
+            })
+            .collect();
+        
+        eprintln!("[DEBUG] load_sessions: {} active sessions to restore", active_sessions.len());
+        
+        if active_sessions.is_empty() {
+            return Ok(0);
+        }
+        
+        let current_dir = std::env::current_dir().unwrap_or_default();
+        eprintln!("[DEBUG] load_sessions: current_dir={:?}", current_dir);
+        
+        let mut restored_count = 0;
+        
+        for persisted in active_sessions {
+            eprintln!("[DEBUG] load_sessions: attempting to restore session '{}'", persisted.name);
+            
+            // Try to load conversation from database
+            let conversation = os.database
+                .get_conversation_by_path(&current_dir)
+                .ok()
+                .flatten()
+                .filter(|cs| {
+                    let matches = cs.conversation_id() == &persisted.conversation_id;
+                    eprintln!("[DEBUG] load_sessions: conversation_id match: {}", matches);
+                    matches
+                });
+            
+            if let Some(mut conv) = conversation {
+                eprintln!("[DEBUG] load_sessions: found conversation in database, history_len={}", conv.history().len());
+                
+                // Create session context
+                let tool_config = std::collections::HashMap::new();
+                
+                let config = SessionConfig {
+                    name: persisted.name.clone(),
+                    session_type: persisted.session_type,
+                };
+                
+                let context = SessionContext {
+                    conversation_id: persisted.conversation_id.clone(),
+                    os: os.clone(),
+                    agents: conv.agents.clone(),
+                    tool_config,
+                    tool_manager: conv.tool_manager.clone(),
+                    model_id: conv.model_info.as_ref().map(|m| m.model_id.clone()),
+                };
+                
+                match self.create_session(config, context).await {
+                    Ok(_) => {
+                        restored_count += 1;
+                        eprintln!("[DEBUG] load_sessions: ✓ restored session '{}'", persisted.name);
+                    },
+                    Err(e) => {
+                        eprintln!("[DEBUG] load_sessions: ✗ failed to restore '{}': {}", persisted.name, e);
+                    }
+                }
+            } else {
+                eprintln!("[DEBUG] load_sessions: no conversation found in database for '{}'", persisted.name);
+            }
+        }
+        
+        eprintln!("[DEBUG] load_sessions: restored {} sessions", restored_count);
+        Ok(restored_count)
     }
 
     /// Create a new session
     pub async fn create_session(
         &mut self,
         config: SessionConfig,
-        context: SessionContext,
+        mut context: SessionContext,
     ) -> Result<String> {
+        eprintln!("[DEBUG] create_session: name='{}', type={:?}, conversation_id={}", 
+            config.name, config.session_type, context.conversation_id);
+        
         // Validate inputs
         validate_conversation_id(&context.conversation_id)?;
         validate_session_name(&config.name)?;
@@ -250,26 +349,46 @@ impl MultiSessionCoordinator {
 
         // Check for duplicate names
         if state.sessions.values().any(|s| s.display.name == config.name) {
+            eprintln!("[DEBUG] create_session: duplicate name '{}' found", config.name);
             bail!("Session with name '{}' already exists", config.name);
         }
 
         // Create session display
-        let display = SessionDisplay::new(config.session_type, config.name);
+        let display = SessionDisplay::new(config.session_type, config.name.clone());
+        eprintln!("[DEBUG] create_session: created display with name='{}'", display.name);
 
         // Create output buffer
         let buffer = Arc::new(Mutex::new(OutputBuffer::new(self.config.buffer_size_bytes)));
 
-        // Create real ConversationState
-        let conversation = crate::cli::chat::conversation::ConversationState::new(
-            &context.conversation_id,
-            context.agents,
-            context.tool_config,
-            context.tool_manager,
-            context.model_id,
-            &context.os,
-            true, // mcp_enabled
-        )
-        .await;
+        // Try to load existing conversation from database, otherwise create new
+        let conversation = {
+            let existing = context.os.database
+                .get_conversation_by_path(std::env::current_dir().unwrap_or_default())
+                .ok()
+                .flatten()
+                .filter(|cs| cs.conversation_id() == &context.conversation_id);
+            
+            if let Some(mut cs) = existing {
+                eprintln!("[DEBUG] Restored conversation history for session {} ({} messages)", 
+                    config.name, cs.history().len());
+                // Update with current context
+                cs.tool_manager = context.tool_manager;
+                cs.agents = context.agents;
+                cs
+            } else {
+                eprintln!("[DEBUG] Creating new conversation for session {}", config.name);
+                crate::cli::chat::conversation::ConversationState::new(
+                    &context.conversation_id,
+                    context.agents,
+                    context.tool_config,
+                    context.tool_manager,
+                    context.model_id,
+                    &context.os,
+                    true, // mcp_enabled
+                )
+                .await
+            }
+        };
 
         // Create managed session with real ConversationState
         let now = std::time::Instant::now();
@@ -286,9 +405,13 @@ impl MultiSessionCoordinator {
                 last_active: now,
                 message_count: 0,
             },
+            chat_session: None, // Will be set later when ChatSession is created
         };
 
         state.sessions.insert(context.conversation_id.clone(), session);
+        
+        // Add to session order for numbering
+        state.session_order.push(context.conversation_id.clone());
 
         // Set as active if first session
         if state.active_session_id.is_none() {
@@ -300,25 +423,42 @@ impl MultiSessionCoordinator {
 
     /// Switch to a different session
     pub async fn switch_session(&mut self, name: &str) -> Result<()> {
-        // Validate input
-        validate_session_name(name)?;
-        
         let mut state = self.state.lock().await;
 
-        // Find session by name, or by conversation_id prefix
-        let target_id = state
-            .sessions
-            .iter()
-            .find(|(_, s)| s.display.name == name)
-            .or_else(|| {
-                // Fallback: try matching by conversation_id prefix
-                state.sessions.iter().find(|(id, _)| id.starts_with(name))
-            })
-            .map(|(id, _)| id.clone())
-            .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
+        eprintln!("[DEBUG] switch_session called with name: {}", name);
+        eprintln!("[DEBUG] Current sessions: {:?}", state.sessions.keys().collect::<Vec<_>>());
+
+        // Try to parse as number first
+        let target_id = if let Ok(num) = name.parse::<usize>() {
+            // Switch by number (1-indexed)
+            if num == 0 || num > state.session_order.len() {
+                bail!("Session number {} out of range (1-{})", num, state.session_order.len());
+            }
+            state.session_order.get(num - 1).cloned()
+                .ok_or_else(|| eyre::eyre!("Session number {} not found", num))?
+        } else {
+            // Validate input only if not a number
+            validate_session_name(name)?;
+            
+            // Find session by name, or by conversation_id prefix
+            state
+                .sessions
+                .iter()
+                .find(|(_, s)| s.display.name == name)
+                .or_else(|| {
+                    // Fallback: try matching by conversation_id prefix
+                    state.sessions.iter().find(|(id, _)| id.starts_with(name))
+                })
+                .map(|(id, _)| id.clone())
+                .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?
+        };
+
+        eprintln!("[DEBUG] Found target session ID: {}", target_id);
 
         // Update active session
         state.active_session_id = Some(target_id.clone());
+        
+        eprintln!("[DEBUG] Updated active_session_id to: {}", target_id);
         
         // Update last_active timestamp
         if let Some(session) = state.sessions.get_mut(&target_id) {
@@ -422,7 +562,7 @@ impl MultiSessionCoordinator {
     }
 
     /// Close a session
-    pub async fn close_session(&mut self, name: &str) -> Result<()> {
+    pub async fn close_session(&mut self, name: &str, context: Option<SessionContext>) -> Result<()> {
         // Validate input
         validate_session_name(name)?;
         
@@ -436,12 +576,54 @@ impl MultiSessionCoordinator {
             .map(|(id, _)| id.clone())
             .ok_or_else(|| eyre::eyre!("Session '{}' not found", name))?;
 
+        // Archive the session (mark as Completed)
+        if let Some(persistence) = &self.persistence {
+            if let Some(session) = state.sessions.get(&target_id) {
+                let persisted = PersistedSession {
+                    conversation_id: target_id.clone(),
+                    name: session.display.name.clone(),
+                    session_type: session.display.session_type,
+                    status: SessionStatus::Completed, // Mark as archived
+                    created_at: session.metadata.created_at.elapsed().as_secs(),
+                    last_active: session.metadata.last_active.elapsed().as_secs(),
+                };
+                let _ = persistence.save_session(&persisted);
+            }
+        }
+        
         // Remove session
         state.sessions.remove(&target_id);
+        
+        // Remove from session order
+        state.session_order.retain(|id| id != &target_id);
 
-        // Clear active if it was the active session
+        // If we closed the active session, handle next session
         if state.active_session_id.as_ref() == Some(&target_id) {
-            state.active_session_id = None;
+            // Find another session to switch to
+            let next_session = state.sessions.keys().next().cloned();
+            
+            if next_session.is_none() {
+                // No sessions left - create a new one if context provided
+                if let Some(ctx) = context {
+                    drop(state); // Release lock before calling create_session
+                    
+                    let new_id = self.create_session(
+                        SessionConfig {
+                            name: "default".to_string(),
+                            session_type: crate::theme::session::SessionType::Development,
+                        },
+                        ctx,
+                    ).await?;
+                    
+                    // Set as active
+                    let mut state = self.state.lock().await;
+                    state.active_session_id = Some(new_id);
+                } else {
+                    state.active_session_id = None;
+                }
+            } else {
+                state.active_session_id = next_session;
+            }
         }
 
         Ok(())
@@ -452,17 +634,55 @@ impl MultiSessionCoordinator {
         let state = self.state.lock().await;
         state.active_session_id.clone()
     }
+    
+    /// Signal the coordinator to quit the application
+    pub async fn quit(&self) {
+        let mut state = self.state.lock().await;
+        state.should_quit = true;
+    }
 
     /// Get session by ID
     pub async fn get_session(&self, id: &str) -> Option<String> {
         let state = self.state.lock().await;
         state.sessions.get(id).map(|s| s.display.name.clone())
     }
+    
+    /// Get session ID by number (1-indexed)
+    pub async fn get_session_id_by_number(&self, number: usize) -> Option<String> {
+        let state = self.state.lock().await;
+        if number == 0 || number > state.session_order.len() {
+            return None;
+        }
+        state.session_order.get(number - 1).cloned()
+    }
+    
+    /// Get session number by ID (1-indexed)
+    pub async fn get_session_number(&self, id: &str) -> Option<usize> {
+        let state = self.state.lock().await;
+        state.session_order.iter().position(|sid| sid == id).map(|pos| pos + 1)
+    }
 
     /// List all session names
     pub async fn list_sessions(&self) -> Vec<String> {
         let state = self.state.lock().await;
         state.sessions.values().map(|s| s.display.name.clone()).collect()
+    }
+    
+    /// List sessions with numbers in order
+    pub async fn list_sessions_with_numbers(&self) -> Vec<(usize, String, bool)> {
+        let state = self.state.lock().await;
+        let active_id = state.active_session_id.as_ref();
+        
+        state.session_order
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, id)| {
+                state.sessions.get(id).map(|s| {
+                    let is_active = active_id == Some(id);
+                    (idx + 1, s.display.name.clone(), is_active)
+                })
+            })
+            .collect()
     }
 
     /// Get sessions waiting for input
@@ -504,8 +724,8 @@ impl MultiSessionCoordinator {
     }
 
     /// Get the display name of a session
-    pub fn get_session_name(&self, conversation_id: &str) -> Option<String> {
-        let state = self.state.blocking_lock();
+    pub async fn get_session_name(&self, conversation_id: &str) -> Option<String> {
+        let state = self.state.lock().await;
         state.sessions.get(conversation_id).map(|s| s.display.name.clone())
     }
 
@@ -513,6 +733,42 @@ impl MultiSessionCoordinator {
     pub async fn get_managed_session(&self, conversation_id: &str) -> Option<ManagedSession> {
         let state = self.state.lock().await;
         state.sessions.get(conversation_id).cloned()
+    }
+
+    /// Get a mutable reference to a managed session
+    pub async fn get_managed_session_mut(&self, conversation_id: &str) -> Option<ManagedSession> {
+        let mut state = self.state.lock().await;
+        state.sessions.get_mut(conversation_id).map(|s| {
+            // Update the conversation in place
+            s.clone()
+        })
+    }
+
+    /// Update a session's conversation
+    pub async fn update_session_conversation(&self, conversation_id: &str, conversation: crate::cli::chat::ConversationState) -> Result<()> {
+        let mut state = self.state.lock().await;
+        if let Some(session) = state.sessions.get_mut(conversation_id) {
+            session.conversation = conversation;
+            Ok(())
+        } else {
+            bail!("Session not found: {}", conversation_id)
+        }
+    }
+
+    /// Set the active ChatSession reference
+    pub fn set_active_chat_session(&mut self, session: Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>) {
+        self.active_chat_session = Some(session);
+    }
+
+    /// Store a ChatSession in a ManagedSession
+    pub async fn set_chat_session(&self, conversation_id: &str, chat_session: Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>) -> Result<()> {
+        let mut state = self.state.lock().await;
+        if let Some(session) = state.sessions.get_mut(conversation_id) {
+            session.chat_session = Some(chat_session);
+            Ok(())
+        } else {
+            bail!("Session not found: {}", conversation_id)
+        }
     }
 
     /// Get state change sender for new sessions
@@ -625,6 +881,126 @@ impl MultiSessionCoordinator {
                 },
             }
         }
+        Ok(())
+    }
+
+    /// Main coordinator loop - manages active ChatSession execution
+    /// This is the entry point for multi-session support
+    pub async fn run(
+        coord_arc: std::sync::Arc<tokio::sync::Mutex<Self>>,
+        os: &mut crate::os::Os,
+    ) -> Result<()> {
+        loop {
+            let (active_id, initial_active_id) = {
+                let coord = coord_arc.lock().await;
+                let state = coord.state.lock().await;
+                eprintln!("[DEBUG] Coordinator loop - active_session_id: {:?}", state.active_session_id);
+                let id = state.active_session_id.clone();
+                (id.clone(), id)  // Store both for comparison later
+            };
+
+            let Some(session_id) = active_id else {
+                eprintln!("[DEBUG] No active session, exiting coordinator loop");
+                break;
+            };
+
+            eprintln!("[DEBUG] Running session: {}", session_id);
+
+            // Get or create ChatSession for active session
+            let chat_session = {
+                let coord = coord_arc.lock().await;
+                let mut state = coord.state.lock().await;
+                let session = state.sessions.get_mut(&session_id)
+                    .ok_or_else(|| eyre::eyre!("Active session not found"))?;
+                
+                // Create ChatSession if it doesn't exist
+                if session.chat_session.is_none() {
+                    eprintln!("[DEBUG] Creating NEW ChatSession for session: {}", session_id);
+                    use crate::cli::chat::input_source::InputSource;
+                    use tokio::sync::broadcast;
+                    
+                    // Create input source
+                    let (prompt_request_sender, prompt_request_receiver) = broadcast::channel(5);
+                    let (_prompt_response_sender, prompt_response_receiver) = broadcast::channel(5);
+                    let input_source = InputSource::new(os, prompt_request_sender, prompt_response_receiver)?;
+                    
+                    // Create ChatSession from existing conversation
+                    let mut chat_session = crate::cli::chat::ChatSession::from_conversation(
+                        os,
+                        session.conversation.clone(),
+                        input_source,
+                    ).await?;
+                    
+                    // Set coordinator reference
+                    chat_session.coordinator = Some(coord_arc.clone());
+                    eprintln!("[DEBUG] Set coordinator reference on new ChatSession");
+                    
+                    session.chat_session = Some(std::sync::Arc::new(tokio::sync::Mutex::new(chat_session)));
+                } else {
+                    eprintln!("[DEBUG] REUSING existing ChatSession for session: {}", session_id);
+                }
+                
+                session.chat_session.clone().unwrap()
+            };
+
+            // For now, keep blocking behavior but add ability to detect switches
+            // TODO: Implement true background execution with output buffering
+            
+            let mut session = chat_session.lock().await;
+            
+            match session.spawn(os).await {
+                Ok(_) => {
+                    // Save conversation state
+                    let conversation = session.conversation.clone();
+                    drop(session);
+                    
+                    {
+                        let coord = coord_arc.lock().await;
+                        let mut state = coord.state.lock().await;
+                        if let Some(managed_session) = state.sessions.get_mut(&session_id) {
+                            managed_session.conversation = conversation;
+                        }
+                    }
+                    
+                    let coord = coord_arc.lock().await;
+                    let state = coord.state.lock().await;
+                    let new_active = state.active_session_id.clone();
+                    let should_quit = state.should_quit;
+                    
+                    eprintln!("[DEBUG] Session exited. Initial ID: {:?}, New active ID: {:?}, should_quit: {}", initial_active_id, new_active, should_quit);
+                    
+                    if should_quit {
+                        eprintln!("[DEBUG] should_quit flag set - saving sessions and exiting");
+                        
+                        let session_ids: Vec<_> = state.sessions.keys().cloned().collect();
+                        eprintln!("[DEBUG] quit: found {} sessions to save", session_ids.len());
+                        drop(state);
+                        
+                        for id in &session_ids {
+                            eprintln!("[DEBUG] quit: saving session {}", id);
+                            match coord.save_session(id).await {
+                                Ok(_) => eprintln!("[DEBUG] quit: ✓ saved {}", id),
+                                Err(e) => eprintln!("[DEBUG] quit: ✗ failed to save {}: {}", id, e),
+                            }
+                        }
+                        
+                        eprintln!("[DEBUG] quit: all sessions saved, exiting");
+                        drop(coord);
+                        std::process::exit(0);
+                    }
+                    
+                    if new_active != initial_active_id {
+                        eprintln!("[DEBUG] Active session changed, continuing loop");
+                        continue;
+                    } else {
+                        eprintln!("[DEBUG] Session exited without switch - unexpected");
+                        break;
+                    }
+                },
+                Err(e) => return Err(e),
+            }
+        }
+
         Ok(())
     }
 }

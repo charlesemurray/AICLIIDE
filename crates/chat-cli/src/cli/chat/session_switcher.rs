@@ -81,15 +81,20 @@ impl SessionSwitcher {
 
     /// List all sessions with visual formatting
     pub async fn list_sessions<W: Write>(&self, coordinator: &MultiSessionCoordinator, writer: &mut W) -> Result<()> {
-        let sessions = coordinator.list_sessions().await;
+        let sessions = coordinator.list_sessions_with_numbers().await;
 
-        let mut session_info = Vec::new();
-        for name in sessions {
-            // Simplified - all sessions shown as Development type
-            session_info.push((name, crate::theme::session::SessionType::Development, false));
+        if sessions.is_empty() {
+            writeln!(writer, "No active sessions")?;
+            return Ok(());
         }
 
-        self.ui.show_session_list(writer, &session_info)?;
+        writeln!(writer, "\nActive Sessions:")?;
+        for (num, name, is_active) in sessions {
+            let marker = if is_active { " *" } else { "" };
+            writeln!(writer, "  [{}] {}{}", num, name, marker)?;
+        }
+        writeln!(writer)?;
+        
         Ok(())
     }
 

@@ -91,6 +91,9 @@ impl Skill for JsonSkill {
                 output,
                 ui_updates: None,
                 state_changes: None,
+                create_session: None,
+                switch_to_session: None,
+                close_session: None,
             })
         };
 

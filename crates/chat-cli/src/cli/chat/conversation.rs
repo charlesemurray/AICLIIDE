@@ -386,9 +386,10 @@ impl ConversationState {
     }
 
     pub async fn set_next_user_message(&mut self, input: String, os: &Os) {
-        debug_assert!(self.next_message.is_none(), "next_message should not exist");
-        if let Some(next_message) = self.next_message.as_ref() {
-            warn!(?next_message, "next_message should not exist");
+        // If next_message already exists, clear it and log a warning
+        // This can happen during session switching or error recovery
+        if let Some(next_message) = self.next_message.take() {
+            warn!(?next_message, "next_message already existed, clearing stale state");
         }
 
         let input = if input.is_empty() {
@@ -429,8 +430,23 @@ impl ConversationState {
         message: AssistantMessage,
         request_metadata: Option<RequestMetadata>,
     ) {
-        debug_assert!(self.next_message.is_some(), "next_message should exist");
-        let next_user_message = self.next_message.take().expect("next user message should exist");
+        // Handle missing next_message gracefully - create a placeholder
+        let next_user_message = match self.next_message.take() {
+            Some(msg) => msg,
+            None => {
+                warn!("push_assistant_message called without next_message set, creating placeholder");
+                use crate::cli::chat::message::{UserMessage, UserMessageContent, UserEnvContext};
+                UserMessage {
+                    content: UserMessageContent::Prompt {
+                        prompt: "[Message state error - please report this]".to_string(),
+                    },
+                    additional_context: String::new(),
+                    env_context: UserEnvContext::generate_new(),
+                    timestamp: None,
+                    images: None,
+                }
+            }
+        };
 
         self.append_assistant_transcript(&message);
         self.history.push_back(HistoryEntry {

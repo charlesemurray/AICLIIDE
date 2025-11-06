@@ -110,81 +110,85 @@ impl SessionsSubcommand {
     pub async fn execute(self, session: &mut ChatSession, os: &Os) -> Result<ChatState, ChatError> {
         use crate::cli::chat::session_integration;
         
+        eprintln!("[DEBUG] SessionsSubcommand::execute() - command: {:?}", self);
+        
         if let Some(ref coord) = session.coordinator {
-            let switch_conversation = {
-                let mut coord_lock = coord.lock().await;
-                
-                // Build context once to avoid borrow issues
-                let context = session.build_session_context(os);
-                let context_factory = move || context.clone();
-                
-                // Check if this is a switch command - we need to handle it specially
-                let is_switch = matches!(&self, Self::Switch { .. });
-                
-                // Convert to command string for session_integration
-                let command_str = match &self {
-                    Self::List { all, waiting } => {
-                        let mut cmd = "/sessions".to_string();
-                        if *all { cmd.push_str(" --all"); }
-                        if *waiting { cmd.push_str(" --waiting"); }
-                        cmd
-                    },
-                    Self::New { name, session_type } => {
-                        let mut cmd = "/new".to_string();
-                        if let Some(n) = name {
-                            cmd.push_str(" ");
-                            cmd.push_str(n);
-                        }
-                        cmd
-                    },
-                    Self::Close { name } => {
-                        let mut cmd = "/close".to_string();
-                        if let Some(n) = name {
-                            cmd.push_str(" ");
-                            cmd.push_str(n);
-                        }
-                        cmd
-                    },
-                    Self::Rename { new_name } => {
-                        format!("/rename {}", new_name)
-                    },
-                    Self::Switch { name } => {
-                        format!("/switch {}", name)
-                    },
-                };
-                
-                match session_integration::handle_session_command(
-                    &command_str,
-                    &mut coord_lock,
-                    &mut session.stderr,
-                    context_factory,
-                ).await {
-                    Ok(_) => {
-                        // If this was a switch command, get the conversation to swap
-                        if is_switch {
-                            if let Some(active_id) = coord_lock.active_session_id().await {
-                                if let Some(managed_session) = coord_lock.get_managed_session(&active_id).await {
-                                    Some(managed_session.conversation.clone())
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
+            eprintln!("[DEBUG] Coordinator reference exists");
+            let mut coord_lock = coord.lock().await;
+            
+            // Build context once to avoid borrow issues
+            let context = session.build_session_context(os);
+            let context_factory = move || context.clone();
+            
+            // Check if this is a switch or close command
+            let is_switch = matches!(&self, Self::Switch { .. });
+            let is_close = matches!(&self, Self::Close { .. });
+            
+            // Convert to command string for session_integration
+            let command_str = match &self {
+                Self::List { all, waiting } => {
+                    let mut cmd = "/sessions".to_string();
+                    if *all { cmd.push_str(" --all"); }
+                    if *waiting { cmd.push_str(" --waiting"); }
+                    cmd
+                },
+                Self::New { name, session_type } => {
+                    let mut cmd = "/new".to_string();
+                    if let Some(n) = name {
+                        cmd.push_str(" ");
+                        cmd.push_str(n);
+                    }
+                    cmd
+                },
+                Self::Close { name } => {
+                    let mut cmd = "/close".to_string();
+                    if let Some(n) = name {
+                        cmd.push_str(" ");
+                        cmd.push_str(n);
+                    }
+                    cmd
+                },
+                Self::Rename { new_name } => {
+                    format!("/rename {}", new_name)
+                },
+                Self::Switch { name } => {
+                    format!("/switch {}", name)
+                },
+            };
+            
+            match session_integration::handle_session_command(
+                &command_str,
+                &mut coord_lock,
+                &mut session.stderr,
+                context_factory,
+            ).await {
+                Ok(_) => {
+                    eprintln!("[DEBUG] handle_session_command succeeded");
+                    // If this was a switch command, return SwitchSession state
+                    if is_switch {
+                        eprintln!("[DEBUG] This was a switch command");
+                        if let Some(active_id) = coord_lock.active_session_id().await {
+                            eprintln!("[DEBUG] Returning SwitchSession with target_id: {}", active_id);
+                            return Ok(ChatState::SwitchSession { target_id: active_id });
                         } else {
-                            None
+                            eprintln!("[DEBUG] No active_session_id found!");
                         }
-                    },
-                    Err(e) => return Err(ChatError::Custom(e.to_string().into())),
-                }
-            }; // coord_lock dropped here
-            
-            // Now we can mutate session
-            if let Some(conversation) = switch_conversation {
-                session.switch_conversation(conversation);
+                    }
+                    // If this was a close command and active session changed, trigger switch
+                    if is_close {
+                        let new_active = coord_lock.active_session_id().await;
+                        if new_active.is_some() && new_active.as_ref() != Some(&session.conversation.conversation_id().to_string()) {
+                            eprintln!("[DEBUG] Close triggered switch to: {:?}", new_active);
+                            return Ok(ChatState::SwitchSession { target_id: new_active.unwrap() });
+                        } else if new_active.is_none() {
+                            eprintln!("[DEBUG] No sessions left, exiting");
+                            return Ok(ChatState::Exit);
+                        }
+                    }
+                    Ok(ChatState::PromptUser { skip_printing_tools: false })
+                },
+                Err(e) => Err(ChatError::Custom(e.to_string().into())),
             }
-            
-            Ok(ChatState::PromptUser { skip_printing_tools: false })
         } else {
             Err(ChatError::Custom("Session coordinator not available".into()))
         }
@@ -263,11 +267,6 @@ pub enum SlashCommand {
     Memory(MemorySubcommand),
     /// Recall relevant memories
     Recall(RecallArgs),
-    /// Switch between conversations or sessions
-    Switch {
-        /// Name of conversation or session to switch to
-        name: String,
-    },
     // #[command(flatten)]
     // Root(RootSubcommand),
     #[command(
@@ -279,6 +278,8 @@ pub enum SlashCommand {
     /// View, manage, and resume to-do lists
     #[command(subcommand)]
     Todos(TodoSubcommand),
+    /// Close the current session
+    Close,
     // /// Show system status with colored output
     // Status(StatusArgs),
     /// Paste an image from clipboard
@@ -291,7 +292,13 @@ pub enum SlashCommand {
 impl SlashCommand {
     pub async fn execute(self, os: &mut Os, session: &mut ChatSession) -> Result<ChatState, ChatError> {
         match self {
-            Self::Quit => Ok(ChatState::Exit),
+            Self::Quit => {
+                // Signal coordinator to quit
+                if let Some(ref coord) = session.coordinator {
+                    coord.lock().await.quit().await;
+                }
+                Ok(ChatState::Exit)
+            },
             Self::Clear(args) => args.execute(session).await,
             Self::Agent(subcommand) => subcommand.execute(os, session).await,
             Self::Profile => {
@@ -349,27 +356,6 @@ impl SlashCommand {
             Self::Workflows(subcommand) => subcommand.execute(session, os).await,
             Self::Memory(subcommand) => execute_memory_command(subcommand, session).await,
             Self::Recall(args) => execute_recall_command(args, session).await,
-            Self::Switch { name } => {
-                use crate::cli::chat::session_integration;
-                
-                if let Some(ref coord) = session.coordinator {
-                    let mut coord_lock = coord.lock().await;
-                    let context = session.build_session_context(os);
-                    let context_factory = move || context.clone();
-                    
-                    match session_integration::handle_session_command(
-                        &format!("/switch {}", name),
-                        &mut coord_lock,
-                        &mut session.stderr,
-                        context_factory,
-                    ).await {
-                        Ok(_) => Ok(ChatState::PromptUser { skip_printing_tools: false }),
-                        Err(e) => Err(ChatError::Custom(e.to_string().into())),
-                    }
-                } else {
-                    Err(ChatError::Custom("Session coordinator not available".into()))
-                }
-            },
             // Self::Root(subcommand) => {
             //     if let Err(err) = subcommand.execute(os, database, telemetry).await {
             //         return Err(ChatError::Custom(err.to_string().into()));
@@ -381,6 +367,10 @@ impl SlashCommand {
             // },
             Self::Checkpoint(subcommand) => subcommand.execute(os, session).await,
             Self::Todos(subcommand) => subcommand.execute(os, session).await,
+            Self::Close => {
+                // Delegate to SessionsSubcommand::Close with current session
+                SessionsSubcommand::Close { name: None }.execute(session, os).await
+            },
             Self::Paste(args) => args.execute(os, session).await,
             // Self::Status(_args) => {
             //     // Temporarily disabled for testing
@@ -426,8 +416,8 @@ impl SlashCommand {
             Self::Sessions(_) => "sessions",
             Self::Memory(_) => "memory",
             Self::Recall(_) => "recall",
-            Self::Switch { .. } => "switch",
             // Self::Status(_) => "status",
+            Self::Close => "close",
             Self::Paste(_) => "paste",
         }
     }

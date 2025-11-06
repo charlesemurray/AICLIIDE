@@ -39,6 +39,61 @@ pub struct SkillResult {
     pub output: String,
     pub ui_updates: Option<Vec<UIUpdate>>,
     pub state_changes: Option<serde_json::Value>,
+    /// Request to create a new chat session for this skill
+    pub create_session: Option<SessionRequest>,
+    /// Request to switch to an existing session
+    pub switch_to_session: Option<String>,
+    /// Request to close a session
+    pub close_session: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionRequest {
+    pub name: String,
+    pub session_type: crate::theme::session::SessionType,
+    pub initial_prompt: Option<String>,
+}
+
+impl SkillResult {
+    /// Create a result that requests a new session
+    pub fn with_session(output: String, name: String, session_type: crate::theme::session::SessionType) -> Self {
+        Self {
+            output,
+            ui_updates: None,
+            state_changes: None,
+            create_session: Some(SessionRequest {
+                name,
+                session_type,
+                initial_prompt: None,
+            }),
+            switch_to_session: None,
+            close_session: None,
+        }
+    }
+    
+    /// Create a result that switches to an existing session
+    pub fn switch_session(output: String, session_name: String) -> Self {
+        Self {
+            output,
+            ui_updates: None,
+            state_changes: None,
+            create_session: None,
+            switch_to_session: Some(session_name),
+            close_session: None,
+        }
+    }
+    
+    /// Create a result that closes a session
+    pub fn close_session(output: String, session_name: String) -> Self {
+        Self {
+            output,
+            ui_updates: None,
+            state_changes: None,
+            create_session: None,
+            switch_to_session: None,
+            close_session: Some(session_name),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

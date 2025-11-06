@@ -83,7 +83,8 @@ where
         },
         SessionCommand::Close(name_opt) => {
             let name = name_opt.as_ref().ok_or_else(|| eyre::eyre!("Session name required"))?;
-            coordinator.close_session(name).await?;
+            let context = context_factory();
+            coordinator.close_session(name, Some(context)).await?;
             VisualFeedback::success(writer, &format!("Closed session '{}'", name))?;
         },
         SessionCommand::Rename(new_name) => {

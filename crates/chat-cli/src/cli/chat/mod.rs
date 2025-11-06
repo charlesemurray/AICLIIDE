@@ -306,7 +306,7 @@ impl ChatArgs {
                 }
 
                 // Load saved sessions
-                match coord.load_sessions().await {
+                match coord.load_sessions(os).await {
                     Ok(count) if count > 0 => {
                         eprintln!("✓ Loaded {} saved session(s)", count);
                     },
@@ -840,6 +840,9 @@ impl ChatArgs {
             // Generate a nice human-readable session name
             let session_name = session_names::generate_session_name();
             
+            // Set the active session name for prompt display
+            session.active_session_name = Some(session_name.clone());
+            
             if let Err(e) = coord_lock.create_session(
                 coordinator::SessionConfig {
                     name: session_name,
@@ -856,6 +859,16 @@ impl ChatArgs {
             ).await {
                 eprintln!("Warning: Failed to create initial session: {}", e);
             }
+            
+            // Store the ChatSession in the coordinator's ManagedSession
+            let session_arc = Arc::new(Mutex::new(session));
+            if let Err(e) = coord_lock.set_chat_session(&conversation_id, session_arc.clone()).await {
+                eprintln!("Warning: Failed to store ChatSession: {}", e);
+            }
+            
+            // Continue with the coordinator's main loop
+            drop(coord_lock);
+            return coordinator::MultiSessionCoordinator::run(coord_arc, os).await.map(|_| ExitCode::SUCCESS);
         }
 
         session.spawn(os).await.map(|_| ExitCode::SUCCESS)
@@ -1048,6 +1061,11 @@ pub struct ChatSession {
     feedback_manager: Option<cortex_memory::FeedbackManager>,
     /// Last user message for memory storage
     last_user_message: Option<String>,
+    /// Active session name for display (updated on switch)
+    active_session_name: Option<String>,
+    /// Task handles for cleanup
+    view_task_handle: Option<tokio::task::JoinHandle<()>>,
+    ctrlc_task_handle: Option<tokio::task::JoinHandle<()>>,
     // TODO: Add context_stats widget when ready
     // context_stats: Arc<Mutex<context_stats_widget::ContextStats>>,
 }
@@ -1080,7 +1098,7 @@ impl ChatSession {
             get_legacy_conduits(should_send_structured_msg);
         let (prompt_ack_tx, prompt_ack_rx) = std::sync::mpsc::channel::<()>();
 
-        tokio::task::spawn_blocking(move || {
+        let view_task_handle = tokio::task::spawn_blocking(move || {
             let stderr = std::io::stderr();
             let stdout = std::io::stdout();
             if let Err(e) = view_end.into_legacy_mode(StyledText, Some(prompt_ack_tx), stderr, stdout) {
@@ -1235,7 +1253,7 @@ impl ChatSession {
 
         // Spawn a task for listening and broadcasting sigints.
         let (ctrlc_tx, ctrlc_rx) = tokio::sync::broadcast::channel(4);
-        tokio::spawn(async move {
+        let ctrlc_task_handle = tokio::spawn(async move {
             loop {
                 match ctrl_c().await {
                     Ok(_) => {
@@ -1287,6 +1305,9 @@ impl ChatSession {
             cortex,
             feedback_manager,
             last_user_message: None,
+            active_session_name: None,
+            view_task_handle: Some(view_task_handle),
+            ctrlc_task_handle: Some(ctrlc_task_handle),
             // context_stats: Arc::new(Mutex::new(context_stats_widget::ContextStats::new())),
         };
 
@@ -1322,6 +1343,127 @@ impl ChatSession {
             tool_manager: self.conversation.tool_manager.clone(),
             model_id: None,
         }
+    }
+
+    /// Create a ChatSession from an existing conversation (for dynamic session creation)
+    pub async fn from_conversation(
+        os: &mut Os,
+        mut conversation: ConversationState,
+        input_source: InputSource,
+    ) -> Result<Self> {
+        eprintln!("[DEBUG] from_conversation - has next_message before reset: {}", conversation.next_user_message().is_some());
+        eprintln!("[DEBUG] from_conversation - history length: {}", conversation.history().len());
+        
+        // Clear screen for session switch
+        use crossterm::{execute, terminal, cursor};
+        let _ = execute!(
+            std::io::stderr(),
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(0, 0)
+        );
+        
+        // Display recent history (last 10 transcript entries)
+        if !conversation.transcript.is_empty() {
+            use crossterm::style;
+            let recent_count = 10.min(conversation.transcript.len());
+            let start_idx = conversation.transcript.len().saturating_sub(recent_count);
+            
+            let _ = execute!(
+                std::io::stderr(),
+                StyledText::brand_fg(),
+                style::Print("--- Recent History ---\n"),
+                StyledText::reset()
+            );
+            
+            for line in conversation.transcript.iter().skip(start_idx) {
+                let _ = execute!(
+                    std::io::stderr(),
+                    style::Print(format!("{}\n", line))
+                );
+            }
+            
+            let _ = execute!(
+                std::io::stderr(),
+                StyledText::brand_fg(),
+                style::Print("--- End History ---\n\n"),
+                StyledText::reset()
+            );
+        }
+        
+        // Reset conversation state to ensure it's clean
+        conversation.reset_next_user_message();
+        conversation.enforce_conversation_invariants();
+        
+        eprintln!("[DEBUG] from_conversation - has next_message after reset: {}", conversation.next_user_message().is_some());
+        
+        let should_send_structured_msg = should_send_structured_message(os);
+        let (view_end, _byte_receiver, control_end_stderr, control_end_stdout) =
+            get_legacy_conduits(should_send_structured_msg);
+        let (prompt_ack_tx, prompt_ack_rx) = std::sync::mpsc::channel::<()>();
+
+        let view_task_handle = tokio::task::spawn_blocking(move || {
+            let stderr = std::io::stderr();
+            let stdout = std::io::stdout();
+            if let Err(e) = view_end.into_legacy_mode(StyledText, Some(prompt_ack_tx), stderr, stdout) {
+                error!("Conduit view end legacy mode exited: {:?}", e);
+            }
+        });
+
+        let (ctrlc_tx, ctrlc_rx) = tokio::sync::broadcast::channel(4);
+        let ctrlc_task_handle = tokio::spawn(async move {
+            loop {
+                match ctrl_c().await {
+                    Ok(_) => {
+                        let _ = ctrlc_tx.send(());
+                    },
+                    Err(err) => {
+                        error!(?err, "Encountered an error while receiving a ctrl+c");
+                    },
+                }
+            }
+        });
+
+        Ok(Self {
+            stdout: control_end_stdout,
+            stderr: control_end_stderr,
+            initial_input: None,
+            existing_conversation: false,
+            input_source,
+            terminal_width_provider: || terminal::window_size().map(|s| s.columns.into()).ok(),
+            spinner: None,
+            conversation,
+            tool_uses: vec![],
+            user_turn_request_metadata: vec![],
+            pending_tool_index: None,
+            tool_turn_start_time: None,
+            tool_use_telemetry_events: HashMap::new(),
+            tool_use_status: ToolUseStatus::Idle,
+            failed_request_ids: Vec::new(),
+            pending_prompts: VecDeque::new(),
+            interactive: true,
+            inner: Some(ChatState::default()),
+            ctrlc_rx,
+            wrap: None,
+            prompt_ack_rx,
+            auto_approve_remaining: None,
+            batch_mode_active: false,
+            session_mode: session_mode::SessionMode::Foreground,
+            coordinator: None,
+            pause_rx: None,
+            resume_tx: None,
+            terminal_state: None,
+            analytics: None,
+            conversation_mode: crate::conversation_modes::ConversationMode::Interactive,
+            transition_manager: crate::conversation_modes::TransitionManager::new(),
+            user_preferences: crate::conversation_modes::UserPreferences::new(),
+            mode_suggestion_engine: crate::conversation_modes::ModeSuggestionEngine::new(),
+            cortex: None,
+            feedback_manager: None,
+            last_user_message: None,
+            active_session_name: None,
+            view_task_handle: Some(view_task_handle),
+            ctrlc_task_handle: Some(ctrlc_task_handle),
+        })
     }
 
     /// Pause the session (for background execution)
@@ -1522,6 +1664,11 @@ impl ChatSession {
                 Ok(_) = ctrl_c_stream.recv() => {
                     Err(ChatError::Interrupted { tool_uses: None })
                 }
+            },
+            ChatState::SwitchSession { target_id } => {
+                eprintln!("[DEBUG] ChatState::SwitchSession handler - target_id: {}", target_id);
+                // Exit this ChatSession - coordinator will switch to the target session
+                Ok(ChatState::Exit)
             },
             ChatState::Exit => return Ok(()),
         };
@@ -1890,6 +2037,14 @@ impl ChatSession {
 
 impl Drop for ChatSession {
     fn drop(&mut self) {
+        // Cancel spawned tasks to prevent resource leaks
+        if let Some(handle) = self.view_task_handle.take() {
+            handle.abort();
+        }
+        if let Some(handle) = self.ctrlc_task_handle.take() {
+            handle.abort();
+        }
+        
         // Log session end for analytics
         if let Some(ref mut analytics) = self.analytics {
             let completion_status = if matches!(self.inner, Some(ChatState::Exit)) {
@@ -1950,6 +2105,8 @@ pub enum ChatState {
     },
     /// Retry the current request if we encounter a model overloaded error.
     RetryModelOverload,
+    /// Switch to a different session
+    SwitchSession { target_id: String },
     /// Exit the chat.
     Exit,
 }
@@ -2139,6 +2296,21 @@ impl ChatSession {
         }
 
         while !matches!(self.inner, Some(ChatState::Exit)) {
+            // Check for pause signal
+            if let Some(ref mut pause_rx) = self.pause_rx {
+                if pause_rx.try_recv().is_ok() {
+                    // Paused - wait for resume
+                    if let Some(ref resume_tx) = self.resume_tx {
+                        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+                        // Store resume channel for coordinator
+                        drop(resume_tx); // Release old sender
+                        self.resume_tx = Some(tx);
+                        // Wait for resume signal
+                        let _ = rx.recv().await;
+                    }
+                }
+            }
+            
             self.next(os).await?;
         }
 
@@ -3061,6 +3233,7 @@ impl ChatSession {
     }
 
     async fn handle_input(&mut self, os: &mut Os, mut user_input: String) -> Result<ChatState, ChatError> {
+        eprintln!("[DEBUG] handle_input - conversation has next_message: {}", self.conversation.next_user_message().is_some());
         queue!(self.stderr, style::Print('\n'))?;
         user_input = sanitize_unicode_tags(&user_input);
 
@@ -3232,10 +3405,8 @@ impl ChatSession {
                             if matches!(chat_state, ChatState::Exit)
                                 || matches!(chat_state, ChatState::HandleResponseStream(_))
                                 || matches!(chat_state, ChatState::HandleInput { input: _ })
-                                // TODO(bskiser): this is just a hotfix for handling state changes
-                                // from manually running /compact, without impacting behavior of
-                                // other slash commands.
                                 || matches!(chat_state, ChatState::CompactHistory { .. })
+                                || matches!(chat_state, ChatState::SwitchSession { .. })
                             {
                                 return Ok(chat_state);
                             }
@@ -4123,7 +4294,7 @@ impl ChatSession {
                             if message.content() == RESPONSE_TIMEOUT_CONTENT {
                                 error!(?request_id, ?message, "Encountered an unexpected model response");
                             }
-                            self.conversation.push_assistant_message(os, message, Some(rm.clone()));
+                            self.conversation.push_assistant_message(os, message, Some(rm.clone())).await;
                             self.user_turn_request_metadata.push(rm);
                             ended = true;
                         },
@@ -4167,7 +4338,7 @@ impl ChatSession {
                                 os,
                                 AssistantMessage::new_response(None, RESPONSE_TIMEOUT_CONTENT.to_string()),
                                 None,
-                            );
+                            ).await;
                             self.conversation
                                 .set_next_user_message(
                                     "You took too long to respond - try to split up the work into smaller steps."
@@ -4842,18 +5013,23 @@ impl ChatSession {
             None
         };
 
-        // Get active session name from coordinator (not current session)
+        // Get session name from coordinator's active session
         let session_name = if let Some(ref coord) = self.coordinator {
             let coord_lock = coord.lock().await;
-            // Always show the active session name
             if let Some(active_id) = coord_lock.active_session_id().await {
-                coord_lock.get_session_name(&active_id)
+                let name = coord_lock.get_session_name(&active_id).await;
+                // Add visible debug to prompt
+                if name.is_none() {
+                    let _ = execute!(self.stderr, style::Print(format!("[DEBUG: active_id={}, name=None]\n", active_id)));
+                }
+                name
             } else {
-                // If no active session set, use current session as fallback
-                coord_lock.get_session_name(self.conversation.conversation_id())
+                let _ = execute!(self.stderr, style::Print("[DEBUG: No active_session_id]\n"));
+                None
             }
         } else {
-            None
+            let _ = execute!(self.stderr, style::Print("[DEBUG: No coordinator]\n"));
+            self.active_session_name.clone()
         };
 
         let mut generated_prompt =
@@ -4884,15 +5060,6 @@ impl ChatSession {
 
     fn all_tools_trusted(&self) -> bool {
         self.conversation.agents.trust_all_tools
-    }
-
-    /// Switch to a different conversation
-    pub fn switch_conversation(&mut self, new_conversation: ConversationState) {
-        self.conversation = new_conversation;
-        // Clear any pending state
-        self.tool_uses.clear();
-        self.pending_tool_index = None;
-        self.pending_prompts.clear();
     }
 
     /// Display character limit warnings based on current conversation size
