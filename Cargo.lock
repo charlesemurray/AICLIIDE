@@ -83,7 +83,7 @@ dependencies = [
  "mockito",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
- "objc2-foundation 0.2.2",
+ "objc2-foundation 0.3.2",
  "paste",
  "percent-encoding",
  "pin-project-lite",
@@ -1447,7 +1447,7 @@ dependencies = [
  "nix 0.29.0",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
- "objc2-foundation 0.2.2",
+ "objc2-foundation 0.3.2",
  "ratatui 0.29.0",
  "security-framework 3.5.1",
  "serde",
@@ -1528,7 +1528,7 @@ dependencies = [
  "nix 0.29.0",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
- "objc2-foundation 0.2.2",
+ "objc2-foundation 0.3.2",
  "once_cell",
  "owo-colors",
  "parking_lot",
@@ -5069,6 +5069,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.10.0",
+ "block2 0.6.2",
+ "libc",
  "objc2 0.6.3",
  "objc2-core-foundation",
 ]
