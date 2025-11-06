@@ -298,6 +298,19 @@ pub struct ChatArgs {
 impl ChatArgs {
     pub async fn execute(mut self, os: &mut Os) -> Result<ExitCode> {
         let mut input = self.input;
+        
+        // Check if we're in a worktree with an existing session
+        let mut resume_from_worktree = false;
+        let current_dir = os.env.current_dir()?;
+        if let Ok(git_ctx) = crate::git::context::detect_git_context(&current_dir) {
+            if git_ctx.is_worktree {
+                let session_file = current_dir.join(".amazonq/session.json");
+                if session_file.exists() {
+                    eprintln!("[WORKTREE] Found existing session in worktree");
+                    resume_from_worktree = true;
+                }
+            }
+        }
 
         // Initialize multi-session coordinator
         let mut coordinator = {
@@ -324,6 +337,38 @@ impl ChatArgs {
 
             Some(coord)
         };
+
+        // Handle worktree creation if requested
+        if let Some(worktree_name) = &self.worktree {
+            if !self.no_worktree {
+                eprintln!("[WORKTREE] Creating worktree: {}", worktree_name);
+                
+                // Detect git context
+                let current_dir = os.env.current_dir()?;
+                if let Ok(git_ctx) = crate::git::context::detect_git_context(&current_dir) {
+                    // Create worktree
+                    match crate::git::worktree::create_worktree(
+                        &git_ctx.repo_root,
+                        worktree_name,
+                        "HEAD",
+                        None
+                    ) {
+                        Ok(worktree_path) => {
+                            eprintln!("✓ Created worktree at: {}", worktree_path.display());
+                            
+                            // Change to worktree directory
+                            std::env::set_current_dir(&worktree_path)?;
+                            eprintln!("✓ Changed to worktree directory");
+                        },
+                        Err(e) => {
+                            eprintln!("Warning: Failed to create worktree: {}", e);
+                        }
+                    }
+                } else {
+                    eprintln!("Warning: Not in a git repository, cannot create worktree");
+                }
+            }
+        }
 
         if self.no_interactive && input.is_none() {
             if !std::io::stdin().is_terminal() {
@@ -869,6 +914,42 @@ impl ChatArgs {
             let session_arc = Arc::new(Mutex::new(session));
             if let Err(e) = coord_lock.set_chat_session(&conversation_id, session_arc.clone()).await {
                 eprintln!("Warning: Failed to store ChatSession: {}", e);
+            }
+            
+            // Persist session to worktree if in one
+            let current_dir = os.env.current_dir()?;
+            if let Ok(git_ctx) = crate::git::context::detect_git_context(&current_dir) {
+                if git_ctx.is_worktree {
+                    eprintln!("[WORKTREE] Detected worktree, persisting session");
+                    
+                    // Create session metadata for worktree
+                    let metadata = crate::session::metadata::SessionMetadata {
+                        version: crate::session::metadata::METADATA_VERSION,
+                        id: conversation_id.clone(),
+                        status: crate::session::metadata::SessionStatus::Active,
+                        created: time::OffsetDateTime::now_utc(),
+                        last_active: time::OffsetDateTime::now_utc(),
+                        first_message: "Worktree session".to_string(),
+                        name: None,
+                        file_count: 0,
+                        message_count: 0,
+                        worktree_info: Some(crate::session::metadata::WorktreeInfo {
+                            path: current_dir.clone(),
+                            branch: git_ctx.branch_name.clone(),
+                            repo_root: git_ctx.repo_root.clone(),
+                            is_temporary: false,
+                            merge_target: "main".to_string(),
+                        }),
+                        custom_fields: std::collections::HashMap::new(),
+                    };
+                    
+                    // Save to worktree
+                    if let Err(e) = worktree_repo::save_to_worktree(&current_dir, &metadata) {
+                        eprintln!("Warning: Failed to persist session to worktree: {}", e);
+                    } else {
+                        eprintln!("✓ Session persisted to worktree");
+                    }
+                }
             }
             
             // Continue with the coordinator's main loop
