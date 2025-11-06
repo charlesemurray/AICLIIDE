@@ -4218,7 +4218,12 @@ impl ChatSession {
 
         let request_id = rx.request_id().map(String::from);
 
-        let mut buf = String::new();
+        // Resume partial response if we switched back to this session
+        let mut buf = if let Some(partial) = self.conversation.take_partial_response() {
+            partial
+        } else {
+            String::new()
+        };
         let mut offset = 0;
         let mut ended = false;
         let terminal_width = match self.wrap {
@@ -4252,6 +4257,26 @@ impl ChatSession {
         }
 
         loop {
+            // Check if we should switch to another session
+            if !self.is_active_session() {
+                // Save partial response before switching
+                if !buf.is_empty() {
+                    self.conversation.save_partial_response(buf.clone());
+                }
+                // Get target session ID from coordinator
+                if let Some(ref coord) = self.coordinator {
+                    if let Ok(coord_guard) = coord.try_lock() {
+                        if let Ok(state) = coord_guard.state.try_lock() {
+                            if let Some(target_id) = &state.active_session_id {
+                                return Ok(ChatState::SwitchSession {
+                                    target_id: target_id.clone(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
             match rx.recv().await {
                 Some(Ok(msg_event)) => {
                     trace!("Consumed: {:?}", msg_event);
