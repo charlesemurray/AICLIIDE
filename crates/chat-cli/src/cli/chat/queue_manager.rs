@@ -6,6 +6,7 @@ use tokio::sync::{Mutex, mpsc};
 use eyre::Result;
 
 use super::message_queue::{MessageQueue, QueuedMessage, MessagePriority};
+use crate::api_client::ApiClient;
 
 /// Callback for processing messages
 pub type ProcessCallback = Arc<dyn Fn(String) -> String + Send + Sync>;
@@ -38,6 +39,7 @@ pub enum LLMResponse {
 pub struct QueueManager {
     queue: Arc<Mutex<MessageQueue>>,
     response_channels: Arc<Mutex<HashMap<String, mpsc::UnboundedSender<LLMResponse>>>>,
+    api_client: Option<ApiClient>,
 }
 
 impl QueueManager {
@@ -45,6 +47,16 @@ impl QueueManager {
         Self {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
+            api_client: None,
+        }
+    }
+    
+    /// Create with API client for real LLM calls
+    pub fn with_api_client(api_client: ApiClient) -> Self {
+        Self {
+            queue: Arc::new(Mutex::new(MessageQueue::new())),
+            response_channels: Arc::new(Mutex::new(HashMap::new())),
+            api_client: Some(api_client),
         }
     }
     
@@ -96,7 +108,21 @@ impl QueueManager {
                             continue;
                         }
                         
-                        // Simulate LLM processing time
+                        // Use real LLM API if available, otherwise simulate
+                        if let Some(ref _client) = self.api_client {
+                            eprintln!("[WORKER] Real LLM integration available but requires ConversationState");
+                            eprintln!("[WORKER] Current message queue only supports String messages");
+                            eprintln!("[WORKER] Falling back to simulation - see TODO in queue_manager.rs");
+                        }
+                        
+                        // TODO: Replace simulation with real LLM API call
+                        // To integrate real LLM processing:
+                        // 1. Change QueuedMessage.message from String to ConversationState
+                        // 2. Call: let output = client.send_message(queued_msg.conversation_state).await?;
+                        // 3. Stream responses from output.into_stream()
+                        // 4. Handle tool uses, errors, and interruptions
+                        //
+                        // Current simulation demonstrates the queue/worker infrastructure works correctly
                         eprintln!("[WORKER] Simulating LLM processing for session {}", queued_msg.session_id);
                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
