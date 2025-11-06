@@ -34,6 +34,7 @@ pub mod session_persistence;
 pub mod session_scanner;
 pub mod session_switcher;
 pub mod session_transition;
+pub mod status_bar;
 pub mod terminal_state;
 pub mod terminal_ui;
 pub mod worktree_session;
