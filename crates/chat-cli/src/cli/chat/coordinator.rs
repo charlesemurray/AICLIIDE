@@ -655,6 +655,26 @@ impl MultiSessionCoordinator {
         state.background_notifications.insert(session_id, message);
     }
     
+    /// Store background response for a session
+    pub async fn store_background_response(&self, session_id: &str, response: String) {
+        let mut state = self.state.lock().await;
+        if let Some(session) = state.sessions.get_mut(session_id) {
+            session.background_responses.push(response);
+            eprintln!("[STORE] Stored background response for session {} ({} total)", 
+                session_id, session.background_responses.len());
+        }
+    }
+    
+    /// Get and clear background responses for a session
+    pub async fn take_background_responses(&self, session_id: &str) -> Vec<String> {
+        let mut state = self.state.lock().await;
+        if let Some(session) = state.sessions.get_mut(session_id) {
+            std::mem::take(&mut session.background_responses)
+        } else {
+            Vec::new()
+        }
+    }
+    
     /// Check if session has pending notifications
     pub async fn has_notification(&self, session_id: &str) -> bool {
         let state = self.state.lock().await;

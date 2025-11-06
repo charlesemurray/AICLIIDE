@@ -2190,10 +2190,12 @@ impl ChatSession {
     }
 
     async fn spawn(&mut self, os: &mut Os) -> Result<()> {
-        // Check for background notifications
+        // Check for background notifications and responses
         if let Some(ref coord) = self.coordinator {
             if let Ok(coord_guard) = coord.try_lock() {
                 let session_id = self.conversation.conversation_id().to_string();
+                
+                // Check for notification
                 if let Some(notif) = coord_guard.take_notification(&session_id).await {
                     execute!(
                         self.stderr,
@@ -2203,6 +2205,27 @@ impl ChatSession {
                         style::Print(&notif),
                         style::Print("\n\n")
                     )?;
+                    
+                    // Display accumulated background responses
+                    let responses = coord_guard.take_background_responses(&session_id).await;
+                    if !responses.is_empty() {
+                        execute!(
+                            self.stderr,
+                            StyledText::info_fg(),
+                            style::Print("Background responses:\n"),
+                            StyledText::reset()
+                        )?;
+                        
+                        for response in responses {
+                            execute!(
+                                self.stderr,
+                                style::Print(&response),
+                                style::Print("\n")
+                            )?;
+                        }
+                        
+                        execute!(self.stderr, style::Print("\n"))?;
+                    }
                 }
             }
         }

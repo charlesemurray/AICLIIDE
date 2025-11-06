@@ -69,7 +69,7 @@ impl QueueManager {
                     
                     if let Some(tx) = tx {
                         // Send processing indicator
-                        let _ = tx.send(LLMResponse::Chunk("Processing in background...".to_string()));
+                        let _ = tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string()));
                         
                         // Check for interruption
                         if self.should_interrupt().await {
@@ -78,14 +78,26 @@ impl QueueManager {
                             continue;
                         }
                         
-                        // Simulate work (in real impl, this would call LLM API)
+                        // Simulate LLM processing time
                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
-                        // Send completion
-                        let _ = tx.send(LLMResponse::Chunk(format!(
-                            "Background processing complete for: {}",
+                        // Generate response based on message
+                        let response = format!(
+                            "I've processed your message in the background:\n\n\
+                            > {}\n\n\
+                            This is a simulated response. In production, this would be \
+                            the actual LLM response from the API.\n\n\
+                            The background processing system is working correctly!",
                             queued_msg.message
-                        )));
+                        );
+                        
+                        // Send response chunks (simulate streaming)
+                        for chunk in response.split('\n') {
+                            let _ = tx.send(LLMResponse::Chunk(format!("{}\n", chunk)));
+                            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                        }
+                        
+                        // Send completion
                         let _ = tx.send(LLMResponse::Complete);
                         
                         eprintln!("[WORKER] Completed processing for session {}", queued_msg.session_id);
