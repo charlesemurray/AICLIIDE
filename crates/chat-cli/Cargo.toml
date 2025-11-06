@@ -127,6 +127,7 @@ zip.workspace = true
 rmcp.workspace = true
 chat-cli-ui.workspace = true 
 tower = { version = "0.5.2", features = ["full"] }
+once_cell = "1.21.3"
 
 [target.'cfg(unix)'.dependencies]
 nix.workspace = true

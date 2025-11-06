@@ -185,7 +185,7 @@ impl MultiSessionCoordinator {
         
         // Start background worker
         queue_manager.clone().start_background_worker();
-        eprintln!("[COORDINATOR] Background worker started");
+        tracing::info!("COORDINATOR Background worker started");
 
         Self {
             state: Arc::new(Mutex::new(SessionState {
@@ -219,6 +219,9 @@ impl MultiSessionCoordinator {
     
     /// Set API client for real LLM calls (foreground and background)
     pub fn set_api_client(&mut self, client: crate::api_client::ApiClient) {
+        // Initialize file logging
+        crate::cli::chat::priority_logger::init();
+        
         let total_permits = self.rate_limiter.max_concurrent();
         
         // Configure priority limiter
@@ -253,12 +256,12 @@ impl MultiSessionCoordinator {
         new_queue_manager.clone().start_background_worker();
         self.queue_manager = new_queue_manager;
         
-        eprintln!("[COORDINATOR] Priority-based rate limiting configured");
-        eprintln!("[COORDINATOR] Total capacity: {} concurrent calls", total_permits);
-        eprintln!("[COORDINATOR] Priority pool: {} permits (foreground tries here first)", priority_permits);
-        eprintln!("[COORDINATOR] Shared pool: {} permits (fallback + background)", shared_permits);
-        eprintln!("[COORDINATOR] Priority timeout: {:?}", priority_timeout);
-        eprintln!("[COORDINATOR] Background workers: {}", num_workers);
+        tracing::info!("COORDINATOR Priority-based rate limiting configured");
+        tracing::info!("COORDINATOR Total capacity: {} concurrent calls", total_permits);
+        tracing::info!("COORDINATOR Priority pool: {} permits (foreground tries here first)", priority_permits);
+        tracing::info!("COORDINATOR Shared pool: {} permits (fallback + background)", shared_permits);
+        tracing::info!("COORDINATOR Priority timeout: {:?}", priority_timeout);
+        tracing::info!("COORDINATOR Background workers: {}", num_workers);
     }
 
     /// Save session to disk with error handling

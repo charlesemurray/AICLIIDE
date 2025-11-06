@@ -998,7 +998,7 @@ impl ToolManager {
                         })?;
                     
                     let skill_tool = crate::cli::chat::tools::skill::SkillTool::from_definition(definition);
-                    return Ok(Tool::SkillNew(skill_tool));
+                    return Ok(Tool::Skill(skill_tool));
                 }
 
                 // Check if it's a workflow

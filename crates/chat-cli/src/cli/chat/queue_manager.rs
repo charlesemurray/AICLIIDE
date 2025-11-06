@@ -73,7 +73,7 @@ impl QueueManager {
     
     /// Start background workers to process queued messages
     pub fn start_background_worker(self: Arc<Self>) {
-        eprintln!("[WORKER] Starting {} background worker threads with Tower rate limiting", 
+        tracing::debug!("WORKER] Starting {} background worker threads with Tower rate limiting", 
             self.num_workers);
         
         // Spawn multiple workers
@@ -81,7 +81,7 @@ impl QueueManager {
             let self_clone = Arc::clone(&self);
             
             tokio::spawn(async move {
-                eprintln!("[WORKER-{}] Started", worker_id);
+                tracing::debug!("WORKER-{}] Started", worker_id);
                 let mut iteration = 0;
                 
                 loop {
@@ -92,7 +92,7 @@ impl QueueManager {
                         let mut queue = self_clone.queue.lock().await;
                         if iteration % 100 == 0 {
                             let stats = queue.stats();
-                            eprintln!("[WORKER-{}] Iteration {} - Queue stats: high={}, low={}", 
+                            tracing::debug!("WORKER-{}] Iteration {} - Queue stats: high={}, low={}", 
                                 worker_id, iteration, stats.high_priority_count, stats.low_priority_count);
                         }
                         queue.dequeue()
@@ -100,7 +100,7 @@ impl QueueManager {
                     
                     if let Some(queued_msg) = msg {
                         let elapsed = queued_msg.timestamp.elapsed();
-                        eprintln!("[WORKER-{}] Processing message from session {} (waited: {:?}, priority: {:?})", 
+                        tracing::debug!("WORKER-{}] Processing message from session {} (waited: {:?}, priority: {:?})", 
                             worker_id, queued_msg.session_id, elapsed, queued_msg.priority);
                         
                         // Get response channel
@@ -115,7 +115,7 @@ impl QueueManager {
                             
                             // Check for interruption
                             if self_clone.should_interrupt().await {
-                                eprintln!("[WORKER-{}] Interrupted for higher priority (session: {})", 
+                                tracing::debug!("WORKER-{}] Interrupted for higher priority (session: {})", 
                                     worker_id, queued_msg.session_id);
                                 let _ = tx.send(LLMResponse::Interrupted);
                                 continue;
@@ -143,11 +143,11 @@ impl QueueManager {
     ) {
         // Use Tower with PriorityLimiter if available
         if let (Some(tower), Some(limiter)) = (&self.llm_tower, &self.priority_limiter) {
-            eprintln!("[WORKER-{}] Using PriorityLimiter for background call", worker_id);
+            tracing::debug!("WORKER-{}] Using PriorityLimiter for background call", worker_id);
             
             // Acquire permit for background (uses shared pool)
             let _permit = limiter.acquire_background().await;
-            eprintln!("[WORKER-{}] Background permit acquired", worker_id);
+            tracing::debug!("WORKER-{}] Background permit acquired", worker_id);
             
             // Create conversation state
             use crate::api_client::model::{ConversationState, UserInputMessage};
@@ -167,13 +167,13 @@ impl QueueManager {
             let mut tower_guard = tower.lock().await;
             match tower_guard.call_low_priority(conv_state).await {
                 Ok(mut stream) => {
-                    eprintln!("[WORKER-{}] Background LLM streaming started", worker_id);
+                    tracing::debug!("WORKER-{}] Background LLM streaming started", worker_id);
                     let mut chunk_count = 0;
                     
                     // Stream responses
                     loop {
                         if self.should_interrupt().await {
-                            eprintln!("[WORKER-{}] Interrupted", worker_id);
+                            tracing::debug!("WORKER-{}] Interrupted", worker_id);
                             let _ = tx.send(LLMResponse::Interrupted);
                             break;
                         }
@@ -189,7 +189,7 @@ impl QueueManager {
                                         chunk_count += 1;
                                     },
                                     ResponseEvent::ToolUseStart { name } => {
-                                        eprintln!("[WORKER-{}] Tool use starting: {}", worker_id, name);
+                                        tracing::debug!("WORKER-{}] Tool use starting: {}", worker_id, name);
                                     },
                                     ResponseEvent::ToolUse(tool_use) => {
                                         if tx.send(LLMResponse::ToolUse { 
@@ -206,7 +206,7 @@ impl QueueManager {
                                 }
                             },
                             Some(Err(e)) => {
-                                eprintln!("[WORKER-{}] Stream error: {}", worker_id, e);
+                                tracing::debug!("WORKER-{}] Stream error: {}", worker_id, e);
                                 let _ = tx.send(LLMResponse::Error(format!("Stream error: {}", e)));
                                 break;
                             },
@@ -217,11 +217,11 @@ impl QueueManager {
                     }
                     
                     let _ = tx.send(LLMResponse::Complete);
-                    eprintln!("[WORKER-{}] Completed ({} chunks)", worker_id, chunk_count);
+                    tracing::debug!("WORKER-{}] Completed ({} chunks)", worker_id, chunk_count);
                     return;
                 },
                 Err(e) => {
-                    eprintln!("[WORKER-{}] LLM call failed: {}", worker_id, e);
+                    tracing::debug!("WORKER-{}] LLM call failed: {}", worker_id, e);
                     let _ = tx.send(LLMResponse::Error(format!("LLM API error: {}", e)));
                     return;
                 }
@@ -229,7 +229,7 @@ impl QueueManager {
         }
         
         // Fallback to simulation
-        eprintln!("[WORKER-{}] No PriorityLimiter, using simulation", worker_id);
+        tracing::debug!("WORKER-{}] No PriorityLimiter, using simulation", worker_id);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
         // Generate response based on message
@@ -242,14 +242,14 @@ impl QueueManager {
             queued_msg.message
         );
         
-        eprintln!("[WORKER-{}] Sending response to session {} ({} bytes)", 
+        tracing::debug!("WORKER-{}] Sending response to session {} ({} bytes)", 
             worker_id, queued_msg.session_id, response.len());
         
         // Send response chunks (simulate streaming)
         let mut chunk_count = 0;
         for chunk in response.split('\n') {
             if tx.send(LLMResponse::Chunk(format!("{}\n", chunk))).is_err() {
-                eprintln!("[WORKER-{}] ERROR: Failed to send chunk {} to session {}", 
+                tracing::debug!("WORKER-{}] ERROR: Failed to send chunk {} to session {}", 
                     worker_id, chunk_count, queued_msg.session_id);
                 break;
             }
@@ -259,9 +259,9 @@ impl QueueManager {
         
         // Send completion
         if tx.send(LLMResponse::Complete).is_err() {
-            eprintln!("[WORKER-{}] ERROR: Failed to send completion to session {}", worker_id, queued_msg.session_id);
+            tracing::debug!("WORKER-{}] ERROR: Failed to send completion to session {}", worker_id, queued_msg.session_id);
         } else {
-            eprintln!("[WORKER-{}] Completed processing for session {} (sent {} chunks)", 
+            tracing::debug!("WORKER-{}] Completed processing for session {} (sent {} chunks)", 
                 worker_id, queued_msg.session_id, chunk_count);
         }
     }

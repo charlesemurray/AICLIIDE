@@ -106,12 +106,12 @@ impl PriorityLimiter {
                 let wait_us = start.elapsed().as_micros() as u64;
                 self.metrics.foreground_priority_count.fetch_add(1, Ordering::Relaxed);
                 self.metrics.priority_wait_time_us.fetch_add(wait_us, Ordering::Relaxed);
-                eprintln!("[PRIORITY] Foreground acquired priority permit ({}µs)", wait_us);
+                tracing::debug!("Foreground acquired priority permit ({}µs)", wait_us);
                 PriorityPermit::Priority(permit)
             },
             _ => {
                 // Timeout or error, fall back to shared
-                eprintln!("[PRIORITY] Foreground timeout, using shared pool");
+                tracing::debug!("Foreground timeout, using shared pool");
                 let permit = self.shared_semaphore.acquire().await.unwrap();
                 let wait_us = start.elapsed().as_micros() as u64;
                 self.metrics.foreground_fallback_count.fetch_add(1, Ordering::Relaxed);

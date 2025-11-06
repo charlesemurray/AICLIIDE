@@ -22,6 +22,7 @@ pub mod managed_session;
 pub mod memory_monitor;
 pub mod message_queue;
 pub mod priority_limiter;
+pub mod priority_logger;
 pub mod queue_manager;
 pub mod merge_workflow;
 mod message;
@@ -2283,7 +2284,7 @@ impl ChatSession {
         if let Some(ref coord) = self.coordinator {
             if let Ok(coord_guard) = coord.try_lock() {
                 if let (Some(tower), Some(limiter)) = (coord_guard.tower(), coord_guard.priority_limiter()) {
-                    eprintln!("[CHAT] Using PriorityLimiter for foreground call");
+                    tracing::debug!("Using PriorityLimiter for foreground call");
                     drop(coord_guard);
                     
                     // Acquire permit with priority
@@ -2293,11 +2294,11 @@ impl ChatSession {
                     let mut tower_guard = tower.lock().await;
                     match tower_guard.call_high_priority(conversation_state).await {
                         Ok(stream) => {
-                            eprintln!("[CHAT] Priority call successful");
+                            tracing::debug!("Priority call successful");
                             return Ok(stream);
                         },
                         Err(err) => {
-                            eprintln!("[CHAT] Priority call failed: {}", err);
+                            tracing::warn!("Priority call failed: {}", err);
                             let (reason, reason_desc) = get_error_reason(&err);
                             self.send_chat_telemetry(
                                 os,
@@ -2315,7 +2316,7 @@ impl ChatSession {
         }
         
         // Fallback to direct API call
-        eprintln!("[CHAT] Using direct API call (no PriorityLimiter)");
+        tracing::debug!("Using direct API call (no PriorityLimiter)");
         match SendMessageStream::send_message(&os.client, conversation_state, request_metadata_lock, message_meta_tags)
             .await
         {
