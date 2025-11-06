@@ -28,6 +28,12 @@ impl StatusBar {
         }
     }
     
+    /// Update status bar state
+    pub fn update(&mut self, notification_count: usize, background_active: bool) {
+        self.notification_count = notification_count;
+        self.background_active = background_active;
+    }
+    
     /// Render the status bar
     pub fn render<W: Write>(&self, writer: &mut W) -> Result<()> {
         execute!(

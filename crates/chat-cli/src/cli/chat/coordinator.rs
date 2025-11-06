@@ -687,6 +687,18 @@ impl MultiSessionCoordinator {
         state.background_notifications.contains_key(session_id)
     }
     
+    /// Get total notification count across all sessions
+    pub async fn notification_count(&self) -> usize {
+        let state = self.state.lock().await;
+        state.background_notifications.len()
+    }
+    
+    /// Check if any background work is in progress
+    pub async fn has_background_work(&self) -> bool {
+        let stats = self.queue_manager.stats().await;
+        stats.high_priority_count > 0 || stats.low_priority_count > 0
+    }
+    
     /// Get and clear notification for session
     pub async fn take_notification(&self, session_id: &str) -> Option<String> {
         let mut state = self.state.lock().await;
