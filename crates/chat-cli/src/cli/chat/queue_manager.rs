@@ -7,6 +7,9 @@ use eyre::Result;
 
 use super::message_queue::{MessageQueue, QueuedMessage, MessagePriority};
 
+/// Callback for processing messages
+pub type ProcessCallback = Arc<dyn Fn(String) -> String + Send + Sync>;
+
 /// Response from LLM processing
 #[derive(Debug, Clone)]
 pub enum LLMResponse {

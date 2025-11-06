@@ -2190,6 +2190,23 @@ impl ChatSession {
     }
 
     async fn spawn(&mut self, os: &mut Os) -> Result<()> {
+        // Check for background notifications
+        if let Some(ref coord) = self.coordinator {
+            if let Ok(coord_guard) = coord.try_lock() {
+                let session_id = self.conversation.conversation_id().to_string();
+                if let Some(notif) = coord_guard.take_notification(&session_id).await {
+                    execute!(
+                        self.stderr,
+                        StyledText::success_fg(),
+                        style::Print("📬 "),
+                        StyledText::reset(),
+                        style::Print(&notif),
+                        style::Print("\n\n")
+                    )?;
+                }
+            }
+        }
+        
         let is_small_screen = self.terminal_width() < GREETING_BREAK_POINT;
         if os
             .database
@@ -3782,6 +3799,20 @@ impl ChatSession {
 
             if self.interactive {
                 self.spinner = Some(Spinner::new(Spinners::Dots, "Thinking...".to_owned()));
+            }
+
+            // Check if should process in background
+            if self.should_process_in_background() {
+                eprintln!("[BACKGROUND] Session inactive, submitting to background queue");
+                // Get the message that was just set
+                if let Some(msg) = self.conversation.next_user_message() {
+                    let msg_text = format!("{:?}", msg.content); // Simple conversion for now
+                    if let Err(e) = self.submit_to_background(msg_text).await {
+                        eprintln!("[BACKGROUND] Failed to submit: {}", e);
+                    } else {
+                        return Ok(ChatState::PromptUser { skip_printing_tools: false });
+                    }
+                }
             }
 
             Ok(ChatState::HandleResponseStream(conv_state))
