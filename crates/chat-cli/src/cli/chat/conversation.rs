@@ -149,6 +149,9 @@ pub struct ConversationState {
     /// Tangent mode checkpoint - stores main conversation when in tangent mode
     #[serde(default, skip_serializing_if = "Option::is_none")]
     tangent_state: Option<ConversationCheckpoint>,
+    /// Partial response from interrupted LLM streaming
+    #[serde(skip)]
+    partial_response: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,6 +215,7 @@ impl ConversationState {
             checkpoint_manager: None,
             mcp_enabled,
             tangent_state: None,
+            partial_response: None,
         };
 
         // Create session metadata for new conversations
@@ -468,6 +472,21 @@ impl ConversationState {
     /// Returns the conversation id.
     pub fn conversation_id(&self) -> &str {
         self.conversation_id.as_ref()
+    }
+    
+    /// Save partial response from interrupted streaming
+    pub fn save_partial_response(&mut self, text: String) {
+        self.partial_response = Some(text);
+    }
+    
+    /// Check if there's a partial response
+    pub fn has_partial_response(&self) -> bool {
+        self.partial_response.is_some()
+    }
+    
+    /// Take partial response (consumes it)
+    pub fn take_partial_response(&mut self) -> Option<String> {
+        self.partial_response.take()
     }
 
     /// Create session metadata file for this conversation
