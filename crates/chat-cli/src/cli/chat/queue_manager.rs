@@ -45,6 +45,46 @@ impl QueueManager {
         }
     }
     
+    /// Start background worker to process queued messages
+    pub fn start_background_worker(self: Arc<Self>) {
+        tokio::spawn(async move {
+            loop {
+                // Check for messages to process
+                let msg = {
+                    let mut queue = self.queue.lock().await;
+                    queue.dequeue()
+                };
+                
+                if let Some(queued_msg) = msg {
+                    eprintln!("[WORKER] Processing message from session {}", queued_msg.session_id);
+                    
+                    // Get response channel
+                    let tx = {
+                        let channels = self.response_channels.lock().await;
+                        channels.get(&queued_msg.session_id).cloned()
+                    };
+                    
+                    if let Some(tx) = tx {
+                        // Simulate processing (in real impl, call LLM)
+                        let _ = tx.send(LLMResponse::Chunk("Processing...".to_string()));
+                        
+                        // Check for interruption
+                        if self.should_interrupt().await {
+                            eprintln!("[WORKER] Interrupted for higher priority");
+                            let _ = tx.send(LLMResponse::Interrupted);
+                            continue;
+                        }
+                        
+                        let _ = tx.send(LLMResponse::Complete);
+                    }
+                } else {
+                    // No messages, sleep briefly
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                }
+            }
+        });
+    }
+    
     /// Submit a message to the queue and get response channel
     pub async fn submit_message(
         &self,
@@ -207,6 +247,30 @@ mod tests {
         
         // Should interrupt now
         assert!(manager.should_interrupt().await);
+    }
+    
+    #[tokio::test]
+    async fn test_background_worker() {
+        let manager = Arc::new(QueueManager::new());
+        
+        // Start worker
+        manager.clone().start_background_worker();
+        
+        // Submit message
+        let mut rx = manager.submit_message(
+            "session1".to_string(),
+            "test".to_string(),
+            MessagePriority::High,
+        ).await;
+        
+        // Should receive responses from worker
+        let response = tokio::time::timeout(
+            tokio::time::Duration::from_secs(1),
+            rx.recv()
+        ).await;
+        
+        assert!(response.is_ok());
+        assert!(response.unwrap().is_some());
     }
     
     #[tokio::test]
