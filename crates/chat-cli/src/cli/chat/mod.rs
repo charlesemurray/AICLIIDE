@@ -2048,6 +2048,14 @@ impl ChatSession {
         }
         true // Default to active if no coordinator or can't lock
     }
+    
+    /// Check if should process in background
+    fn should_process_in_background(&self) -> bool {
+        // Only use background processing if:
+        // 1. We have a coordinator
+        // 2. This session is not active
+        self.coordinator.is_some() && !self.is_active_session()
+    }
 }
 
 impl Drop for ChatSession {
