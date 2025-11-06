@@ -91,7 +91,12 @@ impl SessionSwitcher {
         writeln!(writer, "\nActive Sessions:")?;
         for (num, name, is_active) in sessions {
             let marker = if is_active { " *" } else { "" };
-            writeln!(writer, "  [{}] {}{}", num, name, marker)?;
+            
+            // Check for notifications
+            let has_notif = coordinator.has_notification(&name).await;
+            let notif_marker = if has_notif { " 📬" } else { "" };
+            
+            writeln!(writer, "  [{}] {}{}{}", num, name, marker, notif_marker)?;
         }
         writeln!(writer)?;
         

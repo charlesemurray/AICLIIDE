@@ -177,6 +177,11 @@ impl MultiSessionCoordinator {
         let (state_tx, state_rx) = mpsc::channel(config.state_channel_capacity);
         let rate_limiter = ApiRateLimiter::new(config.max_concurrent_api_calls);
         let memory_monitor = MemoryMonitor::new();
+        let queue_manager = Arc::new(QueueManager::new());
+        
+        // Start background worker
+        queue_manager.clone().start_background_worker();
+        eprintln!("[COORDINATOR] Background worker started");
 
         Self {
             state: Arc::new(Mutex::new(SessionState {
@@ -196,7 +201,7 @@ impl MultiSessionCoordinator {
             cleanup_manager: ResourceCleanupManager::default(),
             dropped_events: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             active_chat_session: None,
-            queue_manager: Arc::new(QueueManager::new()),
+            queue_manager,
         }
     }
 
