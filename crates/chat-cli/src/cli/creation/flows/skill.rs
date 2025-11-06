@@ -82,10 +82,44 @@ pub struct SkillArtifact {
 
 impl CreationArtifact for SkillArtifact {
     fn persist(&self, location: &Path) -> Result<()> {
+        tracing::info!("Persisting skill artifact: {}", self.config.name);
         std::fs::create_dir_all(location)?;
         let file_path = location.join(format!("{}.json", self.config.name));
-        let json = serde_json::to_string_pretty(&self.config)?;
-        std::fs::write(file_path, json)?;
+        
+        // Convert SkillConfig to the JSON format expected by the skill registry
+        let skill_json = serde_json::json!({
+            "name": self.config.name,
+            "description": self.config.description,
+            "version": "1.0.0",
+            "type": match self.config.skill_type {
+                SkillType::CodeInline => "code_inline",
+                SkillType::Conversation => "conversation",
+                SkillType::CodeSession => "code_session",
+                SkillType::PromptInline => "prompt_inline",
+                SkillType::Rust => "rust"
+            },
+            "command": self.config.command,
+            "args": [],
+            "timeout": 30,
+            "security": if self.config.security.enabled {
+                serde_json::json!({
+                    "enabled": true,
+                    "level": match self.config.security.level {
+                        SecurityLevel::Low => "low",
+                        SecurityLevel::Medium => "medium", 
+                        SecurityLevel::High => "high"
+                    },
+                    "resource_limit": self.config.security.resource_limit
+                })
+            } else {
+                serde_json::json!({"enabled": false})
+            }
+        });
+        
+        let json = serde_json::to_string_pretty(&skill_json)?;
+        std::fs::write(&file_path, json)?;
+        
+        tracing::info!("Skill artifact saved to: {}", file_path.display());
         Ok(())
     }
 
@@ -467,6 +501,8 @@ impl CreationFlow for SkillCreationFlow {
                     let first_message = format!("Development session for conversation skill: {}", self.config.name);
                     let _metadata = SessionMetadata::new(&conversation_id, &first_message);
                     
+                    tracing::info!("Created session metadata for conversation skill: {}", self.config.name);
+                    
                     // Session will be created when user starts `q chat` - just provide guidance
                     ui.show_message(
                         "✓ Session created successfully",
@@ -478,6 +514,7 @@ impl CreationFlow for SkillCreationFlow {
                     );
                 }
                 
+                tracing::info!("Skill creation completed: {}", self.config.name);
                 Ok(PhaseResult::Complete)
             },
             _ => Ok(PhaseResult::Continue),

@@ -267,22 +267,47 @@ impl SkillRegistry {
             let path = entry.path();
 
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                let content = std::fs::read_to_string(&path).map_err(|e| SkillError::Io(e))?;
+                let content = std::fs::read_to_string(&path).map_err(|e| {
+                    tracing::error!("Failed to read skill file {}: {}", path.display(), e);
+                    SkillError::Io(e)
+                })?;
+
+                tracing::debug!("Loading skill from: {}", path.display());
 
                 // Parse as enhanced JSON skill directly
-                if let Ok(enhanced_skill) = serde_json::from_str::<crate::cli::skills::types::JsonSkill>(&content) {
-                    // Create SkillInfo from the enhanced skill
-                    let skill_info = SkillInfo {
-                        name: enhanced_skill.name.clone(),
-                        description: enhanced_skill
-                            .description
-                            .clone()
-                            .unwrap_or_else(|| format!("A {} skill", enhanced_skill.name)),
-                        version: "1.0.0".to_string(),
-                    };
+                match serde_json::from_str::<crate::cli::skills::types::JsonSkill>(&content) {
+                    Ok(enhanced_skill) => {
+                        tracing::info!("Successfully parsed skill: {}", enhanced_skill.name);
+                        
+                        // Create SkillInfo from the enhanced skill
+                        let skill_info = SkillInfo {
+                            name: enhanced_skill.name.clone(),
+                            description: enhanced_skill
+                                .description
+                                .clone()
+                                .unwrap_or_else(|| format!("A {} skill", enhanced_skill.name)),
+                            version: "1.0.0".to_string(),
+                        };
 
-                    if let Ok(json_skill) = crate::cli::skills::builtin::JsonSkill::new(skill_info, content) {
-                        let _ = self.register_override(Box::new(json_skill));
+                        match crate::cli::skills::builtin::JsonSkill::new(skill_info, content) {
+                            Ok(json_skill) => {
+                                match self.register_override(Box::new(json_skill)) {
+                                    Ok(_) => {
+                                        tracing::info!("Successfully registered skill: {}", enhanced_skill.name);
+                                    },
+                                    Err(e) => {
+                                        tracing::error!("Failed to register skill {}: {}", enhanced_skill.name, e);
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                tracing::error!("Failed to create JsonSkill for {}: {}", enhanced_skill.name, e);
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        tracing::warn!("Failed to parse skill file {}: {}", path.display(), e);
+                        tracing::debug!("File content: {}", content);
                     }
                 }
             }

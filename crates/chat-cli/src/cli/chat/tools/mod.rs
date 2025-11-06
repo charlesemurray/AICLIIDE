@@ -206,11 +206,28 @@ impl Tool {
                 let executor = crate::cli::workflow::WorkflowExecutor::new(registry);
                 workflow_tool.invoke(&executor, stdout).await
             },
-            Tool::SkillNew(_skill) => {
-                // Minimal implementation - not yet functional
-                Ok(InvokeOutput {
-                    output: OutputKind::Text("Skill execution not yet implemented".to_string()),
-                })
+            Tool::SkillNew(skill) => {
+                tracing::info!("Executing SkillNew: {}", skill.name);
+                
+                // Convert params to HashMap format expected by skill
+                let param_map = if let serde_json::Value::Object(obj) = params {
+                    obj.into_iter().collect()
+                } else {
+                    std::collections::HashMap::new()
+                };
+                
+                match skill.invoke(param_map) {
+                    Ok(result) => {
+                        tracing::info!("SkillNew execution successful: {}", skill.name);
+                        Ok(InvokeOutput {
+                            output: OutputKind::Text(result),
+                        })
+                    },
+                    Err(e) => {
+                        tracing::error!("SkillNew execution failed for {}: {}", skill.name, e);
+                        Err(e)
+                    }
+                }
             },
             Tool::WorkflowNew(workflow) => {
                 let params = std::collections::HashMap::new();

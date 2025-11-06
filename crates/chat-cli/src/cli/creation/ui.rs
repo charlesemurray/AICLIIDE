@@ -253,12 +253,22 @@ impl TerminalUI for TerminalUIImpl {
 
     fn request_chat_session(&mut self, field: &str, context: &str) -> Result<ChatSessionRequest> {
         println!("\n{}", self.colorize(&format!("Creating {}", field), SemanticColor::Info));
-        println!("{}", self.colorize("Opening chat session to help create this content...", SemanticColor::Info));
         
         let prompt = format!(
             "I'm creating a {} for a skill. Context: {}. Please help me create the appropriate content. When you provide the final answer, format it as: SKILL_CONTENT: [your content here]",
             field, context
         );
+        
+        tracing::info!("Chat session requested for field: {}", field);
+        tracing::debug!("Session context: {}", context);
+        
+        // Instead of pretending, provide clear guidance
+        println!("{}", self.colorize("💡 To get AI assistance:", SemanticColor::Info));
+        println!("{}", self.colorize("   1. Open a new terminal", SemanticColor::Debug));
+        println!("{}", self.colorize("   2. Run: q chat", SemanticColor::Debug));
+        println!("{}", self.colorize(&format!("   3. Ask: \"{}\"", prompt), SemanticColor::Debug));
+        println!("{}", self.colorize("   4. Copy the result back here", SemanticColor::Debug));
+        println!();
         
         Ok(ChatSessionRequest {
             field: field.to_string(),

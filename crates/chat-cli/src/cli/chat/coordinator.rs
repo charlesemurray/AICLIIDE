@@ -171,6 +171,8 @@ pub struct MultiSessionCoordinator {
     pub queue_manager: Arc<QueueManager>,
     /// Tower service for ALL LLM calls (shared by foreground and background)
     pub llm_tower: Option<Arc<tokio::sync::Mutex<crate::cli::chat::llm_tower::LLMTower>>>,
+    /// Priority-based rate limiter (replaces Tower's simple ConcurrencyLimit)
+    pub priority_limiter: Option<Arc<crate::cli::chat::priority_limiter::PriorityLimiter>>,
 }
 
 impl MultiSessionCoordinator {
@@ -205,6 +207,7 @@ impl MultiSessionCoordinator {
             active_chat_session: None,
             queue_manager,
             llm_tower: None,
+            priority_limiter: None,
         }
     }
 
@@ -217,31 +220,45 @@ impl MultiSessionCoordinator {
     /// Set API client for real LLM calls (foreground and background)
     pub fn set_api_client(&mut self, client: crate::api_client::ApiClient) {
         let total_permits = self.rate_limiter.max_concurrent();
-        let num_workers = if total_permits > 1 { total_permits - 1 } else { 1 };
         
-        // Create shared Tower instance for ALL LLM calls
+        // Configure priority limiter
+        // Priority pool: ~25% of capacity (min 3, max 10)
+        let priority_permits = (total_permits / 4).max(3).min(10);
+        let shared_permits = total_permits - priority_permits;
+        let priority_timeout = std::time::Duration::from_millis(100);
+        
+        let priority_limiter = Arc::new(crate::cli::chat::priority_limiter::PriorityLimiter::new(
+            priority_permits,
+            shared_permits,
+            priority_timeout
+        ));
+        
+        self.priority_limiter = Some(priority_limiter.clone());
+        
+        // Create shared Tower instance (without its own rate limiting)
         let tower = Arc::new(tokio::sync::Mutex::new(
             crate::cli::chat::llm_tower::LLMTower::new(client, total_permits)
         ));
-        
-        // Store Tower in coordinator (for foreground use)
         self.llm_tower = Some(tower.clone());
         
-        // Create queue manager with SAME Tower instance (for background use)
+        // Create queue manager with shared Tower and PriorityLimiter
+        let num_workers = shared_permits.min(5); // Cap workers at 5
         let new_queue_manager = Arc::new(
             crate::cli::chat::queue_manager::QueueManager::with_shared_tower(
-                tower.clone(),  // ← Pass the SAME Tower instance
+                tower.clone(),
+                priority_limiter.clone(),
                 num_workers
             )
         );
         new_queue_manager.clone().start_background_worker();
         self.queue_manager = new_queue_manager;
         
-        eprintln!("[COORDINATOR] Shared Tower instance configured");
-        eprintln!("[COORDINATOR] Total capacity: {} concurrent calls (SHARED by foreground + background)", total_permits);
-        eprintln!("[COORDINATOR] Foreground: uses Tower.call_high_priority()");
-        eprintln!("[COORDINATOR] Background: {} workers using Tower.call_low_priority()", num_workers);
-        eprintln!("[COORDINATOR] ✓ Both use SAME Tower instance - unified rate limiting");
+        eprintln!("[COORDINATOR] Priority-based rate limiting configured");
+        eprintln!("[COORDINATOR] Total capacity: {} concurrent calls", total_permits);
+        eprintln!("[COORDINATOR] Priority pool: {} permits (foreground tries here first)", priority_permits);
+        eprintln!("[COORDINATOR] Shared pool: {} permits (fallback + background)", shared_permits);
+        eprintln!("[COORDINATOR] Priority timeout: {:?}", priority_timeout);
+        eprintln!("[COORDINATOR] Background workers: {}", num_workers);
     }
 
     /// Save session to disk with error handling
@@ -902,6 +919,11 @@ impl MultiSessionCoordinator {
     /// Get Tower service for making LLM calls
     pub fn tower(&self) -> Option<Arc<tokio::sync::Mutex<crate::cli::chat::llm_tower::LLMTower>>> {
         self.llm_tower.clone()
+    }
+    
+    /// Get priority limiter for rate-limited calls
+    pub fn priority_limiter(&self) -> Option<Arc<crate::cli::chat::priority_limiter::PriorityLimiter>> {
+        self.priority_limiter.clone()
     }
     
     /// Get rate limiter for API calls

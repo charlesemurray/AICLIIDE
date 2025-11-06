@@ -21,6 +21,7 @@ pub mod llm_tower;
 pub mod managed_session;
 pub mod memory_monitor;
 pub mod message_queue;
+pub mod priority_limiter;
 pub mod queue_manager;
 pub mod merge_workflow;
 mod message;
@@ -2266,7 +2267,7 @@ impl Default for ChatState {
 
 impl ChatSession {
     /// Sends a request to the SendMessage API. Emits error telemetry on failure.
-    /// Uses Tower for rate-limited calls if coordinator is available.
+    /// Uses PriorityLimiter for foreground calls (tries priority pool, falls back to shared).
     async fn send_message(
         &mut self,
         os: &mut Os,
@@ -2274,21 +2275,25 @@ impl ChatSession {
         request_metadata_lock: Arc<Mutex<Option<RequestMetadata>>>,
         message_meta_tags: Option<Vec<MessageMetaTag>>,
     ) -> Result<SendMessageStream, ChatError> {
-        // Try to use Tower if coordinator is available (unified rate limiting)
+        // Try to use PriorityLimiter if coordinator available
         if let Some(ref coord) = self.coordinator {
             if let Ok(coord_guard) = coord.try_lock() {
-                if let Some(tower) = coord_guard.tower() {
-                    eprintln!("[CHAT] Using Tower for foreground LLM call (high priority)");
-                    drop(coord_guard); // Release lock before async call
+                if let (Some(tower), Some(limiter)) = (coord_guard.tower(), coord_guard.priority_limiter()) {
+                    eprintln!("[CHAT] Using PriorityLimiter for foreground call");
+                    drop(coord_guard);
                     
+                    // Acquire permit with priority
+                    let _permit = limiter.acquire_foreground().await;
+                    
+                    // Make call through Tower
                     let mut tower_guard = tower.lock().await;
                     match tower_guard.call_high_priority(conversation_state).await {
                         Ok(stream) => {
-                            eprintln!("[CHAT] Tower call successful");
+                            eprintln!("[CHAT] Priority call successful");
                             return Ok(stream);
                         },
                         Err(err) => {
-                            eprintln!("[CHAT] Tower call failed: {}", err);
+                            eprintln!("[CHAT] Priority call failed: {}", err);
                             let (reason, reason_desc) = get_error_reason(&err);
                             self.send_chat_telemetry(
                                 os,
@@ -2305,8 +2310,8 @@ impl ChatSession {
             }
         }
         
-        // Fallback to direct API call (no Tower available)
-        eprintln!("[CHAT] Using direct API call (no Tower)");
+        // Fallback to direct API call
+        eprintln!("[CHAT] Using direct API call (no PriorityLimiter)");
         match SendMessageStream::send_message(&os.client, conversation_state, request_metadata_lock, message_meta_tags)
             .await
         {
@@ -2319,9 +2324,8 @@ impl ChatSession {
                     Some(reason),
                     Some(reason_desc),
                     err.status_code(),
-                    true, // We never retry failed requests, so this always ends the current turn.
-                )
-                .await;
+                    true,
+                ).await;
                 Err(err.into())
             },
         }

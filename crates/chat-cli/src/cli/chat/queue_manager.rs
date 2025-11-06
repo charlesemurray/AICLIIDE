@@ -41,6 +41,7 @@ pub struct QueueManager {
     queue: Arc<Mutex<MessageQueue>>,
     response_channels: Arc<Mutex<HashMap<String, mpsc::UnboundedSender<LLMResponse>>>>,
     llm_tower: Option<Arc<Mutex<LLMTower>>>,
+    priority_limiter: Option<Arc<super::priority_limiter::PriorityLimiter>>,
     num_workers: usize,
 }
 
@@ -50,16 +51,22 @@ impl QueueManager {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             llm_tower: None,
+            priority_limiter: None,
             num_workers: 3,
         }
     }
     
-    /// Create with shared Tower instance (MUST be same instance as coordinator uses)
-    pub fn with_shared_tower(tower: Arc<Mutex<LLMTower>>, num_workers: usize) -> Self {
+    /// Create with shared Tower instance and PriorityLimiter
+    pub fn with_shared_tower(
+        tower: Arc<Mutex<LLMTower>>,
+        priority_limiter: Arc<super::priority_limiter::PriorityLimiter>,
+        num_workers: usize
+    ) -> Self {
         Self {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             llm_tower: Some(tower),
+            priority_limiter: Some(priority_limiter),
             num_workers,
         }
     }
@@ -127,16 +134,20 @@ impl QueueManager {
     }
     
     
-    /// Process a single message using Tower
+    /// Process a single message using Tower with PriorityLimiter
     async fn process_message(
         &self,
         worker_id: usize,
         queued_msg: QueuedMessage,
         tx: mpsc::UnboundedSender<LLMResponse>,
     ) {
-        // Use Tower if available
-        if let Some(ref tower) = self.llm_tower {
-            eprintln!("[WORKER-{}] Using Tower LLM service for session {}", worker_id, queued_msg.session_id);
+        // Use Tower with PriorityLimiter if available
+        if let (Some(tower), Some(limiter)) = (&self.llm_tower, &self.priority_limiter) {
+            eprintln!("[WORKER-{}] Using PriorityLimiter for background call", worker_id);
+            
+            // Acquire permit for background (uses shared pool)
+            let _permit = limiter.acquire_background().await;
+            eprintln!("[WORKER-{}] Background permit acquired", worker_id);
             
             // Create conversation state
             use crate::api_client::model::{ConversationState, UserInputMessage};
@@ -152,18 +163,17 @@ impl QueueManager {
                 history: None,
             };
             
-            // Call Tower service (handles rate limiting automatically)
+            // Call Tower service
             let mut tower_guard = tower.lock().await;
             match tower_guard.call_low_priority(conv_state).await {
                 Ok(mut stream) => {
-                    eprintln!("[WORKER-{}] Tower LLM streaming started for session {}", worker_id, queued_msg.session_id);
+                    eprintln!("[WORKER-{}] Background LLM streaming started", worker_id);
                     let mut chunk_count = 0;
                     
                     // Stream responses
                     loop {
-                        // Check for interruption
                         if self.should_interrupt().await {
-                            eprintln!("[WORKER-{}] Interrupted during streaming (session: {})", worker_id, queued_msg.session_id);
+                            eprintln!("[WORKER-{}] Interrupted", worker_id);
                             let _ = tx.send(LLMResponse::Interrupted);
                             break;
                         }
@@ -207,12 +217,11 @@ impl QueueManager {
                     }
                     
                     let _ = tx.send(LLMResponse::Complete);
-                    eprintln!("[WORKER-{}] Completed Tower LLM processing for session {} (sent {} chunks)", 
-                        worker_id, queued_msg.session_id, chunk_count);
+                    eprintln!("[WORKER-{}] Completed ({} chunks)", worker_id, chunk_count);
                     return;
                 },
                 Err(e) => {
-                    eprintln!("[WORKER-{}] Tower LLM call failed for session {}: {}", worker_id, queued_msg.session_id, e);
+                    eprintln!("[WORKER-{}] LLM call failed: {}", worker_id, e);
                     let _ = tx.send(LLMResponse::Error(format!("LLM API error: {}", e)));
                     return;
                 }
@@ -220,7 +229,7 @@ impl QueueManager {
         }
         
         // Fallback to simulation
-        eprintln!("[WORKER-{}] No Tower service, using simulation for session {}", worker_id, queued_msg.session_id);
+        eprintln!("[WORKER-{}] No PriorityLimiter, using simulation", worker_id);
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                         
         // Generate response based on message

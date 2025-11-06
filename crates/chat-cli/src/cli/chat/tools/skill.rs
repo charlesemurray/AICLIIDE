@@ -58,8 +58,62 @@ impl SkillTool {
         PermissionEvalResult::Allow
     }
 
-    pub fn invoke(&self, _params: HashMap<String, Value>) -> Result<String> {
-        Ok("not implemented".to_string())
+    pub fn invoke(&self, params: HashMap<String, Value>) -> Result<String> {
+        tracing::info!("Invoking skill: {}", self.name);
+        tracing::debug!("Skill parameters: {:?}", params);
+        
+        // Validate skill name to prevent injection
+        if !self.name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            tracing::error!("Invalid skill name contains unsafe characters: {}", self.name);
+            return Err(eyre::eyre!("Skill name contains invalid characters"));
+        }
+        
+        // For now, execute the description as a simple command
+        // TODO: Implement proper skill execution based on skill type
+        let command = self.description.clone();
+        
+        if command.is_empty() {
+            tracing::error!("Skill {} has no command to execute", self.name);
+            return Err(eyre::eyre!("Skill has no command defined"));
+        }
+        
+        // Basic command injection prevention
+        if command.contains(';') || command.contains('|') || command.contains('&') {
+            tracing::error!("Skill {} command contains potentially unsafe characters: {}", self.name, command);
+            return Err(eyre::eyre!("Command contains unsafe characters"));
+        }
+        
+        tracing::debug!("Executing command: {}", command);
+        
+        // Simple command execution with timeout
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .output()
+            .map_err(|e| {
+                tracing::error!("Failed to execute skill {}: {}", self.name, e);
+                eyre::eyre!("Command execution failed: {}", e)
+            })?;
+        
+        if output.status.success() {
+            let result = String::from_utf8_lossy(&output.stdout).to_string();
+            
+            // Limit output size to prevent memory issues
+            let truncated_result = if result.len() > 10000 {
+                tracing::warn!("Skill {} output truncated from {} to 10000 chars", self.name, result.len());
+                format!("{}... [truncated]", &result[..10000])
+            } else {
+                result
+            };
+            
+            tracing::info!("Skill {} executed successfully, output length: {}", self.name, truncated_result.len());
+            tracing::debug!("Skill output: {}", truncated_result);
+            Ok(truncated_result)
+        } else {
+            let error = String::from_utf8_lossy(&output.stderr).to_string();
+            tracing::error!("Skill {} failed with error: {}", self.name, error);
+            Err(eyre::eyre!("Command failed: {}", error))
+        }
     }
 
     pub fn get_script_path(&self, definition: &SkillDefinition) -> Result<PathBuf> {
