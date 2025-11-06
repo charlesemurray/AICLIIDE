@@ -2,14 +2,16 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc, Semaphore};
+use tokio::sync::{Mutex, mpsc};
 use eyre::Result;
 
 use super::message_queue::{MessageQueue, QueuedMessage, MessagePriority};
+use super::rate_limiter::ApiRateLimiter;
+use super::fair_scheduler::FairScheduler;
 use crate::api_client::ApiClient;
 
-/// Default maximum concurrent LLM API calls
-const DEFAULT_MAX_CONCURRENT_CALLS: usize = 3;
+/// Minimum permits to reserve for active session
+const RESERVED_FOR_ACTIVE: usize = 2;
 
 /// Callback for processing messages
 pub type ProcessCallback = Arc<dyn Fn(String) -> String + Send + Sync>;
@@ -43,8 +45,9 @@ pub struct QueueManager {
     queue: Arc<Mutex<MessageQueue>>,
     response_channels: Arc<Mutex<HashMap<String, mpsc::UnboundedSender<LLMResponse>>>>,
     api_client: Option<ApiClient>,
-    rate_limiter: Arc<Semaphore>,
-    max_workers: usize,
+    rate_limiter: Option<ApiRateLimiter>,
+    fair_scheduler: FairScheduler,
+    num_workers: usize,
 }
 
 impl QueueManager {
@@ -53,41 +56,37 @@ impl QueueManager {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             api_client: None,
-            rate_limiter: Arc::new(Semaphore::new(DEFAULT_MAX_CONCURRENT_CALLS)),
-            max_workers: DEFAULT_MAX_CONCURRENT_CALLS,
+            rate_limiter: None,
+            fair_scheduler: FairScheduler::new(),
+            num_workers: 3,
         }
     }
     
-    /// Create with API client for real LLM calls
-    pub fn with_api_client(api_client: ApiClient) -> Self {
+    /// Create with API client and shared rate limiter
+    pub fn with_rate_limiter(api_client: ApiClient, rate_limiter: ApiRateLimiter, num_workers: usize) -> Self {
         Self {
             queue: Arc::new(Mutex::new(MessageQueue::new())),
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             api_client: Some(api_client),
-            rate_limiter: Arc::new(Semaphore::new(DEFAULT_MAX_CONCURRENT_CALLS)),
-            max_workers: DEFAULT_MAX_CONCURRENT_CALLS,
-        }
-    }
-    
-    /// Create with custom rate limit
-    pub fn with_rate_limit(api_client: ApiClient, max_concurrent: usize) -> Self {
-        Self {
-            queue: Arc::new(Mutex::new(MessageQueue::new())),
-            response_channels: Arc::new(Mutex::new(HashMap::new())),
-            api_client: Some(api_client),
-            rate_limiter: Arc::new(Semaphore::new(max_concurrent)),
-            max_workers: max_concurrent,
+            rate_limiter: Some(rate_limiter),
+            fair_scheduler: FairScheduler::new(),
+            num_workers,
         }
     }
     
     /// Start background workers to process queued messages
     pub fn start_background_worker(self: Arc<Self>) {
-        eprintln!("[WORKER] Starting {} background worker threads with rate limit {}", 
-            self.max_workers, self.rate_limiter.available_permits());
+        let rate_limiter = self.rate_limiter.as_ref().map(|r| r.clone());
+        let has_rate_limiter = rate_limiter.is_some();
+        
+        eprintln!("[WORKER] Starting {} background worker threads (rate limiter: {})", 
+            self.num_workers, if has_rate_limiter { "shared" } else { "none" });
         
         // Spawn multiple workers
-        for worker_id in 0..self.max_workers {
+        for worker_id in 0..self.num_workers {
             let self_clone = Arc::clone(&self);
+            let rate_limiter_clone = rate_limiter.clone();
+            
             tokio::spawn(async move {
                 eprintln!("[WORKER-{}] Started", worker_id);
                 let mut iteration = 0;
@@ -107,13 +106,65 @@ impl QueueManager {
                     };
                     
                     if let Some(queued_msg) = msg {
-                        // Acquire rate limit permit BEFORE making API call
-                        eprintln!("[WORKER-{}] Acquiring rate limit permit (available: {})", 
-                            worker_id, self_clone.rate_limiter.available_permits());
-                        
-                        let permit = self_clone.rate_limiter.acquire().await.unwrap();
-                        eprintln!("[WORKER-{}] Permit acquired, processing session {}", 
-                            worker_id, queued_msg.session_id);
+                        // Try to acquire rate limit permit
+                        let permit = if let Some(ref limiter) = rate_limiter_clone {
+                            // Check if we should reserve permits for active session
+                            let available = limiter.available_permits();
+                            
+                            if available <= RESERVED_FOR_ACTIVE {
+                                eprintln!("[WORKER-{}] Only {} permits available, reserving for active session", 
+                                    worker_id, available);
+                                
+                                // Re-queue message and wait
+                                {
+                                    let mut queue = self_clone.queue.lock().await;
+                                    queue.enqueue(queued_msg);
+                                }
+                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                                continue;
+                            }
+                            
+                            // Register for fair scheduling
+                            self_clone.fair_scheduler.register_waiting(queued_msg.session_id.clone()).await;
+                            
+                            // Check if this session should go next (fairness)
+                            let next_session = self_clone.fair_scheduler.next_session().await;
+                            if next_session.as_ref() != Some(&queued_msg.session_id) {
+                                // Not our turn, re-queue and let another worker handle it
+                                eprintln!("[WORKER-{}] Session {} not next in fair queue, re-queueing", 
+                                    worker_id, queued_msg.session_id);
+                                {
+                                    let mut queue = self_clone.queue.lock().await;
+                                    queue.enqueue(queued_msg);
+                                }
+                                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                                continue;
+                            }
+                            
+                            eprintln!("[WORKER-{}] Acquiring rate limit permit for session {} (available: {})", 
+                                worker_id, queued_msg.session_id, available);
+                            
+                            match limiter.try_acquire() {
+                                Some(permit) => {
+                                    eprintln!("[WORKER-{}] Permit acquired for session {}", 
+                                        worker_id, queued_msg.session_id);
+                                    self_clone.fair_scheduler.mark_active(queued_msg.session_id.clone()).await;
+                                    Some(permit)
+                                },
+                                None => {
+                                    eprintln!("[WORKER-{}] No permits available, re-queueing session {}", 
+                                        worker_id, queued_msg.session_id);
+                                    {
+                                        let mut queue = self_clone.queue.lock().await;
+                                        queue.enqueue(queued_msg);
+                                    }
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                                    continue;
+                                }
+                            }
+                        } else {
+                            None
+                        };
                         
                         let elapsed = queued_msg.timestamp.elapsed();
                         eprintln!("[WORKER-{}] Processing message from session {} (waited: {:?}, priority: {:?})", 
@@ -135,7 +186,9 @@ impl QueueManager {
                             if tx.send(LLMResponse::Chunk("Processing your request in background...\n\n".to_string())).is_err() {
                                 eprintln!("[WORKER-{}] ERROR: Failed to send processing indicator to session {}", 
                                     worker_id, queued_msg.session_id);
-                                drop(permit); // Release permit
+                                if permit.is_some() {
+                                    self_clone.fair_scheduler.mark_inactive(queued_msg.session_id.clone()).await;
+                                }
                                 continue;
                             }
                             
@@ -144,19 +197,22 @@ impl QueueManager {
                                 eprintln!("[WORKER-{}] Interrupted for higher priority (session: {})", 
                                     worker_id, queued_msg.session_id);
                                 let _ = tx.send(LLMResponse::Interrupted);
-                                drop(permit); // Release permit
+                                if permit.is_some() {
+                                    self_clone.fair_scheduler.mark_inactive(queued_msg.session_id.clone()).await;
+                                }
                                 continue;
                             }
                             
                             // Process with real LLM or simulation
-                            self_clone.process_message(worker_id, queued_msg, tx).await;
+                            self_clone.process_message(worker_id, queued_msg.clone(), tx).await;
                             
-                            // Release permit after processing completes
-                            drop(permit);
-                            eprintln!("[WORKER-{}] Permit released (available: {})", 
-                                worker_id, self_clone.rate_limiter.available_permits());
-                        } else {
-                            drop(permit); // Release permit if no channel
+                            // Release permit and mark inactive
+                            if permit.is_some() {
+                                self_clone.fair_scheduler.mark_inactive(queued_msg.session_id).await;
+                                eprintln!("[WORKER-{}] Permit released", worker_id);
+                            }
+                        } else if permit.is_some() {
+                            self_clone.fair_scheduler.mark_inactive(queued_msg.session_id).await;
                         }
                     } else {
                         // No messages, sleep briefly

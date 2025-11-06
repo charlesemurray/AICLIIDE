@@ -213,11 +213,25 @@ impl MultiSessionCoordinator {
     
     /// Set API client for real LLM calls in background processing
     pub fn set_api_client(&mut self, client: crate::api_client::ApiClient) {
-        // Replace queue_manager with one that has the API client
-        let new_queue_manager = Arc::new(crate::cli::chat::queue_manager::QueueManager::with_api_client(client));
+        // Calculate number of workers (leave room for active session)
+        let total_permits = self.rate_limiter.max_concurrent();
+        let num_workers = if total_permits > 2 {
+            total_permits - 2  // Reserve 2 for active session
+        } else {
+            1
+        };
+        
+        // Replace queue_manager with one that has the API client and shared rate limiter
+        let new_queue_manager = Arc::new(crate::cli::chat::queue_manager::QueueManager::with_rate_limiter(
+            client,
+            self.rate_limiter.clone(),
+            num_workers
+        ));
         new_queue_manager.clone().start_background_worker();
         self.queue_manager = new_queue_manager;
         eprintln!("[COORDINATOR] API client configured for background processing");
+        eprintln!("[COORDINATOR] Rate limiter: {} total permits, {} workers, {} reserved for active", 
+            total_permits, num_workers, total_permits - num_workers);
     }
 
     /// Save session to disk with error handling
