@@ -139,6 +139,8 @@ pub(crate) struct SessionState {
     pub(crate) session_order: Vec<String>,
     /// Flag to signal application should quit
     pub(crate) should_quit: bool,
+    /// Sessions with pending background work completion
+    pub(crate) background_notifications: HashMap<String, String>,
 }
 
 /// Coordinates multiple chat sessions
@@ -182,6 +184,7 @@ impl MultiSessionCoordinator {
                 active_session_id: None,
                 session_order: Vec::new(),
                 should_quit: false,
+                background_notifications: HashMap::new(),
             })),
             config,
             state_rx,
@@ -637,6 +640,25 @@ impl MultiSessionCoordinator {
     pub async fn active_session_id(&self) -> Option<String> {
         let state = self.state.lock().await;
         state.active_session_id.clone()
+    }
+    
+    /// Add background work notification for a session
+    pub async fn notify_background_complete(&self, session_id: String, message: String) {
+        eprintln!("[NOTIFY] Background work complete for session {}", session_id);
+        let mut state = self.state.lock().await;
+        state.background_notifications.insert(session_id, message);
+    }
+    
+    /// Check if session has pending notifications
+    pub async fn has_notification(&self, session_id: &str) -> bool {
+        let state = self.state.lock().await;
+        state.background_notifications.contains_key(session_id)
+    }
+    
+    /// Get and clear notification for session
+    pub async fn take_notification(&self, session_id: &str) -> Option<String> {
+        let mut state = self.state.lock().await;
+        state.background_notifications.remove(session_id)
     }
     
     /// Signal the coordinator to quit the application
