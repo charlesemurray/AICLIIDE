@@ -1587,6 +1587,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "webpki-roots 0.26.8",
+ "which",
  "whoami",
  "windows 0.61.3",
  "winnow 0.6.2",
