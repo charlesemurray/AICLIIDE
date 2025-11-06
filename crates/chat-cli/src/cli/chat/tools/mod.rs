@@ -209,14 +209,7 @@ impl Tool {
             Tool::SkillNew(skill) => {
                 tracing::info!("Executing SkillNew: {}", skill.name);
                 
-                // Convert params to HashMap format expected by skill
-                let param_map = if let serde_json::Value::Object(obj) = params {
-                    obj.into_iter().collect()
-                } else {
-                    std::collections::HashMap::new()
-                };
-                
-                match skill.invoke(param_map) {
+                match skill.invoke(skill.parameters.clone()) {
                     Ok(result) => {
                         tracing::info!("SkillNew execution successful: {}", skill.name);
                         Ok(InvokeOutput {

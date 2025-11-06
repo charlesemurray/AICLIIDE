@@ -1533,6 +1533,7 @@ dependencies = [
  "parking_lot",
  "paste",
  "percent-encoding",
+ "petgraph",
  "predicates",
  "prettyplease",
  "quote",

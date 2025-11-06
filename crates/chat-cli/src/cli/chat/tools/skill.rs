@@ -22,6 +22,7 @@ const MAX_OUTPUT_SIZE: usize = 100_000;
 pub struct SkillTool {
     pub name: String,
     pub description: String,
+    pub parameters: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,7 +45,15 @@ pub struct SkillDefinition {
 
 impl SkillTool {
     pub fn new(name: String, description: String) -> Self {
-        Self { name, description }
+        Self { 
+            name, 
+            description,
+            parameters: HashMap::new(),
+        }
+    }
+
+    pub fn with_parameters(name: String, description: String, parameters: HashMap<String, Value>) -> Self {
+        Self { name, description, parameters }
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -354,6 +363,7 @@ impl SkillTool {
         Self {
             name: definition.name.clone(),
             description: definition.description.clone(),
+            parameters: HashMap::new(),
         }
     }
 }

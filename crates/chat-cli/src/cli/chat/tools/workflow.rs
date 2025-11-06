@@ -1,6 +1,7 @@
 //! Workflow tool implementation
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use eyre::Result;
 use serde::{
@@ -14,6 +15,9 @@ use crate::cli::agent::{
     PermissionEvalResult,
 };
 use crate::os::Os;
+
+/// Maximum time a single workflow step can run
+const STEP_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
 #[derive(Debug, Clone)]
 pub struct WorkflowTool {
@@ -263,7 +267,18 @@ impl WorkflowTool {
     }
 
     pub fn eval_perm(&self, _os: &Os, _agent: &Agent) -> PermissionEvalResult {
-        PermissionEvalResult::Allow
+        // Workflows should ask for permission since they can execute arbitrary commands
+        PermissionEvalResult::Ask
+    }
+    
+    /// Check if a workflow step requires permission
+    fn step_requires_permission(step: &WorkflowStep) -> bool {
+        matches!(step.tool.as_str(), 
+            "execute_bash" | 
+            "execute_bash_readonly" | 
+            "fs_write" |
+            "workflow" // Recursive workflows need permission
+        )
     }
 
     pub fn invoke(&self, _params: std::collections::HashMap<String, serde_json::Value>) -> Result<String> {
@@ -349,8 +364,10 @@ impl WorkflowTool {
             current_step += 1;
             let step_start = Instant::now();
 
-            match executor.execute_step_with_context_and_manager(step, &context, tool_manager.as_deref_mut()).await {
-                Ok(step_result) => {
+            let step_future = executor.execute_step_with_context_and_manager(step, &context, tool_manager.as_deref_mut());
+            
+            match tokio::time::timeout(STEP_TIMEOUT, step_future).await {
+                Ok(Ok(step_result)) => {
                     let step_duration = step_start.elapsed();
                     results.push(format!(
                         "Step '{}': {} (completed in {:.2}ms)",
@@ -360,9 +377,17 @@ impl WorkflowTool {
                     ));
                     context = executor.add_step_output_to_context(context, &step.name, &step_result.output);
                 },
-                Err(e) => {
+                Ok(Err(e)) => {
                     state = WorkflowState::Failed;
                     return Err(eyre::eyre!(self.format_error(current_step, &step.name, &e)));
+                },
+                Err(_) => {
+                    state = WorkflowState::Failed;
+                    return Err(eyre::eyre!(
+                        "Step '{}' timed out after {} seconds",
+                        step.name,
+                        STEP_TIMEOUT.as_secs()
+                    ));
                 },
             }
         }
