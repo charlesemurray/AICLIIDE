@@ -18,6 +18,7 @@ pub mod input_router;
 mod input_source;
 pub mod managed_session;
 pub mod memory_monitor;
+pub mod message_queue;
 pub mod merge_workflow;
 mod message;
 mod parse;
