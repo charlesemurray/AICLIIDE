@@ -4220,6 +4220,8 @@ impl ChatSession {
 
         // Resume partial response if we switched back to this session
         let mut buf = if let Some(partial) = self.conversation.take_partial_response() {
+            eprintln!("[DEBUG] Resuming partial response ({} chars) for session {}", 
+                partial.len(), self.conversation.conversation_id());
             partial
         } else {
             String::new()
@@ -4261,6 +4263,7 @@ impl ChatSession {
             if !self.is_active_session() {
                 // Save partial response before switching
                 if !buf.is_empty() {
+                    eprintln!("[DEBUG] Saving partial response ({} chars) before switch", buf.len());
                     self.conversation.save_partial_response(buf.clone());
                 }
                 // Get target session ID from coordinator
@@ -4268,6 +4271,8 @@ impl ChatSession {
                     if let Ok(coord_guard) = coord.try_lock() {
                         if let Ok(state) = coord_guard.state.try_lock() {
                             if let Some(target_id) = &state.active_session_id {
+                                eprintln!("[DEBUG] Switching from {} to {}", 
+                                    self.conversation.conversation_id(), target_id);
                                 return Ok(ChatState::SwitchSession {
                                     target_id: target_id.clone(),
                                 });
