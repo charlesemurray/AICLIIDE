@@ -65,8 +65,8 @@ impl QueueManager {
                     };
                     
                     if let Some(tx) = tx {
-                        // Simulate processing (in real impl, call LLM)
-                        let _ = tx.send(LLMResponse::Chunk("Processing...".to_string()));
+                        // Send processing indicator
+                        let _ = tx.send(LLMResponse::Chunk("Processing in background...".to_string()));
                         
                         // Check for interruption
                         if self.should_interrupt().await {
@@ -75,7 +75,17 @@ impl QueueManager {
                             continue;
                         }
                         
+                        // Simulate work (in real impl, this would call LLM API)
+                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                        
+                        // Send completion
+                        let _ = tx.send(LLMResponse::Chunk(format!(
+                            "Background processing complete for: {}",
+                            queued_msg.message
+                        )));
                         let _ = tx.send(LLMResponse::Complete);
+                        
+                        eprintln!("[WORKER] Completed processing for session {}", queued_msg.session_id);
                     }
                 } else {
                     // No messages, sleep briefly

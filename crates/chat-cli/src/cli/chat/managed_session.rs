@@ -145,6 +145,8 @@ pub struct ManagedSession {
     pub metadata: SessionMetadata,
     /// The ChatSession running this conversation (None for not-yet-started sessions)
     pub chat_session: Option<Arc<tokio::sync::Mutex<crate::cli::chat::ChatSession>>>,
+    /// Accumulated background responses
+    pub background_responses: Vec<String>,
 }
 
 impl ManagedSession {
@@ -169,6 +171,7 @@ impl ManagedSession {
                 message_count: 0,
             },
             chat_session: None,
+            background_responses: Vec::new(),
         }
     }
 
@@ -278,6 +281,7 @@ impl Clone for ManagedSession {
             last_error: self.last_error.clone(),
             metadata: self.metadata.clone(),
             chat_session: self.chat_session.clone(), // Arc can be cloned
+            background_responses: self.background_responses.clone(),
         }
     }
 }

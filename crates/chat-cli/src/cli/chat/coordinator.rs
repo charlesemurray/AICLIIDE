@@ -418,6 +418,7 @@ impl MultiSessionCoordinator {
                 message_count: 0,
             },
             chat_session: None, // Will be set later when ChatSession is created
+            background_responses: Vec::new(),
         };
 
         state.sessions.insert(context.conversation_id.clone(), session);
