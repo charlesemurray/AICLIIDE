@@ -33,6 +33,7 @@ impl GitWorktreeInfo {
             repo_root,
             is_temporary: false,
             merge_target,
+            merge_state: crate::session::metadata::MergeState::None,
         }
     }
 }

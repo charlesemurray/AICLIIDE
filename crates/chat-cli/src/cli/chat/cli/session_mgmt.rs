@@ -217,6 +217,150 @@ impl SessionMgmtArgs {
                     skip_printing_tools: true,
                 })
             },
+            SessionMgmtSubcommand::Merge { session_id, force, r#continue } => {
+                use crate::cli::chat::merge_workflow::{
+                    detect_conflicts, merge_branch, complete_merge, cleanup_after_merge,
+                    launch_conflict_resolution_chat, has_unresolved_conflicts,
+                };
+                use crate::session::metadata::MergeState;
+                
+                let repo = FileSystemRepository::new(os.clone());
+                let manager = SessionManager::new(repo);
+                
+                let mut session_meta = manager.get_session(&session_id).await
+                    .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::NotFound, e.to_string())))?;
+                
+                let wt = session_meta.worktree_info.as_ref()
+                    .ok_or_else(|| ChatError::Std(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Not a worktree session")))?
+                    .clone();
+                
+                if r#continue {
+                    // Verify we're in the right directory
+                    let current_dir = std::env::current_dir()
+                        .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                    if current_dir != wt.path {
+                        eprintln!("❌ Must run from worktree directory: {}", wt.path.display());
+                        return Err(ChatError::Std(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Wrong directory")));
+                    }
+                    
+                    // Complete merge after conflict resolution
+                    match complete_merge(&wt.path) {
+                        Ok(_) => {
+                            println!("✓ Merge completed successfully");
+                            
+                            // Update session state
+                            if let Some(ref mut wt_info) = session_meta.worktree_info {
+                                wt_info.merge_state = MergeState::None;
+                            }
+                            manager.update_session(&session_meta).await
+                                .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                            
+                            cleanup_after_merge(&session_meta)
+                                .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                            println!("✓ Worktree cleaned up");
+                        },
+                        Err(e) => {
+                            eprintln!("❌ Failed to complete merge: {}", e);
+                            eprintln!("💡 Ensure all conflicts are resolved and files are saved");
+                            return Err(ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())));
+                        }
+                    }
+                } else {
+                    // Start merge process
+                    let conflicts = detect_conflicts(&wt.repo_root, &wt.branch, &wt.merge_target)
+                        .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                    
+                    if !conflicts.is_empty() && !force {
+                        println!("⚠️  Conflicts detected in {} file(s):", conflicts.len());
+                        for file in conflicts.iter().take(5) {
+                            println!("  • {}", file);
+                        }
+                        if conflicts.len() > 5 {
+                            println!("  ... and {} more", conflicts.len() - 5);
+                        }
+                        println!("\n💡 Use --force to proceed with conflict resolution");
+                        return Ok(ChatState::PromptUser { skip_printing_tools: true });
+                    }
+                    
+                    match merge_branch(&wt.repo_root, &wt.branch, &wt.merge_target, force) {
+                        Ok(None) => {
+                            // Clean merge - no conflicts
+                            println!("✓ Merge completed successfully");
+                            cleanup_after_merge(&session_meta)
+                                .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                            println!("✓ Worktree cleaned up");
+                        },
+                        Ok(Some(conflicts)) => {
+                            // Conflicts detected - save state and launch resolution chat
+                            println!("⚠️  Merge has conflicts in {} file(s)", conflicts.len());
+                            
+                            // Update session state to Conflicted
+                            if let Some(ref mut wt_info) = session_meta.worktree_info {
+                                wt_info.merge_state = MergeState::Conflicted { files: conflicts.clone() };
+                            }
+                            manager.update_session(&session_meta).await
+                                .map_err(|e| ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+                            
+                            // Generate conflict resolution prompt
+                            let prompt = launch_conflict_resolution_chat(&conflicts, &wt.branch, &wt.merge_target);
+                            
+                            // Launch new chat session via coordinator if available
+                            if let Some(ref coord) = _session.coordinator {
+                                use crate::cli::chat::coordinator::{SessionConfig, SessionContext};
+                                use crate::theme::session::SessionType;
+                                use uuid::Uuid;
+                                
+                                let conflict_session_id = Uuid::new_v4().to_string();
+                                let config = SessionConfig {
+                                    name: format!("merge-conflicts-{}", &session_id[..8]),
+                                    session_type: SessionType::Hotfix,
+                                };
+                                
+                                let context = SessionContext {
+                                    conversation_id: conflict_session_id.clone(),
+                                    os: os.clone(),
+                                    agents: _session.conversation.tool_manager.agent.lock().await.clone(),
+                                    tool_config: _session.conversation.tool_manager.schema.clone(),
+                                    tool_manager: _session.conversation.tool_manager.clone(),
+                                    model_id: None,
+                                };
+                                
+                                let mut coord_lock = coord.lock().await;
+                                match coord_lock.create_session(config, context).await {
+                                    Ok(_) => {
+                                        println!("\n✓ Launched conflict resolution chat session");
+                                        println!("📝 Initial prompt:\n{}", prompt);
+                                        println!("\n💡 After resolving conflicts, run: /sessions merge {} --continue", session_id);
+                                        
+                                        // Switch to the new session
+                                        drop(coord_lock);
+                                        return Ok(ChatState::SwitchSession { 
+                                            target_id: conflict_session_id,
+                                        });
+                                    },
+                                    Err(e) => {
+                                        eprintln!("⚠️  Could not create chat session: {}", e);
+                                        println!("\n📝 Conflict resolution guidance:\n{}", prompt);
+                                        println!("\n💡 After resolving conflicts, run: /sessions merge {} --continue", session_id);
+                                    }
+                                }
+                            } else {
+                                // No coordinator - just print guidance
+                                println!("\n📝 Conflict resolution guidance:\n{}", prompt);
+                                println!("\n💡 After resolving conflicts, run: /sessions merge {} --continue", session_id);
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("❌ Merge failed: {}", e);
+                            return Err(ChatError::Std(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())));
+                        }
+                    }
+                }
+                
+                Ok(ChatState::PromptUser {
+                    skip_printing_tools: true,
+                })
+            },
         }
     }
 }

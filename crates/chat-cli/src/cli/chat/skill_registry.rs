@@ -136,7 +136,7 @@ impl SkillRegistry {
             std::collections::HashMap::new()
         };
         
-        tool.invoke(param_map)
+        tool.invoke_direct(param_map)
     }
 }
 

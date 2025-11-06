@@ -40,6 +40,11 @@ impl SkillTool {
 
         let start = Instant::now();
 
+        // Enhanced security validation
+        if !self.skill_name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            return Err(eyre::eyre!("Skill name contains invalid characters: {}", self.skill_name));
+        }
+
         // Create security context for skill execution
         let security_context = SecurityContext::for_trust_level(TrustLevel::UserVerified);
 
@@ -47,7 +52,7 @@ impl SkillTool {
             .get(&self.skill_name)
             .ok_or_else(|| SkillError::NotFound(self.skill_name.clone()))?;
 
-        // Execute with security context
+        // Execute with enhanced security and error handling
         let result = skill.execute_with_security(self.params.clone(), &security_context).await;
         let duration = start.elapsed();
 

@@ -433,6 +433,7 @@ impl SlashCommand {
                 session_mgmt::SessionMgmtSubcommand::Background { .. } => "background",
                 session_mgmt::SessionMgmtSubcommand::Archive { .. } => "archive",
                 session_mgmt::SessionMgmtSubcommand::Name { .. } => "name",
+                session_mgmt::SessionMgmtSubcommand::Merge { .. } => "merge",
             }),
             SlashCommand::Sessions(sub) => Some(match sub {
                 SessionsSubcommand::List { .. } => "list",

@@ -650,6 +650,7 @@ impl ChatArgs {
                                     repo_root: ctx.repo_root.clone(),
                                     is_temporary: false,
                                     merge_target: ctx.branch_name.clone(),
+                                    merge_state: crate::session::metadata::MergeState::None,
                                 };
                                 
                                 // TODO: Get first_message from user input
@@ -744,6 +745,7 @@ impl ChatArgs {
                                             repo_root: ctx.repo_root.clone(),
                                             is_temporary: false,
                                             merge_target: ctx.branch_name.clone(),
+                                    merge_state: crate::session::metadata::MergeState::None,
                                         };
                                         
                                         let metadata = SessionMetadata::new(&conversation_id, "")
@@ -825,6 +827,7 @@ impl ChatArgs {
                                                     repo_root: ctx.repo_root.clone(),
                                                     is_temporary: false,
                                                     merge_target: ctx.branch_name.clone(),
+                                    merge_state: crate::session::metadata::MergeState::None,
                                                 };
                                                 
                                                 let metadata = SessionMetadata::new(&conversation_id, "")
@@ -944,6 +947,7 @@ impl ChatArgs {
                             branch: git_ctx.branch_name.clone(),
                             repo_root: git_ctx.repo_root.clone(),
                             is_temporary: false,
+                            merge_state: crate::session::metadata::MergeState::None,
                             merge_target: "main".to_string(),
                         }),
                         custom_fields: std::collections::HashMap::new(),
@@ -3357,6 +3361,7 @@ impl ChatSession {
                                     repo_root: ctx.repo_root.clone(),
                                     is_temporary: false,
                                     merge_target: ctx.branch_name.clone(),
+                                    merge_state: crate::session::metadata::MergeState::None,
                                 };
 
                                 let metadata = SessionMetadata::new(self.conversation.conversation_id(), "")

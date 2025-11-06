@@ -117,6 +117,15 @@ impl<R: SessionRepository> SessionManager<R> {
         Ok(())
     }
 
+    /// Update an existing session's metadata
+    #[instrument(skip(self, metadata))]
+    pub async fn update_session(&self, metadata: &SessionMetadata) -> Result<(), SessionError> {
+        debug!(session_id = %metadata.id, "Updating session");
+        self.repository.save(metadata).await?;
+        info!(session_id = %metadata.id, "Session updated successfully");
+        Ok(())
+    }
+
     /// Optimize frequently accessed sessions in background (optional)
     pub async fn optimize_hot_sessions(&self, session_ids: &[String]) -> Result<(), SessionError> {
         // Only optimize a small number of "hot" sessions to avoid resource usage

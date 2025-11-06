@@ -111,9 +111,8 @@ pub enum Tool {
     Todo(TodoList),
     Delegate(Delegate),
     CodeSearch(CodeSearch),
-    Skill(skill_tool::SkillTool),
+    Skill(skill::SkillTool),
     Workflow(workflow_tool::WorkflowTool),
-    SkillNew(skill::SkillTool),
     WorkflowNew(workflow::WorkflowTool),
 }
 
@@ -138,7 +137,6 @@ impl Tool {
             Tool::CodeSearch(_) => "code_search",
             Tool::Skill(skill_tool) => &skill_tool.skill_name,
             Tool::Workflow(workflow_tool) => &workflow_tool.workflow.name,
-            Tool::SkillNew(skill) => &skill.name,
             Tool::WorkflowNew(workflow) => &workflow.name,
         }
         .to_owned()
@@ -159,9 +157,8 @@ impl Tool {
             Tool::Knowledge(knowledge) => knowledge.eval_perm(os, agent),
             Tool::Delegate(_) => PermissionEvalResult::Allow,
             Tool::CodeSearch(code_search) => code_search.eval_perm(os, agent),
-            Tool::Skill(_) => PermissionEvalResult::Allow, // Skills have their own security
+            Tool::Skill(skill) => skill.eval_perm(os, agent),
             Tool::Workflow(_) => PermissionEvalResult::Allow, // Workflows have their own security
-            Tool::SkillNew(skill) => skill.eval_perm(os, agent),
             Tool::WorkflowNew(workflow) => workflow.eval_perm(os, agent),
         }
     }
@@ -199,29 +196,6 @@ impl Tool {
                     .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
                 skill_tool.invoke(&registry, stdout).await
             },
-            Tool::Workflow(workflow_tool) => {
-                let registry = crate::cli::skills::SkillRegistry::with_all_skills(&os.env.current_dir()?)
-                    .await
-                    .map_err(|e| eyre::eyre!("Failed to load skills: {}", e))?;
-                let executor = crate::cli::workflow::WorkflowExecutor::new(registry);
-                workflow_tool.invoke(&executor, stdout).await
-            },
-            Tool::SkillNew(skill) => {
-                tracing::info!("Executing SkillNew: {}", skill.name);
-                
-                match skill.invoke(skill.parameters.clone()) {
-                    Ok(result) => {
-                        tracing::info!("SkillNew execution successful: {}", skill.name);
-                        Ok(InvokeOutput {
-                            output: OutputKind::Text(result),
-                        })
-                    },
-                    Err(e) => {
-                        tracing::error!("SkillNew execution failed for {}: {}", skill.name, e);
-                        Err(e)
-                    }
-                }
-            },
             Tool::WorkflowNew(workflow) => {
                 let params = std::collections::HashMap::new();
                 let result = workflow.invoke(params)?;
@@ -256,10 +230,6 @@ impl Tool {
                 },
                 Tool::Workflow(workflow_tool) => {
                     writeln!(&mut buf, "Executing workflow: {}", workflow_tool.workflow.name)?;
-                    Ok(())
-                },
-                Tool::SkillNew(skill) => {
-                    writeln!(&mut buf, "Executing skill: {}", skill.name)?;
                     Ok(())
                 },
                 Tool::WorkflowNew(workflow) => {
@@ -307,15 +277,6 @@ impl Tool {
                     )?;
                     Ok(())
                 },
-                Tool::SkillNew(skill) => {
-                    queue!(
-                        output,
-                        style::Print("Executing skill: "),
-                        style::Print(&skill.name),
-                        style::Print("\n")
-                    )?;
-                    Ok(())
-                },
                 Tool::WorkflowNew(workflow) => {
                     queue!(
                         output,
@@ -349,9 +310,8 @@ impl Tool {
             Tool::Todo(todo) => todo.validate(os).await,
             Tool::Delegate(_) => Ok(()),
             Tool::CodeSearch(code_search) => code_search.validate(os).await,
-            Tool::Skill(_) => Ok(()),    // Skills are validated by the registry
+            Tool::Skill(skill) => skill.validate(),
             Tool::Workflow(_) => Ok(()), // Workflows are validated by the registry
-            Tool::SkillNew(skill) => skill.validate(),
             Tool::WorkflowNew(workflow) => workflow.validate(),
         }
     }

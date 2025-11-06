@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::io::Write;
 
 use eyre::Result;
 use serde::{
@@ -16,6 +17,7 @@ use crate::cli::agent::{
     PermissionEvalResult,
 };
 use crate::os::Os;
+use super::{InvokeOutput, OutputKind};
 
 const MAX_OUTPUT_SIZE: usize = 100_000;
 
@@ -24,6 +26,9 @@ pub struct SkillTool {
     pub name: String,
     pub description: String,
     pub parameters: HashMap<String, Value>,
+    // Legacy compatibility fields
+    pub skill_name: String,
+    pub params: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,14 +52,44 @@ pub struct SkillDefinition {
 impl SkillTool {
     pub fn new(name: String, description: String) -> Self {
         Self { 
-            name, 
+            name: name.clone(), 
             description,
             parameters: HashMap::new(),
+            // Legacy compatibility
+            skill_name: name,
+            params: serde_json::Value::Object(serde_json::Map::new()),
         }
     }
 
     pub fn with_parameters(name: String, description: String, parameters: HashMap<String, Value>) -> Self {
-        Self { name, description, parameters }
+        let params = serde_json::Value::Object(
+            parameters.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+        );
+        Self { 
+            name: name.clone(), 
+            description, 
+            parameters,
+            // Legacy compatibility
+            skill_name: name,
+            params,
+        }
+    }
+
+    // Legacy constructor for compatibility
+    pub fn new_legacy(skill_name: String, params: serde_json::Value) -> Self {
+        let parameters = if let serde_json::Value::Object(obj) = &params {
+            obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+        } else {
+            HashMap::new()
+        };
+        
+        Self {
+            name: skill_name.clone(),
+            description: format!("Legacy skill: {}", skill_name),
+            parameters,
+            skill_name,
+            params,
+        }
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -68,8 +103,32 @@ impl SkillTool {
         PermissionEvalResult::Allow
     }
 
+    /// Async invoke method for registry compatibility
+    pub async fn invoke(&self, registry: &crate::cli::skills::SkillRegistry, stdout: &mut impl Write) -> Result<InvokeOutput> {
+        tracing::info!("Invoking skill via registry: {}", self.skill_name);
+        
+        // Try to find and execute the skill through the registry
+        match registry.get_skill(&self.skill_name) {
+            Some(skill_def) => {
+                let result = self.invoke_with_definition(skill_def, self.parameters.clone())?;
+                writeln!(stdout, "{}", result)?;
+                Ok(InvokeOutput {
+                    output: OutputKind::Text(result),
+                })
+            },
+            None => {
+                // Fallback to direct execution
+                let result = self.invoke_direct(self.parameters.clone())?;
+                writeln!(stdout, "{}", result)?;
+                Ok(InvokeOutput {
+                    output: OutputKind::Text(result),
+                })
+            }
+        }
+    }
+
     /// Secure command execution using proper libraries
-    pub fn invoke(&self, params: HashMap<String, Value>) -> Result<String> {
+    pub fn invoke_direct(&self, params: HashMap<String, Value>) -> Result<String> {
         tracing::info!("Invoking skill: {}", self.name);
         tracing::debug!("Skill parameters: {:?}", params);
         
@@ -287,6 +346,8 @@ impl SkillTool {
             name: definition.name.clone(),
             description: definition.description.clone(),
             parameters: HashMap::new(),
+            skill_name: definition.name.clone(),
+            params: serde_json::Value::Object(serde_json::Map::new()),
         }
     }
 
