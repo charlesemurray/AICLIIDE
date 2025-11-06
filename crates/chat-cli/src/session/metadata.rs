@@ -20,6 +20,21 @@ pub enum SessionStatus {
     Archived,
 }
 
+/// Merge state for worktree sessions
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MergeState {
+    None,
+    Conflicted { files: Vec<String> },
+    Resolving,
+}
+
+impl Default for MergeState {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 /// Worktree information for sessions running in git worktrees
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorktreeInfo {
@@ -28,6 +43,8 @@ pub struct WorktreeInfo {
     pub repo_root: PathBuf,
     pub is_temporary: bool,
     pub merge_target: String,
+    #[serde(default)]
+    pub merge_state: MergeState,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

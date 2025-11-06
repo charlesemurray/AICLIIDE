@@ -48,6 +48,17 @@ pub enum SessionMgmtSubcommand {
         /// Session ID to archive
         session_id: String,
     },
+    /// Merge worktree branch back to target
+    Merge {
+        /// Session ID to merge
+        session_id: String,
+        /// Force merge even with conflicts
+        #[arg(long)]
+        force: bool,
+        /// Continue merge after resolving conflicts
+        #[arg(long)]
+        r#continue: bool,
+    },
     /// Name a session
     Name {
         /// Session ID to name
