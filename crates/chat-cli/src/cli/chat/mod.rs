@@ -17,6 +17,8 @@ pub mod coordinator;
 pub mod fair_scheduler;
 pub mod input_router;
 mod input_source;
+pub mod llm_service;
+pub mod llm_tower;
 pub mod managed_session;
 pub mod memory_monitor;
 pub mod message_queue;
