@@ -14,7 +14,6 @@ mod consts;
 pub mod context;
 mod conversation;
 pub mod coordinator;
-pub mod fair_scheduler;
 pub mod input_router;
 mod input_source;
 pub mod llm_service;
