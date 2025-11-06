@@ -57,20 +57,24 @@ Implement background LLM processing with priority-based message queue to allow:
 - `test_stats`: Queue statistics
 
 ### 🔄 Phase 3: Integration (Day 3 - In Progress)
-**Status**: NOT STARTED
+**Status**: IN PROGRESS
+**Commits**: c78fcd50, ca023145
 
-**Tasks**:
-- [ ] Add `QueueManager` to `MultiSessionCoordinator`
-- [ ] Spawn queue processor task in coordinator
-- [ ] Modify `ChatSession` to use queue for messages
-- [ ] Implement `is_active_session()` check
-- [ ] Update message handling to submit to queue
-- [ ] Handle `LLMResponse` streaming
+**Completed**:
+- [x] Add partial response handling to ConversationState
+- [x] Implement is_active_session() helper
+- [ ] Modify ChatSession to use queue for messages
+- [ ] Handle LLMResponse streaming
 - [ ] Integration tests
 
-**Files to Modify**:
-- `crates/chat-cli/src/cli/chat/coordinator.rs` (~20 lines)
-- `crates/chat-cli/src/cli/chat/mod.rs` (~40 lines)
+**Files Modified**:
+- `crates/chat-cli/src/cli/chat/conversation.rs` (19 lines)
+- `crates/chat-cli/src/cli/chat/mod.rs` (13 lines)
+
+**Next Steps**:
+- Modify handle_input to submit to queue
+- Update handle_response to check for interruption
+- Handle partial response resume
 
 ### ⏳ Phase 4: Testing & Polish (Day 4 - Not Started)
 **Status**: NOT STARTED
